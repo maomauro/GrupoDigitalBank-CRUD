@@ -1,0 +1,9 @@
+@model UsuarioViewModel
+@{ ViewData["Title"] = "Modificar usuario"; }
+
+<h1>Modificar usuario</h1>
+<form asp-action="Editar" method="post">
+    <partial name="_Formulario" model="Model" />
+    <button type="submit">Guardar cambios</button>
+    <a asp-action="Consultar" class="boton-sec">Cancelar</a>
+</form>

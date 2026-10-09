@@ -1,0 +1,24 @@
+@model UsuarioViewModel
+
+<div asp-validation-summary="All" class="alerta error"></div>
+<input type="hidden" asp-for="Id" />
+
+<div class="campo">
+    <label asp-for="Nombre"></label>
+    <input asp-for="Nombre" maxlength="100" />
+    <span asp-validation-for="Nombre" class="msg-error"></span>
+</div>
+<div class="campo">
+    <label asp-for="FechaNacimiento"></label>
+    <input asp-for="FechaNacimiento" type="date" />
+    <span asp-validation-for="FechaNacimiento" class="msg-error"></span>
+</div>
+<div class="campo">
+    <label asp-for="Sexo"></label>
+    <select asp-for="Sexo">
+        <option value="">Seleccione...</option>
+        <option value="M">Masculino</option>
+        <option value="F">Femenino</option>
+    </select>
+    <span asp-validation-for="Sexo" class="msg-error"></span>
+</div>

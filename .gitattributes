@@ -1,0 +1,16 @@
+* text=auto eol=lf
+
+*.sql text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Caddyfile text eol=lf
+Dockerfile text eol=lf
+
+# Windows: este script se ejecuta en PowerShell, admite CRLF
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

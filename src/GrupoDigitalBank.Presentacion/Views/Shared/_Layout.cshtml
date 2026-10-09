@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Gestión de usuarios</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header>
+        <strong>Gestión de usuarios</strong>
+        <nav>
+            <a asp-controller="Usuarios" asp-action="Registrar">Registrar</a>
+            <a asp-controller="Usuarios" asp-action="Consultar">Consultar</a>
+        </nav>
+    </header>
+    <main>
+        @if (TempData["Mensaje"] is string mensaje) { <div class="alerta ok">@mensaje</div> }
+        @if (TempData["Error"] is string error) { <div class="alerta error">@error</div> }
+        @RenderBody()
+    </main>
+</body>
+</html>

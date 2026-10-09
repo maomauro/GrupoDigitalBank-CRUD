@@ -1,0 +1,36 @@
+@model List<UsuarioViewModel>
+@{ ViewData["Title"] = "Usuarios"; }
+
+<h1>Usuarios</h1>
+<div asp-validation-summary="All" class="alerta error"></div>
+
+@if (Model.Count == 0)
+{
+    <p>No hay usuarios registrados. <a asp-action="Registrar">Registrar el primero</a>.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr><th>Id</th><th>Nombre</th><th>Fecha de nacimiento</th><th>Sexo</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var u in Model)
+        {
+            <tr>
+                <td>@u.Id</td>
+                <td>@u.Nombre</td>
+                <td>@u.FechaNacimiento?.ToString("yyyy-MM-dd")</td>
+                <td>@u.SexoTexto</td>
+                <td class="acciones">
+                    <a asp-action="Editar" asp-route-id="@u.Id">Modificar</a>
+                    <form asp-action="Eliminar" asp-route-id="@u.Id" method="post"
+                          onsubmit="return confirm('¿Eliminar a @u.Nombre?');">
+                        <button type="submit" class="peligro">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

@@ -1,0 +1,6 @@
+@model string
+@{ ViewData["Title"] = "Error"; }
+
+<h1>Ocurrió un error</h1>
+<p>No pudimos procesar la solicitud. Código de seguimiento: <code>@Model</code></p>
+<a asp-controller="Usuarios" asp-action="Consultar">Volver al listado</a>

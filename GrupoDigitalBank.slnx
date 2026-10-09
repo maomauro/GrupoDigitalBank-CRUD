@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GrupoDigitalBank.Negocios/GrupoDigitalBank.Negocios.csproj" />
+    <Project Path="src/GrupoDigitalBank.Presentacion/GrupoDigitalBank.Presentacion.csproj" />
+  </Folder>
+</Solution>

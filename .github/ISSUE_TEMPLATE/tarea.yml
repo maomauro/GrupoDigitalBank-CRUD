@@ -1,0 +1,35 @@
+name: Tarea o hallazgo
+description: Trabajo planificado (funcionalidad, corrección, mejora técnica)
+title: "[tipo] resumen corto"
+labels: []
+body:
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options:
+        - P0 - bloqueante
+        - P1 - antes de producción
+        - P2 - primeras semanas
+        - P3 - backlog
+    validations:
+      required: true
+  - type: input
+    id: referencia
+    attributes:
+      label: Referencia
+      description: Hallazgo del diagnóstico o fase del plan (ej. H1, fase 3.4)
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+    validations:
+      required: true
+  - type: textarea
+    id: aceptacion
+    attributes:
+      label: Criterio de aceptación
+      description: Cómo se comprueba que está terminado
+      placeholder: "- [ ] ..."
+    validations:
+      required: true

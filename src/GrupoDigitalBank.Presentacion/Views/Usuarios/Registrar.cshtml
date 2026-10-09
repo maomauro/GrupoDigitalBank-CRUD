@@ -1,0 +1,9 @@
+@model UsuarioViewModel
+@{ ViewData["Title"] = "Registrar usuario"; }
+
+<h1>Registrar usuario</h1>
+<form asp-action="Registrar" method="post">
+    <partial name="_Formulario" model="Model" />
+    <button type="submit">Guardar</button>
+    <a asp-action="Consultar" class="boton-sec">Cancelar</a>
+</form>
