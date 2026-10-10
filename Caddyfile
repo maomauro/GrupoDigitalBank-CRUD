@@ -1,5 +1,33 @@
+# Cabeceras de seguridad (hallazgo B4). La CSP no admite nada en linea ni de otro origen: las vistas solo
+# cargan /css y /js propios (lo comprueba UsuariosVistasTests). HSTS_MAX_AGE vale 31536000 (1 ano) por omision;
+# el compose de desarrollo lo pone en 0 porque HSTS se aplica al nombre de host sin importar el puerto y
+# forzaria HTTPS en http://localhost:8080 y :5080.
+(cabeceras_seguridad) {
+	header {
+		Strict-Transport-Security "max-age={$HSTS_MAX_AGE:31536000}"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		-Server
+	}
+}
+
 {$DOMINIO} {
 	encode gzip
+
+	# En todas las respuestas...
+	import cabeceras_seguridad
+
+	# ...incluidas las de error generadas por Caddy, como el 401 de basic_auth o un 502 si web esta caido:
+	# Caddy descarta las cabeceras ya fijadas cuando un manejador devuelve un error, y sin esto el 401 (justo lo
+	# que ve un visitante sin credenciales) salia sin ninguna. WWW-Authenticate se conserva.
+	handle_errors {
+		import cabeceras_seguridad
+	}
 
 	# Salud del proceso web: sin autenticacion, para monitores externos y la prueba de humo del despliegue.
 	@salud path /health

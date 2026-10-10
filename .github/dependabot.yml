@@ -67,3 +67,14 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+
+  # Herramienta opcional de navegador (puppeteer-core, scripts/probar-navegador.ps1)
+  - package-ecosystem: "npm"
+    directory: "/scripts/navegador"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "build"
+      include: "scope"

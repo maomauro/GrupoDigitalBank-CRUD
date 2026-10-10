@@ -28,3 +28,5 @@ services:
 
   proxy:
     profiles: ["con-proxy"]     # no arranca salvo que se pida el perfil
+    environment:
+      HSTS_MAX_AGE: "0"         # HSTS se aplica al host sin importar el puerto: forzaria HTTPS en http://localhost:8080

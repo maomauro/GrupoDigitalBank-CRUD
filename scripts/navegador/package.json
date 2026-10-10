@@ -1,0 +1,8 @@
+{
+  "name": "gdb-navegador",
+  "private": true,
+  "description": "Comprobaciones en un Chrome real (CSP y regresion H1). Herramienta opcional: ver scripts/probar-navegador.ps1",
+  "dependencies": {
+    "puppeteer-core": "25.13.0"
+  }
+}

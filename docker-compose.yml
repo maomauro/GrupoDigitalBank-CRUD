@@ -82,6 +82,7 @@ services:
       DOMINIO: ${DOMINIO}
       AUTH_USUARIO: ${AUTH_USUARIO:?Define AUTH_USUARIO en .env (usuario de acceso a la web)}
       AUTH_HASH: ${AUTH_HASH:?Define AUTH_HASH en .env (generalo con scripts/generar-hash-auth.ps1)}
+      HSTS_MAX_AGE: ${HSTS_MAX_AGE:-31536000}   # segundos; 0 en desarrollo (ver Caddyfile)
     ports:
       - "80:80"
       - "443:443"

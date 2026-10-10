@@ -2,7 +2,7 @@
 @{ ViewData["Title"] = "Usuarios"; }
 
 <h1>Usuarios</h1>
-<div asp-validation-summary="All" class="alerta error"></div>
+<partial name="_ResumenErrores" />
 
 @if (Model.Count == 0)
 {
