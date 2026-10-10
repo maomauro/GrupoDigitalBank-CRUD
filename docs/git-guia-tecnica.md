@@ -277,7 +277,7 @@ GitHub Free **no permite proteger ramas ni crear rulesets en repos privados** (v
 
 | Mecanismo | Qué hace | Límite |
 |---|---|---|
-| Hook `.githooks/pre-push` (fase 3.5) | Rechaza `git push` directo a `main` y `develop` (permite solo `--force-with-lease` en ramas propias) | Se salta con `--no-verify` o desde otro equipo |
+| Hook `.githooks/pre-push` (activo, fase 3.5) | Rechaza `git push` directo a `main` y `develop` (también borrarlas) y, al publicar una rama de trabajo, corre `scripts/verificar.ps1 -Rapido` (format whitespace + build, ~10 s). Se activa una vez por clon con `git config core.hooksPath .githooks` | Se salta con `--no-verify` o desde otro equipo |
 | CI en cada PR (fase 5) | Falla visible en el PR si hay error de build, formato, pruebas o vulnerabilidades | No bloquea el botón de fusionar: hay que respetarlo |
 | Ajustes de merge del repo | Squash y merge commit habilitados; rebase deshabilitado; borrado automático de ramas **desactivado** | La elección squash/merge por PR es manual |
 | Checklist del PR | Recuerda tipo de fusión, pruebas y secretos | Es disciplina |

@@ -243,8 +243,17 @@ Verificado el 2026-10-09 con el mismo flujo en ambos modos (registrar, consultar
 
 ### 3.5 Verificación local y hook (L11, D6)
 
-- `scripts/verificar.ps1`: `dotnet format --verify-no-changes` → `dotnet build -warnaserror` → `dotnet test`. Es el mismo contrato que CI (fase 5).
-- Hook versionado en `.githooks/pre-push` que ejecuta format + build y **rechaza el push directo a `main` y a `develop`**. Se activa con `git config core.hooksPath .githooks`.
+Hecho (issue #8):
+
+- `scripts/verificar.ps1` (completa, ~30 s): restore → `dotnet format --verify-no-changes` → `dotnet build` (con `TreatWarningsAsErrors`) → `dotnet test`. Es el mismo contrato que CI (fase 5). Se detiene en el primer fallo y devuelve su código.
+- `scripts/verificar.ps1 -Rapido` (~10 s): usa `dotnet format whitespace` (7 s en vez de 21 s) + build. El estilo y los analizadores ya los exige el build; el formato completo corre en la verificación completa y en CI.
+- Hook versionado `.githooks/pre-push`:
+  - **rechaza** el push directo a `main` y `develop`, incluido borrarlas;
+  - al publicar una rama de trabajo ejecuta `verificar.ps1 -Rapido` y cancela el push si falla;
+  - no verifica al borrar ramas ni al subir tags.
+- Activación (una vez por clon): `git config core.hooksPath .githooks`. `scripts/verificar-herramientas.ps1` avisa si no está activo.
+- Se probaron a mano los cinco escenarios (push a `develop`, a `main`, borrar `develop`, tag y rama de trabajo) y el fallo con formato roto.
+- Límite: se salta con `git push --no-verify` o desde otro equipo (ver guía de Git, §10).
 
 ### 3.6 Esqueleto de pruebas y versiones fijas (L10, B1)
 

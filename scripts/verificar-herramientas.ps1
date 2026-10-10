@@ -82,6 +82,16 @@ else { Mostrar 'AVISO' 'Llave SSH personal' 'ssh-keygen -t ed25519' }
 if (Test-Path "$HOME\.ssh\gdb_deploy.pub") { Mostrar 'OK' 'Llave de despliegue' '~/.ssh/gdb_deploy' }
 else { Mostrar 'AVISO' 'Llave de despliegue' 'pendiente hasta la fase 6 del plan' }
 
+# Hook pre-push del repositorio (decision D6); solo si esta carpeta es un repo Git
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    git rev-parse --is-inside-work-tree 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        $hooks = git config --get core.hooksPath
+        if ($hooks -eq '.githooks') { Mostrar 'OK' 'Hook pre-push' 'activo (core.hooksPath=.githooks)' }
+        else { Mostrar 'AVISO' 'Hook pre-push' 'activar con: git config core.hooksPath .githooks' }
+    }
+}
+
 # Puertos que usara Caddy en local
 foreach ($p in 80, 443) {
     $uso = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue

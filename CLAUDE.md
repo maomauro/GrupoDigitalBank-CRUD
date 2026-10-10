@@ -26,12 +26,14 @@ El contrato SOAP está duplicado a mano en `Presentacion/Servicios/ContratoServi
 ## Comandos
 
 ```powershell
-dotnet build -warnaserror
-dotnet test                                  # cuando existan los proyectos en tests/
-dotnet format --verify-no-changes
-docker compose up -d --build                 # stack completo (requiere .env)
+powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1            # format + build + test (igual que CI)
+powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1 -Rapido    # format whitespace + build (~10 s)
+powershell -ExecutionPolicy Bypass -File scripts\verificar-herramientas.ps1   # chequeo del entorno
+git config core.hooksPath .githooks          # una vez por clon: activa el hook pre-push
 docker compose logs -f negocios
 ```
+
+`TreatWarningsAsErrors` está activo: cualquier aviso rompe el build. El hook `pre-push` rechaza el push directo a `main` y `develop` y corre la verificación rápida.
 
 Modos de ejecución local (detalle en el plan, fase 3.3):
 
