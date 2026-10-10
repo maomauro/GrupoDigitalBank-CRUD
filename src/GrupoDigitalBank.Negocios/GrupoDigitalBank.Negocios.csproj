@@ -9,9 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CoreWCF.Primitives" Version="1.9.*" />
-    <PackageReference Include="CoreWCF.Http" Version="1.9.*" />
-    <PackageReference Include="Npgsql" Version="10.*" />
+    <PackageReference Include="CoreWCF.Primitives" />
+    <PackageReference Include="CoreWCF.Http" />
+    <PackageReference Include="Npgsql" />
   </ItemGroup>
 
 </Project>

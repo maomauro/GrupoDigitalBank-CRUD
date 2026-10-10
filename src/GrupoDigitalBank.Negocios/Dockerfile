@@ -1,5 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+# Reglas de compilacion y versiones centralizadas: deben estar antes del restore
+COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/GrupoDigitalBank.Negocios/*.csproj ./
 RUN dotnet restore
 COPY src/GrupoDigitalBank.Negocios/ ./

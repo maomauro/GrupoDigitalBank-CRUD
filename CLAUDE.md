@@ -48,7 +48,7 @@ Modos de ejecución local (detalle en el plan, fase 3.3):
 - Errores de negocio viajan como `FaultException<ErrorServicio>`; nunca exponer detalles de excepciones al cliente.
 - SQL siempre parametrizado (Npgsql); sin ORM.
 - Sin handlers JavaScript inline en las vistas (ver H1 del diagnóstico); usar atributos `data-*` y `wwwroot/js`.
-- Versiones de paquetes fijas (cuando exista `Directory.Packages.props`, se editan allí).
+- Versiones de paquetes fijas y centralizadas en `Directory.Packages.props`: los `.csproj` no llevan `Version`. Los Dockerfile copian `global.json` y los `Directory.*.props` antes del `restore`; si se añade otro archivo de ese tipo, copiarlo también.
 - Cambios de esquema: *expand/contract*, compatibles hacia atrás durante un despliegue.
 
 ## Git
