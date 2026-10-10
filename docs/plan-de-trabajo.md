@@ -376,21 +376,37 @@ Hecho (issue #13):
 
 **Operación:** el volumen `dpkeys` no es crítico para los backups (perderlo solo invalida los formularios abiertos y las cookies vigentes en ese momento), pero conviene **no** borrarlo en un redespliegue. `docker compose down -v` lo elimina junto con los demás.
 
-### 4.7 H7 · Pruebas (media, P1)
+### 4.7 H7 · Pruebas (media, P1) ✅
 
-| Proyecto | Contenido | Herramientas |
+Hecho (issue #14): **141 pruebas** (51 unitarias de Negocios, 62 de Presentación y 28 de integración con PostgreSQL real) y cobertura medida con un mínimo exigido.
+
+| Proyecto | Pruebas | Qué cubre |
 |---|---|---|
-| `GrupoDigitalBank.Negocios.Tests` | Unitarias de `UsuarioValidador` y `UsuarioService` (repositorio simulado) | xUnit, Shouldly, NSubstitute |
-| `GrupoDigitalBank.Negocios.IntegrationTests` | Repositorio contra PostgreSQL real aplicando los scripts de `db/` (`PostgresFixture`, requiere Docker) | Testcontainers for .NET |
-| `GrupoDigitalBank.Presentacion.Tests` | Controlador con `IUsuarioClient` simulado; vistas renderizadas (regresión H1, ya hecha) | xUnit, NSubstitute, `Microsoft.AspNetCore.Mvc.Testing` (`WebApplicationFactory<Program>`) |
+| `GrupoDigitalBank.Negocios.Tests` | 51 | `UsuarioValidador` en cada límite (nombre 0/1/100/101 y con espacios, fecha 1899-12-31/1900-01-01/hoy/mañana/`default`, sexo `M`/`F`/minúscula/vacío/nulo, acumulación y orden de errores) y `UsuarioService` con el repositorio simulado: cada operación, cada código de fault (`VALIDACION`, `NO_ENCONTRADO`, `ERROR_DATOS`, `ERROR_INTERNO`), que los errores técnicos **se registran en el log y no se filtran al cliente**, y que un «no encontrado» no se registra como error |
+| `GrupoDigitalBank.Negocios.IntegrationTests` | 28 | Repositorio y `fn_usuario_crud` contra PostgreSQL real, conectados como el rol de aplicación: CRUD completo, recorte y normalización, orden por id, inexistentes (`null`/`false`/lista vacía), aislamiento entre usuarios, y la base como última red (sexo inválido, fecha < 1900 o futura con su restricción, nombre de 101 caracteres, operación inválida `22023`); más los permisos del rol (H4) |
+| `GrupoDigitalBank.Presentacion.Tests` | 62 | Controlador (cada acción, camino feliz y errores del servicio mostrados de forma amigable), `UsuarioViewModel` (DataAnnotations y conversión), `UsuarioClient` ante un servicio caído, vistas renderizadas (regresión H1, `Editar`, página de error) y `/health` y claves de Data Protection (H6) |
 
-Esqueleto ya creado en la fase 3.6 (una prueba por proyecto). Notas de implementación:
+Cobertura (`scripts/cobertura.ps1`, coverlet + ReportGenerator, une los tres proyectos):
+
+| Ensamblado | Antes | Ahora |
+|---|---|---|
+| `GrupoDigitalBank.Negocios` | 41,6 % (29,8 % contando código generado) | **100 %** (89/89 líneas) — mínimo exigido 80 % |
+| `GrupoDigitalBank.Presentacion` | 35,3 % | 87 %; lo no cubierto es el camino feliz de `UsuarioClient` (necesita un servidor CoreWCF real: hallazgo B2, #19) |
+
+`coverlet.runsettings` excluye `Program.cs` (arranque), los `*.g.cs` generados por fuentes (invocador de operaciones de CoreWCF y `LoggerMessage`) y el código de las propias pruebas. El script devuelve código 1 si Negocios baja del umbral (`-Umbral`, por omisión 80; `-SinUmbral` solo informa). `ReportGenerator` va fijado en `.config/dotnet-tools.json` (5.5.11). El CI de la fase 5 debe ejecutar este script.
+
+**Las pruebas detectan errores reales (pruebas de mutación manuales):** se aplicaron 21 mutaciones al código de producción, una por una —`>` por `>=` en cada límite, filtrar el detalle interno de un error de BD al cliente, quitar un `Trim` (validador, repositorio y modelo), invertir una condición, dejar de registrar un error, no persistir las claves de Data Protection, volver a un `onsubmit` en línea (H1)— y **las 21 fueron detectadas**. El código quedó intacto (`git status` limpio). El 100 % de líneas por sí solo no demostraría nada; esto sí.
+
+Notas de implementación:
 
 - Los tres proyectos llevan `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. Sin él, `CoreWCF.Primitives` arrastra `System.Security.Cryptography.Xml` 8.0.x con vulnerabilidad alta (NU1903) que en la aplicación queda podada por el framework y en un proyecto de prueba plano no.
-- `PostgresFixture` aplica los scripts `db/NNN_*.sql` en orden con `psql` dentro del contenedor (igual que el migrador, con `app_user` y `app_pass`) y expone dos conexiones: `DataSource` (rol de aplicación, el que usa Negocios) y `AdminDataSource` (propietario, solo para preparar y verificar permisos).
+- `PostgresFixture` aplica los scripts `db/NNN_*.sql` en orden con `psql` dentro del contenedor (igual que el migrador, con `app_user` y `app_pass`) y expone dos conexiones: `DataSource` (rol de aplicación, el que usa Negocios) y `AdminDataSource` (propietario, solo para preparar y verificar permisos). Las pruebas de la clase comparten la base: cada una usa nombres únicos y no depende del orden ni del conteo.
 - Las pruebas de integración llevan `[Trait("Categoria", "Integracion")]`; `dotnet test --filter "Categoria!=Integracion"` las omite si no hay Docker.
+- `UsuarioClientTests` usa un servidor TCP local que **acepta y cierra la conexión al instante** para simular un servicio caído: contra un puerto cerrado cada llamada tardaba ≈2 s en Windows (14 s en total) y ahora toda la clase tarda milisegundos, sin depender de que un puerto concreto esté libre.
+- Los límites de fecha usan `DateTime.Today`: siguen sujetos a la zona horaria del equipo (hallazgo B6, #17). Las pruebas de base usan +2 días para la fecha futura y evitan el borde.
+- **Hallazgo nuevo (issue #41):** la base acepta un nombre vacío o de solo espacios; solo existen `CHECK` de sexo y fecha. Se comprobó con una transacción revertida. No se congeló en una prueba como comportamiento deseado.
 
-Casos mínimos: crear válido; nombre vacío o largo; fecha futura o muy antigua; sexo inválido; modificar o eliminar inexistente; operación inválida en la función; fallo del servicio SOAP mostrado como error amigable; regresión H1; el rol de aplicación no puede borrar la tabla. Meta: ≥ 80 % de cobertura en la lógica de Negocios (`coverlet`).
+Pendiente para otros issues: camino feliz y fault reales del cliente SOAP contra CoreWCF y la comparación de contratos (B2, #19); `TimeProvider` (B6, #17).
 
 ### 4.8 H8 y baja prioridad
 
