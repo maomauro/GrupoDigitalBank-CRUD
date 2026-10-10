@@ -570,16 +570,16 @@ chmod 700 /srv/sitiosapps/_backups/gdb-crud
 DOMINIO=gdb-crud.sitiosapps.com
 POSTGRES_DB=usuarios_db
 POSTGRES_USER=usuarios_admin
-POSTGRES_PASSWORD=<openssl rand -base64 32>
+POSTGRES_PASSWORD=<openssl rand -hex 24>
 APP_DB_USER=usuarios_app
-APP_DB_PASSWORD=<openssl rand -base64 32>
+APP_DB_PASSWORD=<openssl rand -hex 24>
 AUTH_USUARIO=admin
 AUTH_HASH='<hash generado con scripts/generar-hash-auth.ps1, entre comillas simples>'
 IMAGE_TAG=latest
 GITHUB_REPOSITORY=maomauro/grupodigitalbank-crud
 ```
 
-`GITHUB_REPOSITORY` va en **minúsculas** (GHCR no admite mayúsculas). Login a GHCR con un PAT de solo lectura de paquetes: `echo $PAT | docker login ghcr.io -u maomauro --password-stdin`.
+Las contraseñas se generan en **hexadecimal** (`openssl rand -hex 24`), no en base64: sin `/`, `+`, `=` ni `;`, que romperían la cadena de conexión de Npgsql o la interpolación de Compose. `GITHUB_REPOSITORY` va en **minúsculas** (GHCR no admite mayúsculas). Login a GHCR con un PAT de solo lectura de paquetes: `echo $PAT | docker login ghcr.io -u maomauro --password-stdin`.
 
 ### 6.4 Llave de despliegue exclusiva y restringida
 
