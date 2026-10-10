@@ -190,7 +190,7 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 | Aplicación | Antiforgery con claves persistentes, sin JavaScript en línea, errores sin detalles internos | `web`, `negocios` |
 | Datos | Rol de mínimo privilegio, parámetros tipados, `CHECK` en la tabla | `db/002`, Npgsql |
 | Secretos | Fuera del repositorio: `.env` local, `user-secrets` en desarrollo, variables de entorno en contenedores; Negocios no arranca sin cadena de conexión | — |
-| Cadena de suministro | Versiones fijas, Dependabot, alertas y correcciones automáticas de seguridad, Trivy y `dotnet list package --vulnerable` en el CI (fase 5) | `.github/` |
+| Cadena de suministro | Versiones fijas, Dependabot, alertas y correcciones automáticas de seguridad, Trivy, hadolint, shellcheck y `dotnet list package --vulnerable` en el CI, con las acciones fijadas por SHA | `.github/` |
 
 ## 8. Despliegue
 
@@ -232,7 +232,7 @@ flowchart LR
 - **302 pruebas** (106 unitarias de Negocios, 54 de integración con PostgreSQL real en Testcontainers, 127 de Presentación con `WebApplicationFactory` y 15 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
 - Mutaciones manuales, todas detectadas: 34 al código de producción, 7 al contrato SOAP (más 3 que ni compilan) y 25 a la paginación.
 - Herramientas en `scripts/`: `verificar.ps1` (el contrato del CI), `cobertura.ps1`, `probar-migrador.ps1`, `probar-acceso.ps1` y, en navegador real, `probar-navegador.ps1`.
-- Integración continua con GitHub Actions: **pendiente** (fase 5, #20). Hoy lo único automático en GitHub es SonarCloud (análisis por PR) y Dependabot.
+- Integración continua con GitHub Actions (`.github/workflows/ci.yml`, tres trabajos independientes en cada PR y push a `develop` y `main`): `ci` (format, build, 302 pruebas en Linux, cobertura y paquetes vulnerables), `migrador` (shellcheck y los 9 escenarios del migrador) y `docker` (Compose, hadolint, construcción de imágenes y Trivy). Además SonarCloud (análisis por PR) y Dependabot, que ahora también cubre las acciones.
 
 ## 10. Decisiones y deuda conocida
 

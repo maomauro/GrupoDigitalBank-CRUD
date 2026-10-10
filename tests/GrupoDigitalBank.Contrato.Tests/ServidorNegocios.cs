@@ -1,6 +1,8 @@
 extern alias negocios;
 
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -28,15 +30,22 @@ public sealed class ServidorNegocios : IAsyncLifetime
             // "Production" a proposito: en "Development" se cargarian los user-secrets del equipo
             b.UseEnvironment("Production");
             b.UseSetting("ConnectionStrings:Postgres", "Host=localhost;Database=pruebas;Username=app;Password=solo-para-pruebas");
+            // Puerto libre en el bucle local, sea cual sea el entorno: ASPNETCORE_URLS o ASPNETCORE_HTTP_PORTS (la imagen
+            // del SDK de Docker define esta ultima) harian escuchar en un comodin como [::]:8080, que ni sirve como destino
+            // ni esta garantizado libre. "urls" tiene prioridad sobre HTTP_PORTS.
+            b.UseUrls("http://127.0.0.1:0");
             b.ConfigureServices(s =>
             {
                 s.RemoveAll<IUsuarioRepositorio>();
                 s.AddSingleton<IUsuarioRepositorio>(Repositorio);
             });
         });
-        _fabrica.UseKestrel(0);
+        _fabrica.UseKestrel();
         _fabrica.StartServer();
-        Url = new Uri(_fabrica.ClientOptions.BaseAddress, "UsuarioService.svc").ToString();
+
+        // La direccion real, con el puerto que asigno el sistema operativo
+        var direccion = _fabrica.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
+        Url = new Uri(new Uri(direccion), "UsuarioService.svc").ToString();
         return Task.CompletedTask;
     }
 

@@ -38,13 +38,13 @@ function Migrar($entorno = @{}) {
 }
 
 function ReiniciarScripts() {
-    Remove-Item "$tmp\*" -Force -ErrorAction SilentlyContinue
-    Copy-Item "$raiz\db\migrate.sh" "$tmp\migrate.sh"
-    Copy-Item "$raiz\db\001_esquema_usuario.sql" "$tmp\001_esquema_usuario.sql"
-    Copy-Item "$raiz\db\002_rol_aplicacion.sql" "$tmp\002_rol_aplicacion.sql"
-    Copy-Item "$raiz\db\003_fecha_nacimiento_hora_de_colombia.sql" "$tmp\003_fecha_nacimiento_hora_de_colombia.sql"
-    Copy-Item "$raiz\db\004_nombre_no_vacio.sql" "$tmp\004_nombre_no_vacio.sql"
-    Copy-Item "$raiz\db\005_paginacion_usuarios.sql" "$tmp\005_paginacion_usuarios.sql"
+    Remove-Item "$tmp/*" -Force -ErrorAction SilentlyContinue
+    Copy-Item "$raiz/db/migrate.sh" "$tmp/migrate.sh"
+    Copy-Item "$raiz/db/001_esquema_usuario.sql" "$tmp/001_esquema_usuario.sql"
+    Copy-Item "$raiz/db/002_rol_aplicacion.sql" "$tmp/002_rol_aplicacion.sql"
+    Copy-Item "$raiz/db/003_fecha_nacimiento_hora_de_colombia.sql" "$tmp/003_fecha_nacimiento_hora_de_colombia.sql"
+    Copy-Item "$raiz/db/004_nombre_no_vacio.sql" "$tmp/004_nombre_no_vacio.sql"
+    Copy-Item "$raiz/db/005_paginacion_usuarios.sql" "$tmp/005_paginacion_usuarios.sql"
 }
 
 function EscribirLf($ruta, $texto) { [IO.File]::WriteAllText($ruta, ($texto -replace "`r`n", "`n"), (New-Object Text.UTF8Encoding($false))) }
@@ -71,22 +71,22 @@ try {
     Check 'siguen siendo 5 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '5')
 
     Write-Host "`n== 3. Script nuevo valido: se aplica solo ese ==" -ForegroundColor Cyan
-    EscribirLf "$tmp\006_prueba_ok.sql" "CREATE TABLE IF NOT EXISTS prueba_ok (id int);`n"
+    EscribirLf "$tmp/006_prueba_ok.sql" "CREATE TABLE IF NOT EXISTS prueba_ok (id int);`n"
     $r = Migrar
     Check 'termina con exito' ($r.Codigo -eq 0)
     Check 'ahora hay 6 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '6')
     Check 'la tabla nueva existe' ((Sql "select to_regclass('prueba_ok') is not null") -eq 't')
 
     Write-Host "`n== 4. Script con error: se revierte todo y no se registra ==" -ForegroundColor Cyan
-    EscribirLf "$tmp\007_prueba_falla.sql" "CREATE TABLE prueba_parcial (id int);`nSELECT esta_funcion_no_existe();`n"
+    EscribirLf "$tmp/007_prueba_falla.sql" "CREATE TABLE prueba_parcial (id int);`nSELECT esta_funcion_no_existe();`n"
     $r = Migrar
     Check 'termina con error (codigo distinto de 0)' ($r.Codigo -ne 0) "codigo=$($r.Codigo)"
     Check 'no se creo la tabla parcial (transaccion revertida)' ((Sql "select to_regclass('prueba_parcial') is null") -eq 't')
     Check 'siguen siendo 6 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '6')
-    Remove-Item "$tmp\007_prueba_falla.sql"
+    Remove-Item "$tmp/007_prueba_falla.sql"
 
     Write-Host "`n== 5. Script ya aplicado modificado: se aborta ==" -ForegroundColor Cyan
-    Add-Content "$tmp\006_prueba_ok.sql" "-- editado despues de aplicarse"
+    Add-Content "$tmp/006_prueba_ok.sql" "-- editado despues de aplicarse"
     $r = Migrar
     Check 'termina con error (codigo distinto de 0)' ($r.Codigo -ne 0) "codigo=$($r.Codigo)"
     Check 'el mensaje explica que no se editan' ($r.Salida -match 'fue modificado')

@@ -33,7 +33,7 @@ Leyenda de estado: ✅ hecho · 🔄 en curso · ⏳ pendiente.
 | 2 | Repositorio remoto | GitHub con `main` y `develop`, ajustes de merge; barreras según 2.3 | ✅ | 1 h |
 | 3 | Ambiente local y primer build | Compose de desarrollo, build real, scripts de verificación | ✅ | 3–4 h |
 | 4 | Remediación del diagnóstico | Hallazgos corregidos con pruebas | 🔄 | 2–3 días |
-| 5 | Integración continua | Build + tests + escaneo en cada PR | ⏳ | 3–4 h |
+| 5 | Integración continua | Build + tests + escaneo en cada PR | ✅ | 3–4 h |
 | 6 | Preparar el VPS compartido | Auditoría, Cloudflare, vhost en el nginx compartido, llave de despliegue restringida | ⏳ | 3–4 h |
 | 7 | Entrega continua | Imágenes en GHCR y despliegue automático con rollback | ⏳ | 4–6 h |
 | 8 | Primera publicación | Sistema en `https://gdb-crud.sitiosapps.com` | ⏳ | 1–2 h |
@@ -147,7 +147,7 @@ gh repo edit maomauro/GrupoDigitalBank-CRUD --default-branch develop --enable-sq
 - Squash **y** merge commit habilitados (squash para feature → `develop`; merge commit para `develop` → `main`). Rebase deshabilitado.
 - **Borrado automático de ramas desactivado**: con él GitHub borraría `develop` al fusionarla a `main`. Las ramas de feature se borran con `gh pr merge --squash --delete-branch`.
 - ✅ `.github/dependabot.yml` (issue #30): `nuget` (con grupos `corewcf` y `pruebas`), `docker` (una entrada por carpeta con Dockerfile), `docker-compose` y `npm` (herramienta de navegador); semanal los lunes, `target-branch: develop`, prefijo `build(deps)` y sin saltos de versión mayor de .NET ni de PostgreSQL.
-  - **`github-actions` se quitó a propósito (2026-10-10):** Dependabot fallaba con `/action.yml or /.github/workflows/<anything>.yml not found` porque el repositorio aún no tiene workflows. **Volver a añadirlo en la fase 5**, junto con `ci.yml` (`package-ecosystem: "github-actions"`, `directory: "/"`, prefijo `ci`).
+  - **`github-actions` se quitó a propósito (2026-10-10):** Dependabot fallaba con `/action.yml or /.github/workflows/<anything>.yml not found` porque el repositorio aún no tiene workflows. **Reañadido en la fase 5**, junto con `ci.yml` (`package-ecosystem: "github-actions"`, `directory: "/"`, prefijo `ci`).
 - ✅ Seguridad (activado el 2026-10-09 por API): Dependabot alerts y actualizaciones automáticas de seguridad (0 alertas abiertas). Secret scanning y push protection no están disponibles en repos privados con plan Free.
 - *Actions → General*: `GITHUB_TOKEN` en solo lectura por defecto.
 
@@ -165,7 +165,7 @@ Si se quiere imponerlas en el servidor:
 | B. Repo público | Protección y environments disponibles; el código queda visible | Gratis; exige cero secretos en el historial y revisar `appsettings` |
 | C. GitHub Pro | Protección completa en privado | Pago mensual |
 
-Con B o C: PR obligatorio en `main` y `develop`, checks `ci` y `docker` obligatorios (se añaden en la fase 5), sin force-push ni borrado, historial lineal en `develop`, aplicar a administradores y proteger tags `v*`. Se registra la elección en `docs/adr/0005-proteccion-de-rama.md`.
+Con B o C: PR obligatorio en `main` y `develop`, checks `ci`, `migrador` y `docker` obligatorios (existen desde la fase 5), sin force-push ni borrado, historial lineal en `develop`, aplicar a administradores y proteger tags `v*`. Se registra la elección en `docs/adr/0005-proteccion-de-rama.md`.
 
 ### 2.4 Issues y primer flujo
 
@@ -341,7 +341,7 @@ Hecho (issue #10):
 - Pruebas (`scripts/probar-migrador.ps1`, base PostgreSQL desechable, 16 comprobaciones): base vacía, segunda ejecución sin repetir, script nuevo válido, script con error (transacción revertida y sin registro), script aplicado modificado (aborta) y base existente sin registro (conserva los datos).
 - Verificado en el stack real: caso A (base existente con datos, sobre la que se aplicó y registró el `001`), caso B (base nueva en un proyecto Compose aislado, Negocios arranca) y caso C (una migración rota deja a `negocios` en `Created`, sin arrancar).
 - Regla vigente: **los scripts aplicados nunca se editan**; todo cambio es un `00N_…sql` nuevo. Si dos ramas crean el mismo número, la segunda en fusionarse renumera.
-- Pendiente para el CI (fase 5): ejecutar `shellcheck db/migrate.sh` y `scripts/probar-migrador.ps1` (requiere Docker; en Linux habría que portarlo a un script `sh`/job de GitHub Actions).
+- Hecho en la fase 5: el trabajo `migrador` del CI ejecuta `shellcheck db/migrate.sh` y `scripts/probar-migrador.ps1` (con `pwsh` en Linux, tras hacer portables sus rutas).
 - H4 (hecho): el migrador recibe `APP_DB_USER`/`APP_DB_PASSWORD` y sincroniza la contraseña del rol en cada ejecución.
 
 ### 4.5 H4 · Rol de aplicación en PostgreSQL (media, P1) ✅ — depende de 4.4
@@ -465,58 +465,35 @@ Resuelto después: el camino feliz y el fault reales del cliente SOAP y la compa
 
 ---
 
-## Fase 5. Integración continua ⏳
+## Fase 5. Integración continua ✅
 
-Rama `ci/integracion-continua`. `.github/workflows/ci.yml` en `pull_request` hacia `develop` y `main`, y en `push` a ambas. Ejecuta lo mismo que `scripts/verificar.ps1`.
+Rama `ci/integracion-continua`, PR #51 (issue #20). [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) corre en `pull_request` hacia `develop` y `main` y en `push` a ambas, con permisos mínimos (`contents: read`), cancelación de ejecuciones obsoletas y tiempo máximo por trabajo. **Tres trabajos independientes** (un PR muestra de una vez todo lo que falla):
 
-```yaml
-name: ci
-on:
-  pull_request:
-    branches: [develop, main]
-  push:
-    branches: [develop, main]
-permissions:
-  contents: read
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-jobs:
-  ci:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with: { global-json-file: global.json }
-      - run: dotnet restore
-      - run: dotnet format --verify-no-changes --no-restore
-      - run: dotnet build -c Release --no-restore -warnaserror
-      - run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
-      - uses: actions/upload-artifact@v4
-        with: { name: cobertura, path: TestResults }
-      - run: |
-          dotnet list package --vulnerable --include-transitive | tee vuln.txt
-          ! grep -q "has the following vulnerable" vuln.txt
-  docker:
-    runs-on: ubuntu-latest
-    needs: ci
-    steps:
-      - uses: actions/checkout@v4
-      - run: cp .env.example .env && docker compose config -q
-      - run: docker build -f src/GrupoDigitalBank.Negocios/Dockerfile -t negocios:ci .
-      - run: docker build -f src/GrupoDigitalBank.Presentacion/Dockerfile -t web:ci .
-      - uses: aquasecurity/trivy-action@0.28.0
-        with: { image-ref: negocios:ci, severity: 'CRITICAL,HIGH', exit-code: '1', ignore-unfixed: true }
-      - uses: aquasecurity/trivy-action@0.28.0
-        with: { image-ref: web:ci, severity: 'CRITICAL,HIGH', exit-code: '1', ignore-unfixed: true }
-```
+| Trabajo | Qué ejecuta | Tiempo |
+|---|---|---|
+| `ci` | `scripts/verificar.ps1` (restore, `dotnet format --verify-no-changes`, compilación con `TreatWarningsAsErrors` y las 302 pruebas, incluidas las de integración con PostgreSQL en Docker), `scripts/cobertura.ps1` (mínimo 80 % en Negocios), `dotnet list package --vulnerable --include-transitive` y sube el informe de cobertura como artefacto | ≈ 2 min |
+| `migrador` | `shellcheck db/migrate.sh` y `scripts/probar-migrador.ps1` (9 escenarios sobre una base desechable) | ≈ 30 s |
+| `docker` | `docker compose config -q` con `.env.example`, hadolint sobre los dos Dockerfile, construcción de las dos imágenes y Trivy (CRITICAL y HIGH con arreglo disponible) | ≈ 1 min |
 
-La validación de `docker-compose.prod.yml` se añade al `docker` job en la fase 7, cuando ese archivo exista.
+Decisiones y por qué:
 
-Extras: `hadolint` sobre los Dockerfile, `shellcheck` sobre `db/migrate.sh`, CodeQL para C#.
+- **El CI ejecuta los mismos scripts que se corren en local** (`verificar.ps1`, `cobertura.ps1`, `probar-migrador.ps1`, con `pwsh` del runner) en vez de repetir los comandos en YAML. Así «lo que CI ejecuta se puede ejecutar idéntico en local» y hay un solo lugar donde mantenerlo.
+- **Acciones fijadas por SHA completo** (con la versión en un comentario), no por etiqueta: una etiqueta se puede mover, un SHA no. Dependabot (`github-actions`, reactivado en esta fase) propone las actualizaciones. Las versiones vigentes (`checkout` v7, `setup-dotnet` v6, `cache` v6, `upload-artifact` v7, `trivy-action` v0.36, `hadolint-action` v3.5) eran más nuevas que las del borrador original de este plan; se consultaron con `gh api`, no se supusieron.
+- **Los nombres `ci`, `migrador` y `docker`** son los checks que se marcarían obligatorios si el repositorio pasara a un plan con protección de ramas ([ADR 0005](adr/0005-flujo-de-ramas-y-proteccion-en-github-free.md)). Hoy no bloquean el botón de fusionar: se respeta por disciplina.
+- **Sin CodeQL:** el análisis de código está desactivado en el repositorio (la API responde 403 «not enabled») y no se verificó si el plan Free lo permite en repositorios privados. El análisis estático de C# ya lo hace SonarCloud en cada PR (#24).
 
-Criterio: un PR con una prueba rota se ve en rojo y no se fusiona (por disciplina en plan Free; bloqueado si 2.3 pasa a B o C). Si aplica B o C, se marcan `ci` y `docker` como checks obligatorios en `develop` y `main`.
+Verificación de la fase (antes de fusionar):
+
+1. **Localmente, con las mismas herramientas:** `actionlint` (sin avisos), hadolint, shellcheck, `dotnet list package --vulnerable` y Trivy sobre las dos imágenes (0 vulnerabilidades).
+2. **En un contenedor Linux** (SDK 10.0.401, sobre `git archive` para tener los finales de línea de un clon): format, compilación y pruebas. **Encontró dos fallos que en Windows no existían**:
+   - `BogotaEstaSiempreEnUtcMenosCincoSinHorarioDeVerano` afirmaba `SupportsDaylightSavingTime == false`, pero en Linux esa propiedad también es verdadera si la zona tuvo horario de verano *alguna vez* (Colombia lo aplicó en 1992-93). Ahora comprueba el desplazamiento real de cada mes de 2026 a 2036.
+   - Las 9 pruebas de contrato que usan un servidor real fallaban porque la imagen del SDK define `ASPNETCORE_HTTP_PORTS` y el servidor terminaba escuchando en `http://[::]:8080`, que no sirve como destino. El fixture ahora fija `http://127.0.0.1:0` y lee la dirección real asignada, sea cual sea el entorno.
+   - Las pruebas de integración **no** pueden correr *dentro* de un contenedor (Testcontainers no arranca su «reaper» en Docker anidado); su validación en Linux es la del propio CI.
+3. **Hadolint** marcaba dos hallazgos de nivel «info» en los Dockerfile: `USER $APP_UID` (falso positivo: el UID numérico lo define la imagen base de Microsoft; se ignora esa línea con un comentario que lo explica) y una variable sin comillas en `chown` (corregida).
+4. **En GitHub:** los tres trabajos en verde a la primera, con el log confirmando que las pruebas corrieron (15 + 106 + 127 + 54 en Linux), la cobertura (Negocios 100 %, Presentación 95,7 %), el escaneo de Trivy y los 9 escenarios del migrador.
+5. **Control negativo** (en el mismo PR, ya revertido): una prueba rota, un Dockerfile con `apt-get install` sin versión y una variable sin comillas en `migrate.sh` pusieron en **rojo** exactamente `ci`, `docker` y `migrador`, cada uno por su causa (la prueba, hadolint DL3008 y shellcheck SC2086). Un CI que nunca se ha visto fallar no demuestra nada.
+
+Para el repositorio se hicieron portables a Linux `scripts/probar-migrador.ps1` y `scripts/cobertura.ps1` (rutas con `/` en lugar de `\`). Sigue pendiente, para la fase 7, la validación de `docker-compose.prod.yml` (y que no declare `ports`) en el trabajo `docker`.
 
 ---
 
@@ -838,7 +815,7 @@ Cómo desplegar, hacer rollback, restaurar backup, rotar secretos, y qué hacer 
 - [ ] Aplicación corre en local en modo A y B; `scripts/verificar.ps1` en verde; hook activo
 - [ ] H1–H8 cerrados; B1–B8 cerrados o en backlog con motivo
 - [ ] Pruebas unitarias e integración pasando; cobertura ≥ 80 % en Negocios
-- [ ] CI obligatorio en PR (format, build, tests, vulnerabilidades, Trivy)
+- [x] CI en cada PR (format, build, tests, cobertura, vulnerabilidades, shellcheck, hadolint, Trivy y migrador); visto en rojo y en verde. «Obligatorio» no es posible en este plan (ADR 0005): se respeta por disciplina
 - [ ] VPS compartido: auditoría de solo lectura registrada (SSH por llave, firewall, fail2ban, actualizaciones) y llave de despliegue restringida a `gdb-crud-entrada.sh`
 - [ ] DNS en Cloudflare + HTTPS válido (Full strict, certificado de origen) con HSTS y cabeceras de seguridad; PortalCV y Colfe intactos tras el cambio en el nginx
 - [ ] Aplicación protegida con autenticación
