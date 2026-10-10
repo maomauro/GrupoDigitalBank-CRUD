@@ -33,6 +33,8 @@ git config core.hooksPath .githooks          # una vez por clon: activa el hook 
 docker compose logs -f negocios
 ```
 
+Pruebas en `tests/` (xUnit, Shouldly, NSubstitute, Testcontainers). Las de integración arrancan PostgreSQL en Docker: `dotnet test --filter "Categoria!=Integracion"` las omite. Los proyectos de prueba referencian `Microsoft.AspNetCore.App` (evita un NU1903 transitivo de CoreWCF).
+
 `TreatWarningsAsErrors` está activo: cualquier aviso rompe el build. El hook `pre-push` rechaza el push directo a `main` y `develop` y corre la verificación rápida.
 
 Modos de ejecución local (detalle en el plan, fase 3.3):

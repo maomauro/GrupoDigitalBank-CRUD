@@ -257,7 +257,7 @@ Hecho (issue #8):
 
 ### 3.6 Esqueleto de pruebas y versiones fijas (L10, B1)
 
-- Crear `tests/` con los tres proyectos de 4.7 (vacíos, solo compilan) y añadirlos a `GrupoDigitalBank.slnx`.
+- ✅ `tests/` con los tres proyectos de 4.7, añadidos a `GrupoDigitalBank.slnx` y con una prueba real cada uno (issue #7): `Negocios.Tests` (validador), `Presentacion.Tests` (controlador con cliente SOAP simulado) y `Negocios.IntegrationTests` (repositorio contra PostgreSQL 17 real en Testcontainers, con los scripts de `db/` aplicados en orden). Versiones de xUnit y compañía = las de la plantilla del SDK (xunit 2.9.3, runner 3.1.4, Test.Sdk 17.14.1, coverlet 6.0.4).
 - ✅ `Directory.Packages.props` con `ManagePackageVersionsCentrally=true` y versiones exactas (CoreWCF 1.9.1, Npgsql 10.0.3, System.ServiceModel.Http 8.1.2); los `.csproj` ya no llevan `Version` (issue #9).
 - ✅ Los Dockerfile copian `global.json`, `Directory.Build.props` y `Directory.Packages.props` antes del `restore`; verificado que las imágenes contienen esas versiones exactas (issue #9).
 
@@ -333,9 +333,15 @@ Compose y `.env.example`: `POSTGRES_USER=usuarios_admin` (propietario/migrador) 
 
 | Proyecto | Contenido | Herramientas |
 |---|---|---|
-| `GrupoDigitalBank.Negocios.Tests` | Unitarias de `UsuarioValidador` y `UsuarioService` (repositorio simulado) | xUnit, Shouldly o FluentAssertions, NSubstitute |
-| `GrupoDigitalBank.Negocios.IntegrationTests` | Repositorio contra PostgreSQL real aplicando los scripts de `db/` | Testcontainers for .NET |
-| `GrupoDigitalBank.Presentacion.Tests` | Controlador con `IUsuarioClient` simulado; vistas (regresión H1) | xUnit, `WebApplicationFactory` |
+| `GrupoDigitalBank.Negocios.Tests` | Unitarias de `UsuarioValidador` y `UsuarioService` (repositorio simulado) | xUnit, Shouldly, NSubstitute |
+| `GrupoDigitalBank.Negocios.IntegrationTests` | Repositorio contra PostgreSQL real aplicando los scripts de `db/` (`PostgresFixture`, requiere Docker) | Testcontainers for .NET |
+| `GrupoDigitalBank.Presentacion.Tests` | Controlador con `IUsuarioClient` simulado; vistas (regresión H1) | xUnit, NSubstitute; para las vistas, añadir `Microsoft.AspNetCore.Mvc.Testing` (versión ≤ la del runtime del CI) y exponer `Program` con `public partial class Program;` cuando se haga H1 |
+
+Esqueleto ya creado en la fase 3.6 (una prueba por proyecto). Notas de implementación:
+
+- Los tres proyectos llevan `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. Sin él, `CoreWCF.Primitives` arrastra `System.Security.Cryptography.Xml` 8.0.x con vulnerabilidad alta (NU1903) que en la aplicación queda podada por el framework y en un proyecto de prueba plano no.
+- `PostgresFixture` aplica los scripts `db/NNN_*.sql` en orden. Cuando llegue H5/H4 (migrador y rol con contraseña por `psql -v`), la fixture deberá aplicar el `002` sustituyendo `:'app_pass'` o usar la imagen del migrador.
+- Las pruebas de integración llevan `[Trait("Categoria", "Integracion")]`; `dotnet test --filter "Categoria!=Integracion"` las omite si no hay Docker.
 
 Casos mínimos: crear válido; nombre vacío o largo; fecha futura o muy antigua; sexo inválido; modificar o eliminar inexistente; operación inválida en la función; fallo del servicio SOAP mostrado como error amigable; regresión H1; el rol de aplicación no puede borrar la tabla. Meta: ≥ 80 % de cobertura en la lógica de Negocios (`coverlet`).
 
