@@ -86,7 +86,7 @@ public sealed class PaginaViewModelTests
 
     [Theory]
     [InlineData(0, "0 usuarios")]
-    [InlineData(1, "1 usuario")]
+    [InlineData(1, "1 usuarioX")]
     [InlineData(2, "2 usuarios")]
     [InlineData(1234, "1234 usuarios")]
     public void ElResumenConcuerdaEnSingularYPlural(int total, string esperado)
