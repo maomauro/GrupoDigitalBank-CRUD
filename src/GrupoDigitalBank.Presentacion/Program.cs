@@ -27,3 +27,6 @@ app.UseRouting();
 app.MapControllerRoute("default", "{controller=Usuarios}/{action=Consultar}/{id?}");
 
 app.Run();
+
+// Necesario para WebApplicationFactory<Program> en las pruebas de integracion web.
+public partial class Program;

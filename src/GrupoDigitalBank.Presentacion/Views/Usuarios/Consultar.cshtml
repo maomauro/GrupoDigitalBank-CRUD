@@ -25,7 +25,7 @@ else
                 <td class="acciones">
                     <a asp-action="Editar" asp-route-id="@u.Id">Modificar</a>
                     <form asp-action="Eliminar" asp-route-id="@u.Id" method="post"
-                          onsubmit="return confirm('¿Eliminar a @u.Nombre?');">
+                          data-confirmar="¿Eliminar a @u.Nombre?">
                         <button type="submit" class="peligro">Eliminar</button>
                     </form>
                 </td>
