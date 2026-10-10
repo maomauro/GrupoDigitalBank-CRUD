@@ -146,7 +146,19 @@ public class ZonaHorariaTests
     public void BogotaEstaSiempreEnUtcMenosCincoSinHorarioDeVerano()
     {
         Bogota.BaseUtcOffset.ShouldBe(TimeSpan.FromHours(-5));
-        Bogota.SupportsDaylightSavingTime.ShouldBeFalse();
+
+        // No se usa SupportsDaylightSavingTime: tambien es true si la zona tuvo horario de verano ALGUNA VEZ
+        // (Colombia lo aplico en 1992-1993) y en Linux la base de datos IANA conserva esa historia, mientras que
+        // Windows no. Lo que importa es la regla vigente: cada mes de 2026 a 2036 esta en UTC-5 y sin horario de verano
+        for (var anio = 2026; anio <= 2036; anio++)
+        {
+            for (var mes = 1; mes <= 12; mes++)
+            {
+                var instante = new DateTimeOffset(anio, mes, 15, 12, 0, 0, TimeSpan.Zero);
+                Bogota.GetUtcOffset(instante).ShouldBe(TimeSpan.FromHours(-5), $"{anio}-{mes:00}");
+                Bogota.IsDaylightSavingTime(instante).ShouldBeFalse($"{anio}-{mes:00}");
+            }
+        }
     }
 
     [Fact]
