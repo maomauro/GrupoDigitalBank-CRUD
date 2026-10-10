@@ -10,11 +10,11 @@ public sealed class UsuarioRepositorio(NpgsqlDataSource dataSource) : IUsuarioRe
     private const string Sql =
         "SELECT id, nombre, fecha_nacimiento, sexo FROM fn_usuario_crud(@op, @id, @nombre, @fecha, @sexo)";
 
-    public async Task<UsuarioDto> CrearAsync(UsuarioDto u, CancellationToken ct = default)
-        => (await EjecutarAsync("C", null, u, ct)).Single();
+    public async Task<UsuarioDto> CrearAsync(UsuarioDto usuario, CancellationToken ct = default)
+        => (await EjecutarAsync("C", null, usuario, ct)).Single();
 
-    public async Task<UsuarioDto?> ModificarAsync(UsuarioDto u, CancellationToken ct = default)
-        => (await EjecutarAsync("U", u.Id, u, ct)).SingleOrDefault();
+    public async Task<UsuarioDto?> ModificarAsync(UsuarioDto usuario, CancellationToken ct = default)
+        => (await EjecutarAsync("U", usuario.Id, usuario, ct)).SingleOrDefault();
 
     public Task<List<UsuarioDto>> ConsultarAsync(int? id, CancellationToken ct = default)
         => EjecutarAsync("R", id, null, ct);
