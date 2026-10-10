@@ -42,6 +42,7 @@ Modos de ejecución local (detalle en el plan, fase 3.3):
 - **A, stack completo:** `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build` → `http://localhost:8080`.
 - **B, programar y depurar:** `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db`, luego `dotnet watch` en Negocios (`:5081`) y Presentacion (`:5080`). La cadena de conexión va en `dotnet user-secrets`, no en `appsettings.json`.
 - El `docker-compose.dev.yml` es solo de desarrollo y nunca se despliega.
+- VS Code: `.vscode/` trae F5 para Negocios y Presentacion (modo B), tareas de build, pruebas, verificación y Docker, y extensiones recomendadas.
 
 ## Convenciones
 
@@ -83,7 +84,8 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 
 ## Estado conocido
 
-- Fases 0 y 1 del plan hechas: herramientas verificadas, repositorio local con commit base `ce8dc86`. Fase 2 (remoto en GitHub) en curso.
-- El proyecto aún no se ha compilado ni probado con `dotnet` (el diagnóstico fue estático; el SQL sí se probó en PostgreSQL). Es el primer paso de la fase 3.
-- No existen todavía `tests/`, CI/CD, autenticación, migraciones automáticas ni `docker-compose.dev.yml`; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
-- Decisiones de proceso (D1–D6) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, CI obligatorio, modo B para programar y A antes del PR, hook `pre-push`.
+- Fases 0 a 3 del plan hechas (herramientas, repositorio local y remoto, ambiente local y primer build). Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
+- El proyecto compila sin advertencias, corre en modo A y B y tiene pruebas de arranque (unitarias e integración). Falta la batería completa de H7.
+- Pendiente de la fase 2: `.github/dependabot.yml`. Siguiente: fase 4 (remediación H1, H5, H4, H2, H6, H7, B3/B4/B5/B8, B6, H8), luego CI (fase 5), VPS (6) y despliegue (7).
+- No existen todavía CI/CD, autenticación, migraciones automáticas ni healthchecks; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
+- Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.

@@ -29,7 +29,7 @@ Leyenda de estado: ✅ hecho · 🔄 en curso · ⏳ pendiente.
 | 0 | Herramientas locales | Máquina lista | ✅ | — |
 | 1 | Repositorio local | Git inicializado, convenciones, commit base | ✅ | — |
 | 2 | Repositorio remoto | GitHub con `main` y `develop`, ajustes de merge; barreras según 2.3 | 🔄 | 1 h |
-| 3 | Ambiente local y primer build | Compose de desarrollo, build real, scripts de verificación | ⏳ | 3–4 h |
+| 3 | Ambiente local y primer build | Compose de desarrollo, build real, scripts de verificación | ✅ | 3–4 h |
 | 4 | Remediación del diagnóstico | Hallazgos corregidos con pruebas | ⏳ | 2–3 días |
 | 5 | Integración continua | Build + tests + escaneo en cada PR | ⏳ | 3–4 h |
 | 6 | Preparar el VPS | Servidor endurecido; GitHub conectado al servidor | ⏳ | 3–4 h |
@@ -176,7 +176,7 @@ Con B o C: PR obligatorio en `main` y `develop`, checks `ci` y `docker` obligato
 
 ---
 
-## Fase 3. Ambiente local y primer build ⏳
+## Fase 3. Ambiente local y primer build ✅
 
 Rama: `chore/ambiente-desarrollo`. Cierra L6–L11 del ciclo de vida.
 
@@ -239,7 +239,14 @@ Verificado el 2026-10-09 con el mismo flujo en ambos modos (registrar, consultar
 
 ### 3.4 Configuración de VS Code (L7)
 
-`.vscode/launch.json` (depurar Negocios y Presentacion), `tasks.json` (build, watch, test, compose up/down) y `extensions.json` (C# Dev Kit, Docker, EditorConfig, YAML, GitHub Actions, SQLTools).
+Hecho (issue #6), en `.vscode/`:
+
+- `launch.json`: depurar **Negocios (:5081)** y **Presentacion (:5080)** con F5, y la configuración compuesta **«Modo B: Negocios + Presentacion»**, que antes levanta la base de datos. Usan rutas absolutas al `.dll`, `cwd` del proyecto y `ASPNETCORE_ENVIRONMENT=Development` (necesario para que se carguen los `user-secrets`).
+- `tasks.json`: `build` (por defecto), `test: unitarias (sin Docker)` (por defecto de pruebas), `test: todas`, `verificar: rapida` y `completa`, `verificar: herramientas`, `watch: negocios` y `watch: presentacion`, `bd: iniciar (modo B)`, `stack: iniciar (modo A)`, `stack: detener (conserva datos)` y `stack: logs`.
+- `extensions.json`: C# Dev Kit, C#, Docker, EditorConfig, YAML, GitHub Actions, GitHub Pull Requests y SQLTools con su driver PostgreSQL.
+- `settings.json`: solución por defecto, fin de línea LF, formato al guardar y una conexión SQLTools a la base local (`askForPassword`, sin contraseña versionada).
+
+Probado fuera de VS Code: JSON válidos, las tareas ejecutan sus comandos, y el `.dll` lanzado como lo hace el depurador (ruta absoluta, `cwd`, variables) sirve el flujo completo. No se pudo ejercitar el depurador de VS Code en sí (puntos de interrupción).
 
 ### 3.5 Verificación local y hook (L11, D6)
 
@@ -263,7 +270,7 @@ Hecho (issue #8):
 
 ### 3.7 Criterio de salida
 
-`scripts/verificar.ps1` en verde, el stack arranca en modo A y funciona de punta a punta, modo B depurable con F5, hook activo. Uno o varios PR pequeños llevan esto a `develop` (la fase 3 no se libera a `main` hasta que haya algo desplegable).
+Cumplido el 2026-10-09: `scripts/verificar.ps1` en verde, el stack arranca en modo A y funciona de punta a punta, modo B con el mismo resultado, hook activo y VS Code configurado. Los PR #25 a #28 y este llevaron todo a `develop`; falta únicamente comprobar F5 con puntos de interrupción en tu VS Code. Uno o varios PR pequeños llevan esto a `develop` (la fase 3 no se libera a `main` hasta que haya algo desplegable).
 
 ---
 
