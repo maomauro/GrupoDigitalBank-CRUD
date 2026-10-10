@@ -3,4 +3,9 @@
     <Project Path="src/GrupoDigitalBank.Negocios/GrupoDigitalBank.Negocios.csproj" />
     <Project Path="src/GrupoDigitalBank.Presentacion/GrupoDigitalBank.Presentacion.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GrupoDigitalBank.Negocios.IntegrationTests/GrupoDigitalBank.Negocios.IntegrationTests.csproj" />
+    <Project Path="tests/GrupoDigitalBank.Negocios.Tests/GrupoDigitalBank.Negocios.Tests.csproj" />
+    <Project Path="tests/GrupoDigitalBank.Presentacion.Tests/GrupoDigitalBank.Presentacion.Tests.csproj" />
+  </Folder>
 </Solution>
