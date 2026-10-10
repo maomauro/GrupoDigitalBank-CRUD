@@ -1,0 +1,16 @@
+<Project>
+
+  <!-- Versiones centralizadas y exactas (hallazgo B1). Las referencias en los .csproj no llevan Version.
+       Para actualizar: cambiar aqui, correr scripts\verificar.ps1 y revisar el PR de Dependabot. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="CoreWCF.Http" Version="1.9.1" />
+    <PackageVersion Include="CoreWCF.Primitives" Version="1.9.1" />
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <PackageVersion Include="System.ServiceModel.Http" Version="8.1.2" />
+  </ItemGroup>
+
+</Project>
