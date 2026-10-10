@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Configuracion de cobertura (coverlet.collector). Uso: scripts\cobertura.ps1 -->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- Solo se mide el codigo de la aplicacion, no el de las pruebas -->
+          <Exclude>[*.Tests]*,[*.IntegrationTests]*</Exclude>
+          <!-- Program.cs es solo composicion/arranque (se ejercita en las pruebas web). Los *.g.cs son generados por
+               fuentes (invocador de operaciones de CoreWCF, LoggerMessage): no son logica propia -->
+          <ExcludeByFile>**/Program.cs,**/*.g.cs,**/obj/**</ExcludeByFile>
+          <!-- Codigo generado (LoggerMessage, regex, razor) no es logica propia -->
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

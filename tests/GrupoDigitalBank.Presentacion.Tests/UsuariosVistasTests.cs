@@ -87,6 +87,37 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     }
 
     [Fact]
+    public async Task EditarMuestraLosValoresActualesEnElFormulario()
+    {
+        var cliente = Substitute.For<IUsuarioClient>();
+        cliente.ConsultarAsync(7).Returns([new UsuarioDto { Id = 7, Nombre = "Beatriz Gomez", FechaNacimiento = new DateTime(1985, 3, 9), Sexo = "F" }]);
+        using var http = _fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
+        {
+            s.RemoveAll<IUsuarioClient>();
+            s.AddSingleton(cliente);
+        })).CreateClient();
+
+        var html = await http.GetStringAsync("/Usuarios/Editar/7");
+
+        html.ShouldContain("value=\"Beatriz Gomez\"");
+        html.ShouldContain("value=\"1985-03-09\"");
+        html.ShouldContain("name=\"__RequestVerificationToken\"");
+    }
+
+    [Fact]
+    public async Task LaPaginaDeErrorMuestraUnCodigoDeSeguimientoYNoDetallesInternos()
+    {
+        using var http = ClienteConUsuario("Ana Perez");
+
+        var html = await http.GetStringAsync("/Usuarios/Error");
+
+        html.ShouldContain("Ocurrió un error");
+        html.ShouldContain("Código de seguimiento");
+        html.ShouldNotContain("Exception");
+        html.ShouldNotContain("StackTrace", Case.Insensitive);
+    }
+
+    [Fact]
     public async Task ElLayoutCargaElScriptExterno()
     {
         using var http = ClienteConUsuario("Ana Perez");
