@@ -21,7 +21,7 @@ Navegador ─HTTPS─▶ Caddy ─▶ Presentacion (ASP.NET Core MVC)
 | Negocios | `src/GrupoDigitalBank.Negocios` | Única capa con acceso a la BD. Contratos, validación, repositorio, servicio. |
 | Datos | `db/NNN_*.sql`, `db/migrate.sh` | Scripts numerados que aplica el servicio `migrador` (checksum en `schema_migrations`, una transacción por script, aborta si un script aplicado cambia). Una vez aplicados **no se editan**; todo cambio es un script nuevo. |
 
-El contrato SOAP está duplicado a mano en `Presentacion/Servicios/ContratoServicio.cs`. Al cambiar `Negocios/Contratos/*`, actualizar también ese archivo.
+El contrato SOAP está duplicado a mano en `Presentacion/Servicios/ContratoServicio.cs`. Al cambiar `Negocios/Contratos/*`, actualizar también ese archivo: `tests/GrupoDigitalBank.Contrato.Tests` (único proyecto que referencia ambas capas) compara los dos contratos por reflexión y llama al servicio real con el cliente real; falla si divergen.
 
 ## Comandos
 
@@ -99,9 +99,9 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 
 ## Estado conocido
 
-- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B3/B4/B5/B8 (#15) y B6 (zona horaria) y H8 (arquitectura y ADR) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
-- El proyecto compila sin advertencias, corre en modo A y B y tiene 192 pruebas (unitarias, vistas con `WebApplicationFactory` e integración con PostgreSQL real). Cobertura: Negocios 100 %, Presentación 87 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las 34 mutaciones manuales aplicadas al código fueron detectadas.
+- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B2 (contrato SOAP), B3/B4/B5/B8 (#15), B6 (zona horaria) y H8 (arquitectura y ADR) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
+- El proyecto compila sin advertencias, corre en modo A y B y tiene 203 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 94 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las 34 mutaciones manuales aplicadas al código y las 7 al contrato (B2) que compilan fueron detectadas.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Siguiente: **B2 contrato SOAP real (#19)**, el CHECK de nombre vacío (#41) y B7 (#18); después CI (fase 5), VPS (6) y despliegue (7). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
+- Siguiente: el CHECK de nombre vacío (#41) y B7 (#18) (B2, contrato SOAP real, hecho); después CI (fase 5), VPS (6) y despliegue (7). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
 - No existe todavía CI/CD; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.

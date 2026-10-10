@@ -23,5 +23,5 @@ Mantener en `Presentacion/Servicios/ContratoServicio.cs` un **espejo escrito a m
 
 - ➕ Aislamiento total entre capas; el contrato es corto y estable (4 operaciones y 3 tipos).
 - ➖ **Riesgo de desfase:** cambiar un `DataContract` en un lado y olvidar el otro rompe la comunicación en ejecución, no en compilación.
-- 🛡️ Mitigación: la regla está escrita en [`CLAUDE.md`](../../CLAUDE.md) («al cambiar `Negocios/Contratos/*`, actualizar también `ContratoServicio.cs`»). **Pendiente (#19):** una prueba que levante un servidor CoreWCF real y compare los WSDL, además del camino feliz del cliente.
+- 🛡️ Mitigación: la regla está escrita en [`CLAUDE.md`](../../CLAUDE.md) («al cambiar `Negocios/Contratos/*`, actualizar también `ContratoServicio.cs`»). **Resuelto (#19):** `tests/GrupoDigitalBank.Contrato.Tests` compara los dos contratos por reflexión y ejecuta el cliente real contra el servicio real de Negocios; falla si divergen.
 - 🔁 Revisar y pasar a un proyecto de contratos compartido si el contrato supera ~10 operaciones o si el desfase ocurre una vez.
