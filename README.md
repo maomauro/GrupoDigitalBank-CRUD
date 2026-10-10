@@ -53,6 +53,12 @@ docker compose up -d --build
 
 Desarrollo local (modos A y B, con `docker-compose.dev.yml`) y pruebas: ver `CLAUDE.md` y `docs/plan-de-trabajo.md` (fase 3.3).
 
+## Documentación
+
+- [Arquitectura](docs/arquitectura.md): contexto, contenedores, componentes, flujos y seguridad por capas (diagramas Mermaid).
+- [Decisiones de arquitectura (ADR)](docs/adr/README.md): el porqué de cada decisión importante.
+- [Plan de trabajo](docs/plan-de-trabajo.md), [ciclo de vida](docs/ciclo-de-vida-desarrollo.md), [guía de Git](docs/git-guia-tecnica.md) y [diagnóstico inicial](docs/diagnostico/diagnostico-2026-10-09.md).
+
 ## Decisiones técnicas
 
 - **CoreWCF (SOAP, BasicHttpBinding):** expone la lógica de negocio como servicio con contrato explícito y versionable, manteniendo WCF como estándar de integración sin depender de .NET Framework. Los errores viajan como `FaultException<ErrorServicio>`.
