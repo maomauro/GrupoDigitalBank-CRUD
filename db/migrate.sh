@@ -8,11 +8,20 @@
 #  - Guarda el checksum de cada script aplicado. Si un script ya aplicado cambia, se ABORTA:
 #    los scripts aplicados nunca se editan; todo cambio es un script nuevo.
 #  - Conexion por variables PG* (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE).
-#  - Variables de psql para los scripts: app_pass (contrasena del rol de aplicacion, ver H4).
+#  - Variables de psql para los scripts: app_user y app_pass (rol de aplicacion, ver H4), tomadas de
+#    APP_DB_USER y APP_DB_PASSWORD. Son obligatorias: sin ellas no se crearia un rol utilizable.
 
 set -eu
 
 DIR="${MIGRACIONES_DIR:-/migraciones}"
+
+: "${APP_DB_USER:?APP_DB_USER es obligatoria (nombre del rol de aplicacion)}"
+: "${APP_DB_PASSWORD:?APP_DB_PASSWORD es obligatoria (contrasena del rol de aplicacion)}"
+if [ "$APP_DB_USER" = "${PGUSER:-}" ]; then
+    echo "migrador: APP_DB_USER no puede ser el mismo usuario que ejecuta las migraciones (${PGUSER})." >&2
+    echo "          La aplicacion debe usar un rol distinto, con minimo privilegio." >&2
+    exit 1
+fi
 
 # Sin avisos informativos de PostgreSQL ("ya existe, se omite"); los errores si se muestran
 export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
@@ -53,10 +62,18 @@ for archivo in "$DIR"/[0-9][0-9][0-9]_*.sql; do
 
     echo "migrador: aplicando $version"
     psql -X -q -v ON_ERROR_STOP=1 --single-transaction \
-         -v "app_pass=${APP_DB_PASSWORD:-}" \
+         -v "app_user=${APP_DB_USER}" \
+         -v "app_pass=${APP_DB_PASSWORD}" \
          -f "$archivo" \
          -c "INSERT INTO schema_migrations (version, checksum) VALUES ('$version', '$checksum')"
     aplicadas=$((aplicadas + 1))
 done
+
+# La contrasena del rol de aplicacion vive en el entorno, no en un script que se aplica una sola vez:
+# se sincroniza en cada ejecucion, de modo que rotarla es cambiar APP_DB_PASSWORD y volver a desplegar.
+psql_q -v "app_user=$APP_DB_USER" -v "app_pass=$APP_DB_PASSWORD" <<'SQL'
+SELECT format('ALTER ROLE %I PASSWORD %L', :'app_user', :'app_pass')
+ WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user') \gexec
+SQL
 
 echo "migrador: listo ($aplicadas aplicadas, $omitidas ya aplicadas)"
