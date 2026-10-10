@@ -84,8 +84,9 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 
 ## Estado conocido
 
-- Fases 0 a 3 del plan hechas (herramientas, repositorio local y remoto, ambiente local y primer build). Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
-- El proyecto compila sin advertencias, corre en modo A y B y tiene pruebas de arranque (unitarias e integración). Falta la batería completa de H7.
-- Pendiente de la fase 2: `.github/dependabot.yml`. Siguiente: fase 4 (remediación H1, H5, H4, H2, H6, H7, B3/B4/B5/B8, B6, H8), luego CI (fase 5), VPS (6) y despliegue (7).
+- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1 (XSS) corregido** con pruebas de regresión. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
+- El proyecto compila sin advertencias, corre en modo A y B y tiene 13 pruebas (unitarias, vistas con `WebApplicationFactory` e integración con PostgreSQL real). Falta la batería completa de H7.
+- Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
+- Siguiente: **H5 (migraciones, #10) antes que H4 (rol de BD, #11)**, luego H2, H6, H7, hardening (B3/B4/B5/B8), B6, H8; después CI (fase 5), VPS (6) y despliegue (7).
 - No existen todavía CI/CD, autenticación, migraciones automáticas ni healthchecks; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.

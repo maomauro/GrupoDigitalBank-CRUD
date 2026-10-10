@@ -28,9 +28,9 @@ Leyenda de estado: ✅ hecho · 🔄 en curso · ⏳ pendiente.
 |---|---|---|---|---|
 | 0 | Herramientas locales | Máquina lista | ✅ | — |
 | 1 | Repositorio local | Git inicializado, convenciones, commit base | ✅ | — |
-| 2 | Repositorio remoto | GitHub con `main` y `develop`, ajustes de merge; barreras según 2.3 | 🔄 | 1 h |
+| 2 | Repositorio remoto | GitHub con `main` y `develop`, ajustes de merge; barreras según 2.3 | ✅ | 1 h |
 | 3 | Ambiente local y primer build | Compose de desarrollo, build real, scripts de verificación | ✅ | 3–4 h |
-| 4 | Remediación del diagnóstico | Hallazgos corregidos con pruebas | ⏳ | 2–3 días |
+| 4 | Remediación del diagnóstico | Hallazgos corregidos con pruebas | 🔄 | 2–3 días |
 | 5 | Integración continua | Build + tests + escaneo en cada PR | ⏳ | 3–4 h |
 | 6 | Preparar el VPS | Servidor endurecido; GitHub conectado al servidor | ⏳ | 3–4 h |
 | 7 | Entrega continua | Imágenes en GHCR y despliegue automático con rollback | ⏳ | 4–6 h |
@@ -119,7 +119,7 @@ Diferido a propósito:
 
 ---
 
-## Fase 2. Repositorio remoto (GitHub) ⏳
+## Fase 2. Repositorio remoto (GitHub) ✅
 
 Se hace **ahora**, antes de seguir desarrollando, para que todo cambio posterior viaje por rama + PR y quede respaldado fuera del equipo.
 
@@ -145,7 +145,7 @@ gh repo edit maomauro/GrupoDigitalBank-CRUD --default-branch develop --enable-sq
 - Squash **y** merge commit habilitados (squash para feature → `develop`; merge commit para `develop` → `main`). Rebase deshabilitado.
 - **Borrado automático de ramas desactivado**: con él GitHub borraría `develop` al fusionarla a `main`. Las ramas de feature se borran con `gh pr merge --squash --delete-branch`.
 - ✅ `.github/dependabot.yml` (issue #30): `nuget` (con grupos `corewcf` y `pruebas`), `docker` (una entrada por carpeta con Dockerfile), `docker-compose` y `github-actions`; semanal los lunes, `target-branch: develop`, prefijo `build(deps)` y sin saltos de versión mayor de .NET ni de PostgreSQL.
-- Seguridad: Dependabot alerts; secret scanning y push protection solo si el plan lo permite.
+- ✅ Seguridad (activado el 2026-10-09 por API): Dependabot alerts y actualizaciones automáticas de seguridad (0 alertas abiertas). Secret scanning y push protection no están disponibles en repos privados con plan Free.
 - *Actions → General*: `GITHUB_TOKEN` en solo lectura por defecto.
 
 ### 2.3 Protección de `main` y `develop` (cuenta Free)
@@ -172,7 +172,7 @@ Con B o C: PR obligatorio en `main` y `develop`, checks `ci` y `docker` obligato
 
 ### 2.5 Criterio de salida
 
-`git branch -vv` sin ramas huérfanas; `main` y `develop` publicadas y `develop` como rama por defecto; el PR de documentación se abre contra `develop` y se fusiona con squash, y la rama de feature se borra.
+Cumplido el 2026-10-09: `main` y `develop` publicadas, `develop` por defecto, 8 PR fusionados (#1, #25 a #29, #31 y #32) con el flujo feature → develop y las ramas de trabajo borradas (`git branch -vv` sin huérfanas). Quedó una excepción de forma: varios PR se fusionaron con merge commit en vez de squash, lo que alarga el historial pero no lo daña. Pendiente de confirmar: que Dependabot abra su primer PR de versiones (corre los lunes o al cambiar la configuración).
 
 ---
 
