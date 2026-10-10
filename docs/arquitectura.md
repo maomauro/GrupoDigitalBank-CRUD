@@ -174,7 +174,7 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 
 ## 6. Datos
 
-- Tabla `usuario(id identity, nombre varchar(100), fecha_nacimiento date, sexo char(1))` con `CHECK` de sexo (`M`/`F`) y de fecha (entre 1900-01-01 y hoy en Colombia, `db/003`).
+- Tabla `usuario(id identity, nombre varchar(100), fecha_nacimiento date, sexo char(1))` con `CHECK` de sexo (`M`/`F`), de fecha (entre 1900-01-01 y hoy en Colombia, `db/003`) y de nombre (al menos un carácter que no sea blanco, `db/004`).
 - Toda la lectura y escritura pasa por `fn_usuario_crud(p_operacion, …)` (`C`/`R`/`U`/`D`), declarada `SECURITY DEFINER` con `search_path` fijo ([ADR 0002](adr/0002-sin-orm-funcion-almacenada.md)).
 - Esquema versionado en `db/NNN_*.sql` más `schema_migrations` con el checksum de cada script aplicado ([ADR 0007](adr/0007-migraciones-propias-con-checksum.md)). Un script aplicado nunca se edita.
 - Dos roles: `usuarios_admin` (propietario, ejecuta las migraciones) y `usuarios_app` (solo `EXECUTE` de la función).
@@ -229,7 +229,7 @@ flowchart LR
 
 ## 9. Calidad y verificación
 
-- **203 pruebas** (90 unitarias de Negocios, 32 de integración con PostgreSQL real en Testcontainers, 70 de Presentación con `WebApplicationFactory` y 11 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
+- **211 pruebas** (90 unitarias de Negocios, 40 de integración con PostgreSQL real en Testcontainers, 70 de Presentación con `WebApplicationFactory` y 11 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
 - 34 mutaciones manuales aplicadas al código de producción y 7 al contrato SOAP (más 3 que ni compilan), todas detectadas.
 - Herramientas en `scripts/`: `verificar.ps1` (el contrato del CI), `cobertura.ps1`, `probar-migrador.ps1`, `probar-acceso.ps1` y, en navegador real, `probar-navegador.ps1`.
 - Integración continua con GitHub Actions: **pendiente** (fase 5, #20). Hoy lo único automático en GitHub es SonarCloud (análisis por PR) y Dependabot.
@@ -240,7 +240,6 @@ flowchart LR
 
 | Tema | Issue |
 |---|---|
-| `CHECK` de nombre vacío en la base | [#41](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/41) |
 | Integración continua | [#20](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/20) |
 | VPS y despliegue (incluye la decisión de proxy de la sección 8.2) | [#21](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/21), [#22](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/22) |
 | Backups, monitoreo y runbook | [#23](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/23) |

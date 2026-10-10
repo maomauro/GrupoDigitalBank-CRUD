@@ -64,6 +64,6 @@ Desarrollo local (modos A y B, con `docker-compose.dev.yml`) y pruebas: ver `CLA
 - **CoreWCF (SOAP, BasicHttpBinding):** expone la lógica de negocio como servicio con contrato explícito y versionable, manteniendo WCF como estándar de integración sin depender de .NET Framework. Los errores viajan como `FaultException<ErrorServicio>`.
 - **ASP.NET Core MVC:** separación clara vista/controlador/modelo, validación con DataAnnotations en servidor y plantillas Razor simples para dos pantallas.
 - **PostgreSQL + Npgsql (sin ORM):** control total del SQL y de los tipos; el CRUD se concentra en una función almacenada con parámetro de operación, lo que reduce superficie de SQL en la aplicación y evita inyección (parámetros tipados).
-- **Validación en dos niveles:** DataAnnotations en presentación (retroalimentación inmediata) y `UsuarioValidador` en negocios (fuente de verdad), más `CHECK` en la BD.
+- **Validación en tres niveles:** DataAnnotations en presentación (retroalimentación inmediata), `UsuarioValidador` en negocios (fuente de verdad) y `CHECK` en la BD (sexo, fecha y nombre no vacío).
 - **Docker Compose + Caddy:** despliegue reproducible; HTTPS automático sin gestionar certificados a mano.
 - **.NET 10 (LTS):** soporte hasta noviembre de 2028.

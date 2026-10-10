@@ -407,7 +407,7 @@ Notas de implementación:
 - Las pruebas de integración llevan `[Trait("Categoria", "Integracion")]`; `dotnet test --filter "Categoria!=Integracion"` las omite si no hay Docker.
 - `UsuarioClientTests` usa un servidor TCP local que **acepta y cierra la conexión al instante** para simular un servicio caído: contra un puerto cerrado cada llamada tardaba ≈2 s en Windows (14 s en total) y ahora toda la clase tarda milisegundos, sin depender de que un puerto concreto esté libre.
 - Los límites de fecha usan `DateTime.Today`: siguen sujetos a la zona horaria del equipo (hallazgo B6, #17). Las pruebas de base usan +2 días para la fecha futura y evitan el borde.
-- **Hallazgo nuevo (issue #41):** la base acepta un nombre vacío o de solo espacios; solo existen `CHECK` de sexo y fecha. Se comprobó con una transacción revertida. No se congeló en una prueba como comportamiento deseado.
+- **Hallazgo nuevo (issue #41):** la base acepta un nombre vacío o de solo espacios; solo existen `CHECK` de sexo y fecha. Se comprobó con una transacción revertida. No se congeló en una prueba como comportamiento deseado. Resuelto con `db/004` (ver la tabla de hallazgos).
 
 Resuelto después: el camino feliz y el fault reales del cliente SOAP y la comparación de contratos (B2, #19) y `TimeProvider` (B6, #17).
 
@@ -424,7 +424,7 @@ Resuelto después: el camino feliz y el fault reales del cliente SOAP y la compa
 | B6 zona horaria | ✅ Ver abajo |
 | B7 paginación | Diferido (#18) |
 | B8 WSDL solo en desarrollo | ✅ Ver abajo |
-| Nuevo (#41) | La BD acepta nombres vacíos; falta un `CHECK` en un script `003` |
+| Nuevo (#41) | ✅ `db/004_nombre_no_vacio.sql`: `CHECK (nombre ~ '\S')` (al menos un carácter que no sea blanco; más amplio que `btrim`, que no recorta tabuladores). Antes de crear la restricción comprueba si hay filas inválidas y, si las hay, aborta con un mensaje que da cuántas y sus ids, sin modificar nada. Es idempotente (el escenario 6 del migrador lo exigió: una base sin registro que ya tiene la restricción). 8 pruebas de integración nuevas llaman a la función sin pasar por el repositorio (que recorta el nombre) y `probar-migrador.ps1` suma el escenario 9. Mutación a `btrim(nombre) <> ''` detectada |
 
 **Zona horaria hecha (issue #17, B6):**
 

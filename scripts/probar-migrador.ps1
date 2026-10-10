@@ -43,6 +43,7 @@ function ReiniciarScripts() {
     Copy-Item "$raiz\db\001_esquema_usuario.sql" "$tmp\001_esquema_usuario.sql"
     Copy-Item "$raiz\db\002_rol_aplicacion.sql" "$tmp\002_rol_aplicacion.sql"
     Copy-Item "$raiz\db\003_fecha_nacimiento_hora_de_colombia.sql" "$tmp\003_fecha_nacimiento_hora_de_colombia.sql"
+    Copy-Item "$raiz\db\004_nombre_no_vacio.sql" "$tmp\004_nombre_no_vacio.sql"
 }
 
 function EscribirLf($ruta, $texto) { [IO.File]::WriteAllText($ruta, ($texto -replace "`r`n", "`n"), (New-Object Text.UTF8Encoding($false))) }
@@ -53,37 +54,37 @@ try {
     docker run -d --name $bd --network $red -e POSTGRES_PASSWORD=clave -e POSTGRES_DB=pruebas $imagen | Out-Null
     for ($i = 0; $i -lt 40; $i++) { docker exec $bd pg_isready -U postgres -d pruebas 2>$null | Out-Null; if ($LASTEXITCODE -eq 0) { Start-Sleep 1; break }; Start-Sleep 1 }
 
-    Write-Host "`n== 1. Base vacia: aplica 001, 002 y 003 y los registra ==" -ForegroundColor Cyan
+    Write-Host "`n== 1. Base vacia: aplica 001 a 004 y los registra ==" -ForegroundColor Cyan
     ReiniciarScripts
     $r = Migrar
     Check 'termina con exito' ($r.Codigo -eq 0) $r.Salida.Split("`n")[-1]
-    Check 'registra 3 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '3')
+    Check 'registra 4 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '4')
     Check 'la funcion fn_usuario_crud existe' ((Sql "select count(*) from pg_proc where proname='fn_usuario_crud'") -eq '1')
     Check 'el rol de aplicacion existe, sin superusuario' ((Sql "select rolsuper from pg_roles where rolname='$usuarioApp'") -eq 'f')
 
     Write-Host "`n== 2. Segunda ejecucion: no repite nada ==" -ForegroundColor Cyan
     $r = Migrar
     Check 'termina con exito' ($r.Codigo -eq 0)
-    Check 'dice que ya estaba aplicado' ($r.Salida -match '001_esquema_usuario.sql ya aplicado' -and $r.Salida -match '003_fecha_nacimiento_hora_de_colombia.sql ya aplicado')
-    Check 'siguen siendo 3 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '3')
+    Check 'dice que ya estaba aplicado' ($r.Salida -match '001_esquema_usuario.sql ya aplicado' -and $r.Salida -match '004_nombre_no_vacio.sql ya aplicado')
+    Check 'siguen siendo 4 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '4')
 
     Write-Host "`n== 3. Script nuevo valido: se aplica solo ese ==" -ForegroundColor Cyan
-    EscribirLf "$tmp\004_prueba_ok.sql" "CREATE TABLE IF NOT EXISTS prueba_ok (id int);`n"
+    EscribirLf "$tmp\005_prueba_ok.sql" "CREATE TABLE IF NOT EXISTS prueba_ok (id int);`n"
     $r = Migrar
     Check 'termina con exito' ($r.Codigo -eq 0)
-    Check 'ahora hay 4 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '4')
+    Check 'ahora hay 5 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '5')
     Check 'la tabla nueva existe' ((Sql "select to_regclass('prueba_ok') is not null") -eq 't')
 
     Write-Host "`n== 4. Script con error: se revierte todo y no se registra ==" -ForegroundColor Cyan
-    EscribirLf "$tmp\005_prueba_falla.sql" "CREATE TABLE prueba_parcial (id int);`nSELECT esta_funcion_no_existe();`n"
+    EscribirLf "$tmp\006_prueba_falla.sql" "CREATE TABLE prueba_parcial (id int);`nSELECT esta_funcion_no_existe();`n"
     $r = Migrar
     Check 'termina con error (codigo distinto de 0)' ($r.Codigo -ne 0) "codigo=$($r.Codigo)"
     Check 'no se creo la tabla parcial (transaccion revertida)' ((Sql "select to_regclass('prueba_parcial') is null") -eq 't')
-    Check 'siguen siendo 4 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '4')
-    Remove-Item "$tmp\005_prueba_falla.sql"
+    Check 'siguen siendo 5 migraciones' ((Sql 'select count(*) from schema_migrations') -eq '5')
+    Remove-Item "$tmp\006_prueba_falla.sql"
 
     Write-Host "`n== 5. Script ya aplicado modificado: se aborta ==" -ForegroundColor Cyan
-    Add-Content "$tmp\004_prueba_ok.sql" "-- editado despues de aplicarse"
+    Add-Content "$tmp\005_prueba_ok.sql" "-- editado despues de aplicarse"
     $r = Migrar
     Check 'termina con error (codigo distinto de 0)' ($r.Codigo -ne 0) "codigo=$($r.Codigo)"
     Check 'el mensaje explica que no se editan' ($r.Salida -match 'fue modificado')
@@ -95,7 +96,7 @@ try {
     $r = Migrar
     Check 'termina con exito (los scripts son idempotentes)' ($r.Codigo -eq 0) $r.Salida.Split("`n")[-1]
     Check 'el dato previo sigue ahi' ((Sql "select count(*) from usuario where nombre='Dato previo'") -eq '1')
-    Check 'registra 001, 002 y 003' ((Sql 'select count(*) from schema_migrations') -eq '3')
+    Check 'registra 001 a 004' ((Sql 'select count(*) from schema_migrations') -eq '4')
 
     Write-Host "`n== 7. Rol de aplicacion: minimo privilegio y rotacion de contrasena ==" -ForegroundColor Cyan
     function ConectaApp($clave) {
@@ -118,6 +119,22 @@ try {
     Check 'falla si falta APP_DB_PASSWORD' ($r.Codigo -ne 0 -and $r.Salida -match 'APP_DB_PASSWORD es obligatoria')
     $r = Migrar @{ APP_DB_USER = 'postgres' }
     Check 'falla si la app usaria el mismo usuario que migra' ($r.Codigo -ne 0 -and $r.Salida -match 'no puede ser el mismo usuario')
+
+    Write-Host "`n== 9. 004 con nombres vacios ya guardados: falla con mensaje claro y no cambia nada ==" -ForegroundColor Cyan
+    # Se reproduce una base anterior al 004: sin la restriccion, sin su registro y con dos filas invalidas
+    $null = Sql "alter table usuario drop constraint ck_usuario_nombre"
+    $null = Sql "delete from schema_migrations where version like '004%'"
+    $null = Sql "insert into usuario (nombre, fecha_nacimiento, sexo) values ('   ', '1990-01-01', 'M'), ('', '1991-02-02', 'F')"
+    $r = Migrar
+    Check 'termina con error (codigo distinto de 0)' ($r.Codigo -ne 0) "codigo=$($r.Codigo)"
+    Check 'el mensaje cuenta las filas y da sus ids' ($r.Salida -match '2 usuario\(s\) tienen el nombre vacio' -and $r.Salida -match 'ids: \d+, \d+')
+    Check 'no se creo la restriccion' ((Sql "select count(*) from pg_constraint where conname='ck_usuario_nombre'") -eq '0')
+    Check 'no registro el script' ((Sql "select count(*) from schema_migrations where version like '004%'") -eq '0')
+    Check 'no borro ni cambio las filas' ((Sql "select count(*) from usuario where nombre !~ '\S'") -eq '2')
+    $null = Sql "delete from usuario where nombre !~ '\S'"
+    $r = Migrar
+    Check 'tras corregir los datos, migra con exito' ($r.Codigo -eq 0) $r.Salida.Split("`n")[-1]
+    Check 'la restriccion existe y el 004 queda registrado' ((Sql "select count(*) from pg_constraint where conname='ck_usuario_nombre'") -eq '1' -and (Sql "select count(*) from schema_migrations where version like '004%'") -eq '1')
 }
 finally {
     docker rm -f $bd 2>$null | Out-Null

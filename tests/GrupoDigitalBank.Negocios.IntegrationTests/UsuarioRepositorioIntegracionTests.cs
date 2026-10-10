@@ -259,6 +259,65 @@ public class UsuarioRepositorioIntegracionTests(PostgresFixture bd) : IClassFixt
         error.SqlState.ShouldBe("23514");
     }
 
+    // ---------- Nombre vacio (#41): el tercer nivel de validacion. Se llama a la funcion SIN pasar por el
+    // repositorio, que recorta el nombre, para probar lo que la base hace por si sola ----------
+
+    private async Task<PostgresException?> LlamarFuncion(string operacion, int? id, string nombre)
+    {
+        await using var comando = bd.DataSource.CreateCommand(
+            "SELECT id FROM fn_usuario_crud(@op, @id, @nombre, DATE '1990-05-20', 'F')");
+        comando.Parameters.Add(new NpgsqlParameter("op", NpgsqlTypes.NpgsqlDbType.Char) { Value = operacion });
+        comando.Parameters.Add(new NpgsqlParameter("id", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)id ?? DBNull.Value });
+        comando.Parameters.Add(new NpgsqlParameter("nombre", NpgsqlTypes.NpgsqlDbType.Varchar) { Value = nombre });
+        try
+        {
+            await comando.ExecuteScalarAsync();
+            return null;
+        }
+        catch (PostgresException ex)
+        {
+            return ex;
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    [InlineData(" \t\r\n ")]
+    public async Task LaBaseRechazaCrearUnNombreVacioOSoloBlancos(string nombre)
+    {
+        var error = await LlamarFuncion("C", null, nombre);
+
+        error.ShouldNotBeNull();
+        error.SqlState.ShouldBe("23514");
+        error.ConstraintName.ShouldBe("ck_usuario_nombre");
+    }
+
+    [Fact]
+    public async Task LaBaseRechazaModificarUnNombreAVacio()
+    {
+        var creado = await _repositorio.CrearAsync(Nuevo());
+
+        var error = await LlamarFuncion("U", creado.Id, "   ");
+
+        error.ShouldNotBeNull();
+        error.SqlState.ShouldBe("23514");
+        error.ConstraintName.ShouldBe("ck_usuario_nombre");
+        (await _repositorio.ConsultarAsync(creado.Id)).ShouldHaveSingleItem().Nombre.ShouldBe(creado.Nombre);
+    }
+
+    [Theory]
+    [InlineData("A")]
+    [InlineData("Maria Jose Nunez")]
+    [InlineData("  con blancos alrededor  ")]
+    public async Task LaBaseAceptaCualquierNombreConAlMenosUnCaracterVisible(string nombre)
+    {
+        var error = await LlamarFuncion("C", null, nombre);
+
+        error.ShouldBeNull();
+    }
+
     [Fact]
     public async Task LaBaseRechazaUnNombreMasLargoQue100Caracteres()
     {
