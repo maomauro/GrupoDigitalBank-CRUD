@@ -24,6 +24,8 @@ services:
       PGDATABASE: ${POSTGRES_DB}
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER:?Define APP_DB_USER en .env (rol de la aplicacion)}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Define APP_DB_PASSWORD en .env}
     volumes:
       - ./db:/migraciones:ro
     depends_on:
@@ -36,7 +38,7 @@ services:
       dockerfile: src/GrupoDigitalBank.Negocios/Dockerfile
     restart: unless-stopped
     environment:
-      ConnectionStrings__Postgres: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Postgres: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER:?Define APP_DB_USER en .env};Password=${APP_DB_PASSWORD:?Define APP_DB_PASSWORD en .env}
     depends_on:
       migrador:
         condition: service_completed_successfully

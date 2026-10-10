@@ -68,7 +68,8 @@ Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen
 ## Seguridad: nunca
 
 - Versionar `.env`, contraseñas, llaves o hashes reales.
-- Publicar puertos de `db`, `negocios` o `web` en Compose (solo `proxy` publica 80/443).
+- Publicar puertos de `db`, `negocios` o `web` en Compose (solo `proxy` publica 80/443; el `docker-compose.dev.yml` publica la BD solo en `127.0.0.1` y nunca se despliega).
+- Conectar la aplicación con `POSTGRES_USER` (administrador): usa siempre `APP_DB_USER`, el rol de mínimo privilegio.
 - Editar un script SQL ya aplicado.
 - Desactivar verificación de host SSH o de certificados para "hacerlo funcionar".
 
@@ -85,9 +86,9 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 
 ## Estado conocido
 
-- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1 (XSS) y H5 (migraciones) resueltos**, con pruebas. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
+- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1 (XSS), H5 (migraciones) y H4 (rol de BD de mínimo privilegio) resueltos**, con pruebas. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
 - El proyecto compila sin advertencias, corre en modo A y B y tiene 13 pruebas (unitarias, vistas con `WebApplicationFactory` e integración con PostgreSQL real). Falta la batería completa de H7.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Siguiente: **H4 (rol de BD, #11)**, luego H2, H6, H7, hardening (B3/B4/B5/B8), B6, H8; después CI (fase 5), VPS (6) y despliegue (7).
+- Siguiente: **H2 (autenticación, #12)**, luego H6, H7, hardening (B3/B4/B5/B8), B6, H8; después CI (fase 5), VPS (6) y despliegue (7).
 - No existen todavía CI/CD, autenticación ni healthchecks; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.

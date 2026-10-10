@@ -327,18 +327,26 @@ Hecho (issue #10):
 - Verificado en el stack real: caso A (base existente con datos, sobre la que se aplicó y registró el `001`), caso B (base nueva en un proyecto Compose aislado, Negocios arranca) y caso C (una migración rota deja a `negocios` en `Created`, sin arrancar).
 - Regla vigente: **los scripts aplicados nunca se editan**; todo cambio es un `00N_…sql` nuevo. Si dos ramas crean el mismo número, la segunda en fusionarse renumera.
 - Pendiente para el CI (fase 5): ejecutar `shellcheck db/migrate.sh` y `scripts/probar-migrador.ps1` (requiere Docker; en Linux habría que portarlo a un script `sh`/job de GitHub Actions).
-- Para H4: añadir `APP_DB_PASSWORD` al entorno del servicio `migrador` y a `.env.example`.
+- H4 (hecho): el migrador recibe `APP_DB_USER`/`APP_DB_PASSWORD` y sincroniza la contraseña del rol en cada ejecución.
 
-### 4.5 H4 · Rol de aplicación en PostgreSQL (media, P1) — depende de 4.4
+### 4.5 H4 · Rol de aplicación en PostgreSQL (media, P1) ✅ — depende de 4.4
 
-Nuevo `db/002_rol_aplicacion.sql`, aplicado por el migrador:
+Hecho (issue #11). Modelo de roles:
 
-- `CREATE ROLE usuarios_app LOGIN PASSWORD :'app_pass'` (idempotente; contraseña inyectada por `-v`, no versionada).
-- `REVOKE ALL ON SCHEMA public FROM PUBLIC; GRANT USAGE ON SCHEMA public TO usuarios_app;`
-- `GRANT EXECUTE ON FUNCTION fn_usuario_crud(...) TO usuarios_app;`
-- Declarar la función `SECURITY DEFINER SET search_path = public` (script nuevo; no se edita el `001`) para no conceder nada sobre la tabla; si no se hace, conceder `SELECT/INSERT/UPDATE/DELETE` solo sobre `usuario`.
+| Rol | Variable | Qué es |
+|---|---|---|
+| `usuarios_admin` | `POSTGRES_USER` / `POSTGRES_PASSWORD` | Propietario de la base y quien ejecuta las migraciones (superusuario del contenedor). **La aplicación no lo usa.** |
+| `usuarios_app` | `APP_DB_USER` / `APP_DB_PASSWORD` | Rol de la aplicación: `LOGIN`, sin superusuario, sin crear bases ni roles. Solo puede **ejecutar** `fn_usuario_crud`. |
 
-Compose y `.env.example`: `POSTGRES_USER=usuarios_admin` (propietario/migrador) y `negocios` se conecta con `APP_DB_USER` / `APP_DB_PASSWORD`. Añadir las variables al `.env` local y documentar. Prueba: con el rol de aplicación, `DROP TABLE usuario` debe fallar.
+- `db/002_rol_aplicacion.sql` (aplicado por el migrador): crea o actualiza el rol con `\gexec` + `format(%I, %L)` (nombre y contraseña correctamente entrecomillados, contraseña inyectada por `-v app_pass`, nunca versionada); retira los permisos de `PUBLIC` sobre la base, el esquema, la tabla y la función; declara `fn_usuario_crud` como `SECURITY DEFINER SET search_path = public, pg_temp` (con `ALTER FUNCTION`, sin editar el `001`); concede solo `CONNECT`, `USAGE` sobre `public` y `EXECUTE` sobre la función. No se concede nada sobre la tabla.
+- `db/migrate.sh` exige `APP_DB_USER` y `APP_DB_PASSWORD` (falla en voz alta si faltan), rechaza que sean el mismo usuario que migra y **sincroniza la contraseña del rol en cada ejecución**. Así rotarla es cambiar `APP_DB_PASSWORD` y redesplegar, aunque el `002` ya esté aplicado.
+- `docker-compose.yml`: el servicio `migrador` recibe las dos variables y `negocios` se conecta con `APP_DB_USER`/`APP_DB_PASSWORD`. Ambas son obligatorias (`${VAR:?mensaje}`): con un `.env` viejo, Compose falla con un mensaje claro en lugar de seguir con valores vacíos. `.env.example` documenta los dos roles.
+- Pruebas de integración (`RolAplicacionTests`, como el rol de aplicación contra PostgreSQL real): no puede `DROP TABLE` (`must be owner`), ni leer/insertar/borrar la tabla, ni crear objetos ni borrar la función (SQLSTATE 42501); no es superusuario ni puede crear bases/roles; solo ese rol tiene `EXECUTE` (otro rol y `PUBLIC` no); la función es `SECURITY DEFINER` con `search_path` fijo. Se comprobó con una **prueba de mutación** (dar permisos de más en el script): 3 de estas pruebas la detectan. `PostgresFixture` ahora aplica los scripts con `psql` dentro del contenedor, igual que el migrador, y expone conexiones de aplicación y de administrador.
+- `scripts/probar-migrador.ps1` ampliado a 8 escenarios (31 comprobaciones): además de lo de H5, el rol sin superusuario, mínimo privilegio, rotación de contraseña (la nueva funciona y la anterior deja de funcionar) y validación de entrada.
+- Verificado en el stack real, en modo A y modo B, con la aplicación conectada como rol limitado: flujo completo OK, y directamente contra la base el rol recibe `must be owner of table usuario` (DROP), `permission denied for table usuario` (SELECT, DELETE, TRUNCATE) y `permission denied for schema public` (CREATE).
+- **Base de desarrollo migrada**: en un volumen existente `POSTGRES_USER` era superusuario y llamarse igual que el rol de la app, así que no se puede convertir en caliente. Se recreó el volumen con respaldo previo verificado (volcado lógico + copia física del volumen, comprobada levantando un Postgres sobre ella) y se restauraron los datos y la secuencia. Los `.env` locales existentes deben añadir `APP_DB_USER`, `APP_DB_PASSWORD` y cambiar `POSTGRES_USER` (idealmente a `usuarios_admin`) **antes** de recrear el volumen; el volumen viejo se identifica por el nombre `*_pgdata`.
+- Riesgo residual documentado: la función pertenece al administrador (superusuario) y corre con sus privilegios (`SECURITY DEFINER`). Está acotada porque el SQL es estático y parametrizado y el `search_path` está fijo; un rol propietario sin superusuario (`NOLOGIN`) sería más estricto pero obliga a reasignar el dueño en cada migración futura. Se deja como mejora.
+- En producción (fase 6.6) el `.env` del servidor ya prevé `POSTGRES_USER=usuarios_admin` y `APP_DB_*`.
 
 ### 4.6 H6 · Claves de Data Protection (media, P1)
 
@@ -355,7 +363,7 @@ Compose y `.env.example`: `POSTGRES_USER=usuarios_admin` (propietario/migrador) 
 Esqueleto ya creado en la fase 3.6 (una prueba por proyecto). Notas de implementación:
 
 - Los tres proyectos llevan `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. Sin él, `CoreWCF.Primitives` arrastra `System.Security.Cryptography.Xml` 8.0.x con vulnerabilidad alta (NU1903) que en la aplicación queda podada por el framework y en un proyecto de prueba plano no.
-- `PostgresFixture` aplica los scripts `db/NNN_*.sql` en orden. Cuando llegue H5/H4 (migrador y rol con contraseña por `psql -v`), la fixture deberá aplicar el `002` sustituyendo `:'app_pass'` o usar la imagen del migrador.
+- `PostgresFixture` aplica los scripts `db/NNN_*.sql` en orden con `psql` dentro del contenedor (igual que el migrador, con `app_user` y `app_pass`) y expone dos conexiones: `DataSource` (rol de aplicación, el que usa Negocios) y `AdminDataSource` (propietario, solo para preparar y verificar permisos).
 - Las pruebas de integración llevan `[Trait("Categoria", "Integracion")]`; `dotnet test --filter "Categoria!=Integracion"` las omite si no hay Docker.
 
 Casos mínimos: crear válido; nombre vacío o largo; fecha futura o muy antigua; sexo inválido; modificar o eliminar inexistente; operación inválida en la función; fallo del servicio SOAP mostrado como error amigable; regresión H1; el rol de aplicación no puede borrar la tabla. Meta: ≥ 80 % de cobertura en la lógica de Negocios (`coverlet`).
