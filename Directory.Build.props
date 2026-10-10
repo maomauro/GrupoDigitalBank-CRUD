@@ -5,9 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
-
-  <!-- TreatWarningsAsErrors se activa tras el primer build limpio (paso L9 del ciclo de vida).
-       Mientras tanto, CI y scripts usan -warnaserror. -->
 
 </Project>

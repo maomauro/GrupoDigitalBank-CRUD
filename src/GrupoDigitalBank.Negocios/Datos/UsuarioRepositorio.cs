@@ -29,7 +29,7 @@ public sealed class UsuarioRepositorio(NpgsqlDataSource dataSource) : IUsuarioRe
         cmd.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Integer) { Value = (object?)id ?? DBNull.Value });
         cmd.Parameters.Add(new NpgsqlParameter("nombre", NpgsqlDbType.Varchar) { Value = (object?)u?.Nombre.Trim() ?? DBNull.Value });
         cmd.Parameters.Add(new NpgsqlParameter("fecha", NpgsqlDbType.Date)
-            { Value = u is null ? DBNull.Value : DateOnly.FromDateTime(u.FechaNacimiento) });
+        { Value = u is null ? DBNull.Value : DateOnly.FromDateTime(u.FechaNacimiento) });
         cmd.Parameters.Add(new NpgsqlParameter("sexo", NpgsqlDbType.Char) { Value = (object?)u?.Sexo ?? DBNull.Value });
 
         var resultado = new List<UsuarioDto>();
