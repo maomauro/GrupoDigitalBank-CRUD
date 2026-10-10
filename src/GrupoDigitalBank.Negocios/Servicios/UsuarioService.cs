@@ -8,7 +8,7 @@ namespace GrupoDigitalBank.Negocios.Servicios;
 
 /// <summary>Capa de negocios: valida, delega en el repositorio y traduce errores a faults SOAP.</summary>
 [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerCall)]
-public sealed class UsuarioService(IUsuarioRepositorio repositorio, ILogger<UsuarioService> logger) : IUsuarioService
+public sealed partial class UsuarioService(IUsuarioRepositorio repositorio, ILogger<UsuarioService> logger) : IUsuarioService
 {
     public Task<UsuarioDto> Agregar(UsuarioDto usuario) => Ejecutar(async () =>
     {
@@ -50,15 +50,21 @@ public sealed class UsuarioService(IUsuarioRepositorio repositorio, ILogger<Usua
         }
         catch (NpgsqlException ex)
         {
-            logger.LogError(ex, "Error de base de datos");
+            LogErrorBaseDatos(logger, ex);
             throw Fault("ERROR_DATOS", "No fue posible acceder a la base de datos.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error no controlado");
+            LogErrorNoControlado(logger, ex);
             throw Fault("ERROR_INTERNO", "Ocurrio un error inesperado.");
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error de base de datos")]
+    private static partial void LogErrorBaseDatos(ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error no controlado")]
+    private static partial void LogErrorNoControlado(ILogger logger, Exception ex);
 
     private static void ValidarOFallar(UsuarioDto usuario)
     {
