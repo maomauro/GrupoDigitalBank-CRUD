@@ -99,9 +99,9 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 
 ## Estado conocido
 
-- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B2 (contrato SOAP), B3/B4/B5/B8 (#15), B6 (zona horaria) y H8 (arquitectura y ADR) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
-- El proyecto compila sin advertencias, corre en modo A y B y tiene 203 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 94 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las 34 mutaciones manuales aplicadas al código y las 7 al contrato (B2) que compilan fueron detectadas.
+- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B2 (contrato SOAP), B3/B4/B5/B8 (#15), B6 (zona horaria), H8 (arquitectura y ADR) y #41 (CHECK de nombre) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
+- El proyecto compila sin advertencias, corre en modo A y B y tiene 211 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 94 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las 34 mutaciones manuales aplicadas al código y las 7 al contrato (B2) que compilan fueron detectadas.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Siguiente: el CHECK de nombre vacío (#41) y B7 (#18) (B2, contrato SOAP real, hecho); después CI (fase 5), VPS (6) y despliegue (7). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
+- Siguiente: B7 paginación (#18) (B2, contrato SOAP real, y #41, CHECK de nombre vacío, hechos); después CI (fase 5), VPS (6) y despliegue (7). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
 - No existe todavía CI/CD; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.
