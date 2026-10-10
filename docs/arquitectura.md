@@ -229,8 +229,8 @@ flowchart LR
 
 ## 9. Calidad y verificación
 
-- **192 pruebas** (90 unitarias de Negocios, 32 de integración con PostgreSQL real en Testcontainers y 70 de Presentación con `WebApplicationFactory`), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
-- 34 mutaciones manuales aplicadas al código de producción, todas detectadas.
+- **203 pruebas** (90 unitarias de Negocios, 32 de integración con PostgreSQL real en Testcontainers, 70 de Presentación con `WebApplicationFactory` y 11 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
+- 34 mutaciones manuales aplicadas al código de producción y 7 al contrato SOAP (más 3 que ni compilan), todas detectadas.
 - Herramientas en `scripts/`: `verificar.ps1` (el contrato del CI), `cobertura.ps1`, `probar-migrador.ps1`, `probar-acceso.ps1` y, en navegador real, `probar-navegador.ps1`.
 - Integración continua con GitHub Actions: **pendiente** (fase 5, #20). Hoy lo único automático en GitHub es SonarCloud (análisis por PR) y Dependabot.
 
@@ -241,7 +241,6 @@ flowchart LR
 | Tema | Issue |
 |---|---|
 | `CHECK` de nombre vacío en la base | [#41](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/41) |
-| Prueba del cliente SOAP contra un servidor CoreWCF real y del contrato duplicado | [#19](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/19) |
 | Integración continua | [#20](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/20) |
 | VPS y despliegue (incluye la decisión de proxy de la sección 8.2) | [#21](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/21), [#22](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/22) |
 | Backups, monitoreo y runbook | [#23](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/23) |

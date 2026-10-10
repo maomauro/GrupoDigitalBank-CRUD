@@ -69,7 +69,7 @@ Orden: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. La fase 6
 | P2 | Monitoreo externo, runbook, rotación de secretos | 9 |
 | P2 | H8 arquitectura y ADRs, B6 zona horaria, B8 WSDL solo en desarrollo | 4.8 |
 | P2 | Cobertura ≥ 80 %, Trivy, CodeQL, hadolint | 5 |
-| P3 | B7 paginación, B2 prueba de contrato SOAP, login propio (Identity/OIDC), métricas DORA | 4.8, 10 |
+| P3 | B7 paginación, login propio (Identity/OIDC), métricas DORA | 4.8, 10 |
 
 Camino crítico: 2 → 3 → H1 → H5 → H4 → H2 → H6 → pruebas mínimas → CI → 6 → 7 → 8 → backup.
 
@@ -394,7 +394,7 @@ Cobertura (`scripts/cobertura.ps1`, coverlet + ReportGenerator, une los tres pro
 | Ensamblado | Antes | Ahora |
 |---|---|---|
 | `GrupoDigitalBank.Negocios` | 41,6 % (29,8 % contando código generado) | **100 %** (89/89 líneas) — mínimo exigido 80 % |
-| `GrupoDigitalBank.Presentacion` | 35,3 % | 87 %; lo no cubierto es el camino feliz de `UsuarioClient` (necesita un servidor CoreWCF real: hallazgo B2, #19) |
+| `GrupoDigitalBank.Presentacion` | 35,3 % | 94 % (con las pruebas de contrato de B2, #19; antes 87 %: faltaba el camino feliz de `UsuarioClient`) |
 
 `coverlet.runsettings` excluye `Program.cs` (arranque), los `*.g.cs` generados por fuentes (invocador de operaciones de CoreWCF y `LoggerMessage`) y el código de las propias pruebas. El script devuelve código 1 si Negocios baja del umbral (`-Umbral`, por omisión 80; `-SinUmbral` solo informa). `ReportGenerator` va fijado en `.config/dotnet-tools.json` (5.5.11). El CI de la fase 5 debe ejecutar este script.
 
@@ -409,7 +409,7 @@ Notas de implementación:
 - Los límites de fecha usan `DateTime.Today`: siguen sujetos a la zona horaria del equipo (hallazgo B6, #17). Las pruebas de base usan +2 días para la fecha futura y evitan el borde.
 - **Hallazgo nuevo (issue #41):** la base acepta un nombre vacío o de solo espacios; solo existen `CHECK` de sexo y fecha. Se comprobó con una transacción revertida. No se congeló en una prueba como comportamiento deseado.
 
-Pendiente para otros issues: camino feliz y fault reales del cliente SOAP contra CoreWCF y la comparación de contratos (B2, #19); `TimeProvider` (B6, #17).
+Resuelto después: el camino feliz y el fault reales del cliente SOAP y la comparación de contratos (B2, #19) y `TimeProvider` (B6, #17).
 
 ### 4.8 H8 y baja prioridad
 
@@ -417,7 +417,7 @@ Pendiente para otros issues: camino feliz y fault reales del cliente SOAP contra
 |---|---|
 | H8 `docs/` vacío | ✅ `docs/arquitectura.md` (C4 contexto, contenedores y componentes en Mermaid, flujos, seguridad, calidad y despliegue) y `docs/adr/` con 10 ADR (0001 CoreWCF, 0002 sin ORM, 0003 contrato duplicado, 0004 Basic Auth, 0005 flujo de ramas y GitHub Free, 0006 zona horaria, 0007 migraciones, 0008 rol de mínimo privilegio, 0009 cabeceras y CSP, 0010 verificación). Los 6 diagramas se validan con Mermaid 11 en Chrome (analizar y dibujar) y los 72 enlaces relativos apuntan a archivos existentes, con `scripts/verificar-docs.ps1 [-Diagramas]` (con control negativo: falla ante un enlace o un diagrama rotos); el CI de la fase 5 puede ejecutarlo. La vista de despliegue en producción queda **provisional** hasta la fase 6 (infraestructura real del VPS) |
 | B1 versiones flotantes | ✅ Hecho en 3.6 |
-| B2 contrato duplicado | Pendiente (#19): ADR; prueba con un servidor CoreWCF real (camino feliz y fault del cliente SOAP) y comparación del WSDL de Negocios con `ContratoServicio.cs` |
+| B2 contrato duplicado | ✅ (#19) ADR 0003 y `tests/GrupoDigitalBank.Contrato.Tests` (11 pruebas): el host real de Negocios en Kestrel con un repositorio en memoria, el `UsuarioClient` real de Presentación (camino feliz, validación y no encontrado) y una comparación por reflexión del contrato (espacio de nombres, operaciones, parámetros, faults, orden y tipo de cada campo). Sustituye a comparar el WSDL: éste solo se publica en desarrollo (B8) y la reflexión muestra la diferencia exacta. 7 mutaciones detectadas y 3 más que ni compilan |
 | B3 healthchecks | ✅ Ver abajo |
 | B4 cabeceras y CSP | ✅ Ver abajo |
 | B5 contraseña en `appsettings.json` | ✅ Ver abajo |

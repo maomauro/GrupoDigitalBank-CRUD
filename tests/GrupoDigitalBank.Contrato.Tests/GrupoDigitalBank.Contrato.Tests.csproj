@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Unico proyecto que referencia a la vez Negocios y Presentacion: solo aqui se pueden comparar los dos
+       contratos SOAP (el de Negocios y su copia manual en Presentacion, hallazgo B2). El codigo de produccion
+       sigue sin referenciarse entre capas. Ambos definen `Program`, de ahi el alias de Negocios. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>GrupoDigitalBank.Contrato.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\..\src\GrupoDigitalBank.Negocios\GrupoDigitalBank.Negocios.csproj" Aliases="negocios" />
+    <ProjectReference Include="..\..\src\GrupoDigitalBank.Presentacion\GrupoDigitalBank.Presentacion.csproj" />
+  </ItemGroup>
+
+</Project>
