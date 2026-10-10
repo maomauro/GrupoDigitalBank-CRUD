@@ -50,6 +50,16 @@ public sealed class UsuarioClientTests(UsuarioClientTests.ServidorQueCierraConex
     }
 
     [Fact]
+    public async Task ConsultarPaginaConElServicioCaidoDevuelveUnErrorAmigable()
+    {
+        using var cliente = new UsuarioClient(Config(UrlCaida));
+
+        var ex = await Should.ThrowAsync<ServicioException>(() => cliente.ConsultarPaginaAsync(1, 10));
+
+        ex.Message.ShouldBe("No fue posible comunicarse con el servicio de negocios.");
+    }
+
+    [Fact]
     public async Task ConsultarPorIdConElServicioCaidoDevuelveUnErrorAmigable()
     {
         using var cliente = new UsuarioClient(Config(UrlCaida));

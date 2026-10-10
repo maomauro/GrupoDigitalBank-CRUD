@@ -49,6 +49,48 @@ public sealed class ClienteSoapRealTests(ServidorNegocios servidor) : IClassFixt
     }
 
     [Fact]
+    public async Task ConsultarPaginaDevuelveLaPaginaPedidaConSuTotal()
+    {
+        using var cliente = NuevoCliente();
+        for (var i = 0; i < 12; i++) await cliente.AgregarAsync(Valido($"Paginado {i:00}"));
+
+        var pagina = await cliente.ConsultarPaginaAsync(1, 5);
+
+        pagina.Usuarios.Count.ShouldBe(5);
+        pagina.Total.ShouldBeGreaterThanOrEqualTo(12);
+        pagina.Pagina.ShouldBe(1);
+        pagina.Tamano.ShouldBe(5);
+        pagina.Usuarios.Select(u => u.Id).ShouldBe(pagina.Usuarios.Select(u => u.Id).Order());
+        pagina.Usuarios[0].Nombre.ShouldNotBeNullOrEmpty();
+        pagina.Usuarios[0].FechaNacimiento.ShouldBe(new DateTime(1990, 5, 17));
+    }
+
+    [Fact]
+    public async Task ConsultarPaginaFueraDeRangoDevuelveLaUltimaYNoUnaVacia()
+    {
+        using var cliente = NuevoCliente();
+        await cliente.AgregarAsync(Valido("Para la ultima"));
+        var primera = await cliente.ConsultarPaginaAsync(1, 5);
+        var ultima = (primera.Total + 4) / 5;
+
+        var pagina = await cliente.ConsultarPaginaAsync(99_999, 5);
+
+        pagina.Pagina.ShouldBe(ultima);
+        pagina.Usuarios.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public async Task ConsultarPaginaConUnTamanoInvalidoLlegaComoFaultDeValidacion()
+    {
+        using var cliente = NuevoCliente();
+
+        var ex = await Should.ThrowAsync<ServicioException>(() => cliente.ConsultarPaginaAsync(1, 500));
+
+        ex.Message.ShouldBe("Datos invalidos.");
+        ex.Detalles.ShouldHaveSingleItem().ShouldContain("tamano", Case.Insensitive);
+    }
+
+    [Fact]
     public async Task ModificarCambiaLosDatos()
     {
         using var cliente = NuevoCliente();

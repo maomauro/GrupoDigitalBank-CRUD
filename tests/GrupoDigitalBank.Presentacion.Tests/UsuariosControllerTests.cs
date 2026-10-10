@@ -44,25 +44,86 @@ public sealed class UsuariosControllerTests : IDisposable
 
     // ---------- Consultar ----------
 
+    private static PaginaUsuarios Pagina(int pagina, int tamano, int total, params UsuarioDto[] usuarios)
+        => new() { Usuarios = [.. usuarios], Total = total, Pagina = pagina, Tamano = tamano };
+
     [Fact]
-    public async Task ConsultarDevuelveLaVistaConLosUsuarios()
+    public async Task ConsultarDevuelveLaPrimeraPaginaDe10PorOmision()
     {
-        _cliente.ConsultarAsync(Arg.Any<int?>()).Returns([Dto(1)]);
+        _cliente.ConsultarPaginaAsync(1, 10).Returns(Pagina(1, 10, 1, Dto(1)));
 
         var resultado = await _controlador.Consultar();
 
-        var modelo = resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<List<UsuarioViewModel>>();
-        modelo.ShouldHaveSingleItem().Nombre.ShouldBe("Ana Perez");
+        var modelo = resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<PaginaViewModel>();
+        modelo.Usuarios.ShouldHaveSingleItem().Nombre.ShouldBe("Ana Perez");
+        modelo.Total.ShouldBe(1);
+        modelo.Pagina.ShouldBe(1);
+        modelo.Tamano.ShouldBe(10);
     }
 
     [Fact]
-    public async Task ConsultarMuestraListaVaciaYElErrorSiElServicioFalla()
+    public async Task ConsultarPasaLaPaginaYElTamanoPedidosAlServicio()
     {
-        _cliente.ConsultarAsync(Arg.Any<int?>()).Returns<List<UsuarioDto>>(_ => throw new ServicioException("Sin conexion."));
+        _cliente.ConsultarPaginaAsync(3, 25).Returns(Pagina(3, 25, 60, Dto(51)));
 
-        var resultado = await _controlador.Consultar();
+        var resultado = await _controlador.Consultar(3, 25);
 
-        resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<List<UsuarioViewModel>>().ShouldBeEmpty();
+        var modelo = resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<PaginaViewModel>();
+        modelo.Pagina.ShouldBe(3);
+        modelo.Tamano.ShouldBe(25);
+        modelo.TotalPaginas.ShouldBe(3);
+    }
+
+    [Theory]
+    [InlineData(7)]
+    [InlineData(0)]
+    [InlineData(-10)]
+    [InlineData(1000)]
+    public async Task ConsultarConUnTamanoNoPermitidoUsaElTamanoPorOmision(int tamano)
+    {
+        _cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(Pagina(1, 10, 0));
+
+        await _controlador.Consultar(1, tamano);
+
+        await _cliente.Received(1).ConsultarPaginaAsync(1, 10);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(-5, 1)]
+    [InlineData(100_000, 100_000)]
+    [InlineData(100_001, 100_000)]
+    [InlineData(int.MaxValue, 100_000)]
+    public async Task ConsultarAcotaLaPaginaALosLimitesDelServicio(int pedida, int esperada)
+    {
+        _cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(Pagina(1, 10, 0));
+
+        await _controlador.Consultar(pedida, 10);
+
+        await _cliente.Received(1).ConsultarPaginaAsync(esperada, 10);
+    }
+
+    [Fact]
+    public async Task ConsultarMuestraLaPaginaQueDevolvioElServicioNoLaPedida()
+    {
+        // El servicio devuelve la ultima pagina cuando se pide una fuera de rango
+        _cliente.ConsultarPaginaAsync(9, 10).Returns(Pagina(3, 10, 25, Dto(21)));
+
+        var resultado = await _controlador.Consultar(9, 10);
+
+        resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<PaginaViewModel>().Pagina.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task ConsultarMuestraPaginaVaciaYElErrorSiElServicioFalla()
+    {
+        _cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns<PaginaUsuarios>(_ => throw new ServicioException("Sin conexion."));
+
+        var resultado = await _controlador.Consultar(2, 25);
+
+        var modelo = resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<PaginaViewModel>();
+        modelo.Usuarios.ShouldBeEmpty();
+        modelo.Total.ShouldBe(0);
         Errores(_controlador).ShouldBe(["Sin conexion."]);
     }
 
@@ -189,6 +250,31 @@ public sealed class UsuariosControllerTests : IDisposable
         resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
         _controlador.TempData["Mensaje"].ShouldBe("Usuario eliminado correctamente.");
         await _cliente.Received(1).EliminarAsync(7);
+    }
+
+    [Fact]
+    public async Task EliminarVuelveALaMismaPaginaYTamano()
+    {
+        var resultado = await _controlador.Eliminar(7, 4, 25);
+
+        var redireccion = resultado.ShouldBeOfType<RedirectToActionResult>();
+        redireccion.ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        redireccion.RouteValues.ShouldNotBeNull();
+        redireccion.RouteValues["pagina"].ShouldBe(4);
+        redireccion.RouteValues["tamano"].ShouldBe(25);
+    }
+
+    [Fact]
+    public async Task EliminarConErrorTambienVuelveALaMismaPagina()
+    {
+        _cliente.EliminarAsync(7).Returns(_ => throw new ServicioException("No existe el usuario 7."));
+
+        var resultado = await _controlador.Eliminar(7, 2, 50);
+
+        var redireccion = resultado.ShouldBeOfType<RedirectToActionResult>();
+        redireccion.RouteValues.ShouldNotBeNull();
+        redireccion.RouteValues["pagina"].ShouldBe(2);
+        redireccion.RouteValues["tamano"].ShouldBe(50);
     }
 
     [Fact]

@@ -15,7 +15,7 @@ Navegador ──HTTPS──▶ Caddy ──▶ Presentación (ASP.NET Core MVC)
 | Capa | Proyecto | Responsabilidad |
 |---|---|---|
 | Presentación | `src/GrupoDigitalBank.Presentacion` | Vistas MVC (registro y consulta). Solo conoce el servicio de negocios vía SOAP. |
-| Negocios | `src/GrupoDigitalBank.Negocios` | Servicio `UsuarioService` (Agregar, Modificar, Consultar, Eliminar), validaciones y manejo de errores (SOAP faults). **Única capa con acceso a la BD.** |
+| Negocios | `src/GrupoDigitalBank.Negocios` | Servicio `UsuarioService` (Agregar, Modificar, Consultar, ConsultarPagina, Eliminar), validaciones y manejo de errores (SOAP faults). **Única capa con acceso a la BD.** |
 | Datos | `db/NNN_*.sql` + `db/migrate.sh` | Tabla `usuario` y función `fn_usuario_crud(p_operacion, ...)` (`C`/`R`/`U`/`D`). El servicio `migrador` aplica los scripts pendientes en orden, cada uno en una transacción, y guarda su checksum en `schema_migrations`. |
 
 ## Estructura

@@ -19,6 +19,15 @@ public class UsuarioDto
 }
 
 [DataContract(Namespace = Constantes.Namespace)]
+public class PaginaUsuarios
+{
+    [DataMember(Order = 0)] public List<UsuarioDto> Usuarios { get; set; } = new();
+    [DataMember(Order = 1)] public int Total { get; set; }
+    [DataMember(Order = 2)] public int Pagina { get; set; }
+    [DataMember(Order = 3)] public int Tamano { get; set; }
+}
+
+[DataContract(Namespace = Constantes.Namespace)]
 public class ErrorServicio
 {
     [DataMember(Order = 0)] public string Codigo { get; set; } = string.Empty;
@@ -37,6 +46,9 @@ public interface IUsuarioServicio
 
     [OperationContract, FaultContract(typeof(ErrorServicio))]
     Task<List<UsuarioDto>> Consultar(int? id);
+
+    [OperationContract, FaultContract(typeof(ErrorServicio))]
+    Task<PaginaUsuarios> ConsultarPagina(int pagina, int tamano);
 
     [OperationContract, FaultContract(typeof(ErrorServicio))]
     Task Eliminar(int id);

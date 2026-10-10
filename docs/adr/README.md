@@ -19,6 +19,7 @@ La vista de conjunto está en [../arquitectura.md](../arquitectura.md).
 | [0009](0009-cabeceras-http-csp-y-hsts.md) | Cabeceras de seguridad, CSP estricta y HSTS configurable en el proxy | Aceptada |
 | [0010](0010-estrategia-de-verificacion.md) | Estrategia de verificación: pruebas, cobertura mínima y mutación | Aceptada |
 | [0011](0011-despliegue-detras-del-nginx-compartido.md) | Despliegue detrás del nginx compartido del VPS, con Caddy interno | Aceptada |
+| [0012](0012-paginacion-en-el-servidor.md) | Paginación de la grilla en el servidor, con una función nueva | Aceptada |
 
 ## Plantilla
 

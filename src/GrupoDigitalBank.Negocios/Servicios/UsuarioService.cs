@@ -32,6 +32,31 @@ public sealed partial class UsuarioService(IUsuarioRepositorio repositorio, ILog
         return lista;
     });
 
+    // Limites de la paginacion: con 100 por pagina y 100 000 paginas el desplazamiento maximo (9 999 900) cabe en un int
+    private const int PaginaMaxima = 100_000;
+    private const int TamanoMaximo = 100;
+
+    public Task<PaginaUsuarios> ConsultarPagina(int pagina, int tamano) => Ejecutar(async () =>
+    {
+        var errores = new List<string>();
+        if (pagina is < 1 or > PaginaMaxima) errores.Add($"La pagina debe estar entre 1 y {PaginaMaxima}.");
+        if (tamano is < 1 or > TamanoMaximo) errores.Add($"El tamano de pagina debe estar entre 1 y {TamanoMaximo}.");
+        if (errores.Count > 0) throw Fault("VALIDACION", "Datos invalidos.", errores);
+
+        var resultado = await repositorio.ConsultarPaginaAsync(tamano, (pagina - 1) * tamano);
+
+        // Una pagina fuera de rango (por ejemplo, tras eliminar el ultimo usuario de la ultima pagina) devuelve la
+        // ultima que exista, no una vacia: la vista nunca queda sin usuarios habiendolos
+        var ultima = Math.Max(1, (resultado.Total + tamano - 1) / tamano);
+        if (pagina > ultima)
+        {
+            pagina = ultima;
+            resultado = await repositorio.ConsultarPaginaAsync(tamano, (pagina - 1) * tamano);
+        }
+
+        return new PaginaUsuarios { Usuarios = resultado.Usuarios, Total = resultado.Total, Pagina = pagina, Tamano = tamano };
+    });
+
     public Task Eliminar(int id) => Ejecutar(async () =>
     {
         if (id <= 0) throw Fault("VALIDACION", "El id es obligatorio.");
