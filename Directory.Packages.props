@@ -10,7 +10,7 @@
     <PackageVersion Include="CoreWCF.Http" Version="1.9.1" />
     <PackageVersion Include="CoreWCF.Primitives" Version="1.9.1" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
-    <PackageVersion Include="System.ServiceModel.Http" Version="8.1.2" />
+    <PackageVersion Include="System.ServiceModel.Http" Version="10.0.652802" />
   </ItemGroup>
 
   <ItemGroup Label="Pruebas">
