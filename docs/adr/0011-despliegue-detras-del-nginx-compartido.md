@@ -21,7 +21,7 @@ Entrar por el nginx compartido y **conservar Caddy como proxy interno**:
 
 1. El `proxy` no publica puertos. Se une a la red compartida con el alias `gdb-web`; `db`, `negocios` y `web` se quedan en la red interna del proyecto.
 2. Caddy escucha solo HTTP (`http://{$DOMINIO}`) y confía en los proxies privados (`trusted_proxies`) para conservar el esquema y la IP reenviados. Mantiene el Basic Auth, las cabeceras, la CSP y el HSTS tal como están probados.
-3. TLS lo terminan Cloudflare y el nginx compartido, con un certificado de origen para `gdb.sitiosapps.com`. El vhost se añade en el repositorio de PortalCV siguiendo el patrón del servidor.
+3. TLS lo terminan Cloudflare y el nginx compartido, con un certificado de origen para `gdb-crud.sitiosapps.com`. El vhost se añade en el repositorio de PortalCV siguiendo el patrón del servidor.
 4. El compose base no declara `ports`; los de `proxy` pasan al compose de desarrollo, y CI comprueba que la configuración de producción no publica nada.
 5. Despliegue por SSH con una llave **restringida** (`restrict,command=`) a un script de entrada que solo acepta `desplegar <tag>`.
 
