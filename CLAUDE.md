@@ -33,7 +33,11 @@ docker compose up -d --build                 # stack completo (requiere .env)
 docker compose logs -f negocios
 ```
 
-Desarrollo sin Docker: PostgreSQL local con el script de `db/`, luego `dotnet run` en Negocios y en Presentacion. Secretos con `dotnet user-secrets`, no en `appsettings.json`.
+Modos de ejecución local (detalle en el plan, fase 3.3):
+
+- **A, stack completo:** `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build` → `http://localhost:8080`.
+- **B, programar y depurar:** `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db`, luego `dotnet watch` en Negocios (`:5081`) y Presentacion (`:5080`). La cadena de conexión va en `dotnet user-secrets`, no en `appsettings.json`.
+- El `docker-compose.dev.yml` es solo de desarrollo y nunca se despliega.
 
 ## Convenciones
 

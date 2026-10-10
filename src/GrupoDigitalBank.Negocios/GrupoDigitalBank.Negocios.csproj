@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>GrupoDigitalBank.Negocios</RootNamespace>
+    <UserSecretsId>7976a37c-ba66-43f0-beca-130eec3a6887</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

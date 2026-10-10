@@ -3,7 +3,7 @@ using System.ServiceModel;
 namespace GrupoDigitalBank.Presentacion.Servicios;
 
 /// <summary>Cliente SOAP (BasicHttpBinding) hacia el servicio CoreWCF de la capa de negocios.</summary>
-public sealed class UsuarioClient : IUsuarioClient
+public sealed class UsuarioClient : IUsuarioClient, IDisposable
 {
     private readonly ChannelFactory<IUsuarioServicio> _fabrica;
 
@@ -15,6 +15,18 @@ public sealed class UsuarioClient : IUsuarioClient
             ? BasicHttpSecurityMode.Transport
             : BasicHttpSecurityMode.None;
         _fabrica = new ChannelFactory<IUsuarioServicio>(new BasicHttpBinding(modo), new EndpointAddress(url));
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            _fabrica.Close();
+        }
+        catch (Exception ex) when (ex is CommunicationException or TimeoutException)
+        {
+            _fabrica.Abort();
+        }
     }
 
     public Task<UsuarioDto> AgregarAsync(UsuarioDto usuario) => Invocar(c => c.Agregar(usuario));

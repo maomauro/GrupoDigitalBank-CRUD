@@ -217,16 +217,25 @@ docker compose logs -f negocios
 
 Abrir `http://localhost:8080`. Probar registrar, consultar, modificar, eliminar y errores de validación (nombre vacío, fecha futura). Con el modo producción local (`https://localhost` con Caddy y `DOMINIO=localhost`) se prueba el proxy cuando haga falta.
 
-Modo B, desarrollo diario (D5): solo la base en Docker, aplicaciones desde VS Code o terminal:
+Modo B, desarrollo diario (D5): solo la base en Docker, aplicaciones desde VS Code o terminal. Los `launchSettings.json` fijan Negocios en `http://localhost:5081` y Presentación en `http://localhost:5080` (el `Negocios:Url` por defecto ya apunta al 5081):
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+# una sola vez: la cadena de conexión va en user-secrets, con los mismos datos del .env
 dotnet user-secrets --project src\GrupoDigitalBank.Negocios set "ConnectionStrings:Postgres" "Host=localhost;Port=5432;Database=usuarios_db;Username=<usuario .env>;Password=<clave .env>"
 dotnet watch --project src\GrupoDigitalBank.Negocios
-dotnet watch --project src\GrupoDigitalBank.Presentacion      # otra terminal; Negocios:Url apunta a localhost
+dotnet watch --project src\GrupoDigitalBank.Presentacion      # otra terminal
 ```
 
+Abrir `http://localhost:5080`. Los secretos solo se cargan en `Development` (lo fija el `launchSettings`) y el atributo `UserSecretsId` entra al ensamblado al compilar: si se cambia el `.csproj`, recompilar antes de usar `--no-build`.
+
 El esquema (`db/001_*.sql`) lo aplica el contenedor al crear el volumen por primera vez. Consultas: `docker compose exec db psql -U <usuario> -d usuarios_db`.
+
+Verificado el 2026-10-09 con el mismo flujo en ambos modos (registrar, consultar, modificar, eliminar y validaciones). Observaciones:
+
+- B6 se reproduce en modo A: el contenedor corre en UTC y acepta como "hoy" una fecha que en Bogotá todavía es mañana. En modo B, Negocios usa la zona de Windows y la rechaza. Mismo código, resultado distinto según la zona del servidor.
+- H1 se reproduce: el nombre `x');alert(1);//` queda almacenado y se emite dentro del `onsubmit`.
+- Las imágenes de `web` y `negocios` no traen `wget` ni `curl`, así que el healthcheck de B3 requiere instalarlos o usar otra técnica.
 
 ### 3.4 Configuración de VS Code (L7)
 

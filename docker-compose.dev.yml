@@ -1,0 +1,30 @@
+# Override SOLO para desarrollo local. Nunca se copia ni se usa en el VPS.
+#
+# Modo A (stack completo):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#   Web en http://localhost:8080 (sin Caddy ni HTTPS)
+#
+# Modo B (programar y depurar): solo la base de datos
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+#   y las aplicaciones con dotnet watch / F5 contra localhost:5432
+#
+# Con Caddy y HTTPS local (DOMINIO=localhost en .env):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile con-proxy up -d --build
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"   # solo accesible desde este equipo
+
+  negocios:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+  web:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  proxy:
+    profiles: ["con-proxy"]     # no arranca salvo que se pida el perfil
