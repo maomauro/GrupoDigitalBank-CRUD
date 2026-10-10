@@ -2,7 +2,9 @@ using CoreWCF;
 using GrupoDigitalBank.Negocios.Contratos;
 using GrupoDigitalBank.Negocios.Datos;
 using GrupoDigitalBank.Negocios.Servicios;
+using GrupoDigitalBank.Negocios.Tiempo;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Npgsql;
 
 namespace GrupoDigitalBank.Negocios.Tests;
@@ -15,9 +17,14 @@ public class UsuarioServiceTests
 {
     private readonly IUsuarioRepositorio _repositorio = Substitute.For<IUsuarioRepositorio>();
     private readonly RegistroDePrueba _log = new();
+    private readonly FakeTimeProvider _reloj = new(new DateTimeOffset(2026, 10, 10, 17, 0, 0, TimeSpan.Zero));   // 12:00 en Bogota
     private readonly UsuarioService _servicio;
 
-    public UsuarioServiceTests() => _servicio = new UsuarioService(_repositorio, _log);
+    public UsuarioServiceTests()
+    {
+        _reloj.SetLocalTimeZone(ZonaHorariaNegocio.Resolver(null));
+        _servicio = new UsuarioService(_repositorio, _log, _reloj);
+    }
 
     private static UsuarioDto Valido(int id = 0) => new()
     {
@@ -50,7 +57,7 @@ public class UsuarioServiceTests
     [Fact]
     public async Task AgregarInvalidoDevuelveFaultDeValidacionConTodosLosDetallesYNoTocaLaBase()
     {
-        var invalido = new UsuarioDto { Nombre = "", FechaNacimiento = DateTime.Today.AddDays(1), Sexo = "X" };
+        var invalido = new UsuarioDto { Nombre = "", FechaNacimiento = new DateTime(2026, 10, 11), Sexo = "X" };
 
         var error = await FaultDe(() => _servicio.Agregar(invalido));
 

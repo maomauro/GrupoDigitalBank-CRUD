@@ -5,7 +5,9 @@ namespace GrupoDigitalBank.Negocios.Tests;
 
 /// <summary>
 /// El validador de negocios es la fuente de verdad de las reglas (la presentacion y los CHECK de la BD son
-/// redes adicionales). Cubre cada regla en sus limites.
+/// redes adicionales). Cubre cada regla en sus limites. "Hoy" llega como parametro (la zona horaria de negocio
+/// la resuelve el servicio, hallazgo B6), asi que estas pruebas son deterministas y no dependen del reloj
+/// ni de la zona del equipo.
 /// </summary>
 public class UsuarioValidadorTests
 {
@@ -14,6 +16,9 @@ public class UsuarioValidadorTests
     private const string MensajeFecha = "La fecha de nacimiento debe estar entre 1900-01-01 y hoy.";
     private const string MensajeSexo = "El sexo debe ser 'M' o 'F'.";
 
+    private static readonly DateOnly Hoy = new(2026, 10, 10);
+    private static readonly DateTime HoyComoFecha = Hoy.ToDateTime(TimeOnly.MinValue);
+
     private static UsuarioDto UsuarioValido() => new()
     {
         Nombre = "Ana Perez",
@@ -21,16 +26,18 @@ public class UsuarioValidadorTests
         Sexo = "F"
     };
 
+    private static List<string> Validar(UsuarioDto? usuario) => UsuarioValidador.Validar(usuario, Hoy);
+
     [Fact]
     public void UsuarioValidoNoGeneraErrores()
     {
-        UsuarioValidador.Validar(UsuarioValido()).ShouldBeEmpty();
+        Validar(UsuarioValido()).ShouldBeEmpty();
     }
 
     [Fact]
     public void UsuarioNuloGeneraUnSoloError()
     {
-        UsuarioValidador.Validar(null).ShouldBe(["El usuario es obligatorio."]);
+        Validar(null).ShouldBe(["El usuario es obligatorio."]);
     }
 
     // ---------- Nombre ----------
@@ -45,7 +52,7 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.Nombre = nombre!;
 
-        UsuarioValidador.Validar(usuario).ShouldBe([MensajeNombreObligatorio]);
+        Validar(usuario).ShouldBe([MensajeNombreObligatorio]);
     }
 
     [Theory]
@@ -57,7 +64,7 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.Nombre = new string('a', largo);
 
-        UsuarioValidador.Validar(usuario).ShouldBeEmpty();
+        Validar(usuario).ShouldBeEmpty();
     }
 
     [Theory]
@@ -68,7 +75,7 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.Nombre = new string('a', largo);
 
-        UsuarioValidador.Validar(usuario).ShouldBe([MensajeNombreLargo]);
+        Validar(usuario).ShouldBe([MensajeNombreLargo]);
     }
 
     [Fact]
@@ -77,7 +84,7 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.Nombre = "  " + new string('a', 100) + "  ";
 
-        UsuarioValidador.Validar(usuario).ShouldBeEmpty("los espacios de los extremos no cuentan");
+        Validar(usuario).ShouldBeEmpty("los espacios de los extremos no cuentan");
     }
 
     // ---------- Fecha de nacimiento ----------
@@ -87,9 +94,9 @@ public class UsuarioValidadorTests
         new DateTime(1900, 1, 1),
         new DateTime(1900, 1, 2),
         new DateTime(2000, 2, 29),
-        DateTime.Today.AddDays(-1),
-        DateTime.Today,
-        DateTime.Today.AddHours(23).AddMinutes(59)   // la hora no cuenta: se compara solo la fecha
+        HoyComoFecha.AddDays(-1),
+        HoyComoFecha,
+        HoyComoFecha.AddHours(23).AddMinutes(59)   // la hora no cuenta: se compara solo la fecha
     };
 
     [Theory]
@@ -99,7 +106,7 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.FechaNacimiento = fecha;
 
-        UsuarioValidador.Validar(usuario).ShouldBeEmpty();
+        Validar(usuario).ShouldBeEmpty();
     }
 
     public static TheoryData<DateTime> FechasInvalidas => new()
@@ -107,8 +114,8 @@ public class UsuarioValidadorTests
         default,                           // 0001-01-01: lo que llega si el formulario no envia fecha
         new DateTime(1899, 12, 31),
         new DateTime(1850, 6, 15),
-        DateTime.Today.AddDays(1),
-        DateTime.Today.AddYears(1)
+        HoyComoFecha.AddDays(1),
+        HoyComoFecha.AddYears(1)
     };
 
     [Theory]
@@ -118,7 +125,17 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.FechaNacimiento = fecha;
 
-        UsuarioValidador.Validar(usuario).ShouldBe([MensajeFecha]);
+        Validar(usuario).ShouldBe([MensajeFecha]);
+    }
+
+    [Fact]
+    public void ElLimiteSuperiorEsElHoyRecibidoNoElDelReloj()
+    {
+        var usuario = UsuarioValido();
+        usuario.FechaNacimiento = new DateTime(2030, 1, 1);
+
+        UsuarioValidador.Validar(usuario, new DateOnly(2030, 1, 1)).ShouldBeEmpty("ese dia es 'hoy' para quien llama");
+        UsuarioValidador.Validar(usuario, new DateOnly(2029, 12, 31)).ShouldBe([MensajeFecha], "ese dia es 'manana'");
     }
 
     // ---------- Sexo ----------
@@ -131,7 +148,7 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.Sexo = sexo;
 
-        UsuarioValidador.Validar(usuario).ShouldBeEmpty();
+        Validar(usuario).ShouldBeEmpty();
     }
 
     [Theory]
@@ -147,7 +164,7 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.Sexo = sexo!;
 
-        UsuarioValidador.Validar(usuario).ShouldBe([MensajeSexo]);
+        Validar(usuario).ShouldBe([MensajeSexo]);
     }
 
     // ---------- Combinaciones ----------
@@ -155,9 +172,9 @@ public class UsuarioValidadorTests
     [Fact]
     public void LosErroresSeAcumulanEnElOrdenNombreFechaSexo()
     {
-        var usuario = new UsuarioDto { Nombre = "", FechaNacimiento = DateTime.Today.AddDays(1), Sexo = "X" };
+        var usuario = new UsuarioDto { Nombre = "", FechaNacimiento = HoyComoFecha.AddDays(1), Sexo = "X" };
 
-        UsuarioValidador.Validar(usuario).ShouldBe([MensajeNombreObligatorio, MensajeFecha, MensajeSexo]);
+        Validar(usuario).ShouldBe([MensajeNombreObligatorio, MensajeFecha, MensajeSexo]);
     }
 
     [Fact]
@@ -166,6 +183,6 @@ public class UsuarioValidadorTests
         var usuario = UsuarioValido();
         usuario.Id = -999;
 
-        UsuarioValidador.Validar(usuario).ShouldBeEmpty();
+        Validar(usuario).ShouldBeEmpty();
     }
 }

@@ -419,10 +419,22 @@ Pendiente para otros issues: camino feliz y fault reales del cliente SOAP contra
 | B3 healthchecks | ✅ Ver abajo |
 | B4 cabeceras y CSP | ✅ Ver abajo |
 | B5 contraseña en `appsettings.json` | ✅ Ver abajo |
-| B6 zona horaria | Pendiente (#17): `TimeProvider` inyectable con `America/Bogota`; en la BD, `(now() AT TIME ZONE 'America/Bogota')::date`; pruebas con `FakeTimeProvider` |
+| B6 zona horaria | ✅ Ver abajo |
 | B7 paginación | Diferido (#18) |
 | B8 WSDL solo en desarrollo | ✅ Ver abajo |
 | Nuevo (#41) | La BD acepta nombres vacíos; falta un `CHECK` en un script `003` |
+
+**Zona horaria hecha (issue #17, B6):**
+
+- **Problema:** la fecha de nacimiento no puede ser futura, pero «hoy» salía de `DateTime.Today` del servidor (UTC en el contenedor) y de `CURRENT_DATE` en la base (la zona de la *sesión*, también UTC). Colombia es UTC-5, así que **entre las 19:00 y la medianoche** la fecha UTC ya es la de mañana y se aceptaba una fecha futura. Reproducido en Docker a las 19:32 (hora de Bogotá).
+- **Regla de negocio:** «hoy» es la fecha de `America/Bogota` (UTC-5 todo el año, sin horario de verano).
+- **Negocios:** `UsuarioValidador.Validar(usuario, hoy)` recibe «hoy» como parámetro (puro y determinista). `UsuarioService` lo calcula con un `TimeProvider` cuya zona local es la de negocio (`ProveedorDeTiempoConZona`, en `Negocios/Tiempo/ZonaHorariaNegocio.cs`). La zona se configura con `Negocios:ZonaHoraria` (variable `Negocios__ZonaHoraria`; por omisión `America/Bogota`) y **el host no arranca** si el id no es válido, con un mensaje que dice qué clave corregir. La imagen `aspnet:10.0` trae `tzdata` (verificado: `/usr/share/zoneinfo/America/Bogota`).
+- **Base de datos:** `db/003_fecha_nacimiento_hora_de_colombia.sql` reemplaza el `CHECK` por `fecha_nacimiento <= (now() AT TIME ZONE 'America/Bogota')::date`, de modo que el límite no cambia con el servidor, el contenedor ni la sesión. Se aplicó con el flujo normal del migrador sobre la base de desarrollo con datos: aplicó solo el `003`, los datos quedaron intactos y la aplicación funciona. **La zona está duplicada a propósito en dos sitios** (configuración de Negocios y este script, que no se edita): si alguna vez cambiara, hay que cambiar ambos, con un script nuevo.
+- **Pruebas** (`ZonaHorariaTests` con `FakeTimeProvider`, 24 casos): el caso del hallazgo (2026-10-10 22:00 en Bogotá = 03:00 UTC del 11: el 11 se rechaza y el 10 se acepta); el **borde exacto de la medianoche de Bogotá** (04:59:59 UTC rechaza, 05:00:00 acepta); cambio de año y año bisiesto; el mismo instante con tres zonas (Bogotá, UTC y Kiritimati UTC+14) da tres «hoy» distintos; `Modificar` usa el mismo límite; resolución de la zona (por omisión, válida, inválida). En el host: zona inválida impide arrancar, y una zona distinta de la del equipo (`Asia/Tokyo`) llega al reloj. En la base: hoy en Bogotá se acepta y mañana se rechaza, el límite **no depende de la zona de la sesión** (`SET TIME ZONE` en Kiritimati, Pago_Pago y UTC) y la definición del `CHECK` fija `America/Bogota` y no usa `CURRENT_DATE`.
+- **Rojo real antes de corregir:** con el `CHECK` anterior, una sesión en Kiritimati **aceptaba «mañana en Bogotá»**. Dos rojos «falsos» al principio fueron errores míos de la prueba (un `DateOnly` convertido a `DateTime`; y la aritmética de Kiritimati: a las 03:00 UTC allí son las 17:00 del *mismo* día).
+- **Límite honesto de las pruebas de base de datos:** `now()` no se puede simular, y a media mañana «hoy en UTC» y «hoy en Bogotá» son la misma fecha, así que ningún test de comportamiento distingue UTC de Bogotá en la BD hasta la noche. Por eso hay además una prueba determinista de la **definición** del `CHECK`; el comportamiento nocturno de la aplicación lo cubren las pruebas con reloj falso.
+- **Mutaciones** (7, todas detectadas; 34 de 34 acumuladas): «hoy» con UTC, límite un día más permisivo, zona por omisión UTC, proveedor que ignora la zona, host con el reloj del sistema (esta mutación **sobrevivía** al principio porque tu Windows ya está en hora de Colombia; la prueba de `Asia/Tokyo` la mata sin depender del equipo), `CHECK` con `CURRENT_DATE` y `CHECK` con UTC.
+- **Nota de numeración:** el `003` lo tomó B6; el `CHECK` de nombre vacío (#41) pasa a ser el `004`.
 
 **Hardening hecho (issue #15):**
 
