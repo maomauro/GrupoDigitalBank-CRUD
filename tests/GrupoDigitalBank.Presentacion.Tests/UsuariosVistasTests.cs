@@ -86,6 +86,110 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
         html.ShouldContain("Ana Perez");
     }
 
+    // ---------- Compatibilidad con la politica de contenido (CSP) del proxy ----------
+    // El Caddyfile envia: default-src 'self'; script-src 'self'; style-src 'self'. Cualquier script, estilo o
+    // manejador en linea, o un recurso de otro origen, dejaria de funcionar en el navegador (hallazgo B4).
+
+    [GeneratedRegex(@"\sstyle\s*=", RegexOptions.IgnoreCase)]
+    private static partial Regex AtributoStyle();
+
+    [GeneratedRegex(@"<style[\s>]", RegexOptions.IgnoreCase)]
+    private static partial Regex EtiquetaStyle();
+
+    [GeneratedRegex(@"<script(?![^>]*\ssrc\s*=)[^>]*>", RegexOptions.IgnoreCase)]
+    private static partial Regex ScriptEnLinea();
+
+    [GeneratedRegex("""\s(?:src|href|action)\s*=\s*"([^"]*)"|\s(?:src|href|action)\s*=\s*'([^']*)'""", RegexOptions.IgnoreCase)]
+    private static partial Regex Destinos();
+
+    private HttpClient ClienteQueFalla()
+    {
+        var cliente = Substitute.For<IUsuarioClient>();
+        cliente.ConsultarAsync(Arg.Any<int?>()).Returns<List<UsuarioDto>>(_ => throw new ServicioException("No fue posible comunicarse con el servicio de negocios."));
+        return _fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
+        {
+            s.RemoveAll<IUsuarioClient>();
+            s.AddSingleton(cliente);
+        })).CreateClient();
+    }
+
+    private HttpClient ClienteVacio()
+    {
+        var cliente = Substitute.For<IUsuarioClient>();
+        cliente.ConsultarAsync(Arg.Any<int?>()).Returns([]);
+        return _fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
+        {
+            s.RemoveAll<IUsuarioClient>();
+            s.AddSingleton(cliente);
+        })).CreateClient();
+    }
+
+    public static TheoryData<string, string> PaginasParaLaCsp => new()
+    {
+        { "con-usuario", "/Usuarios/Consultar" },
+        { "vacia", "/Usuarios/Consultar" },
+        { "con-error", "/Usuarios/Consultar" },
+        { "con-usuario", "/Usuarios/Registrar" },
+        { "con-usuario", "/Usuarios/Editar/7" },
+        { "con-usuario", "/Usuarios/Error" }
+    };
+
+    [Theory]
+    [MemberData(nameof(PaginasParaLaCsp))]
+    public async Task NingunaVistaEmiteNadaEnLineaNiApuntaAOtroOrigen(string escenario, string ruta)
+    {
+        var cliente = Substitute.For<IUsuarioClient>();
+        cliente.ConsultarAsync(Arg.Any<int?>()).Returns(
+        [
+            new UsuarioDto { Id = 7, Nombre = "Ana Perez", FechaNacimiento = new DateTime(1990, 5, 20), Sexo = "F" }
+        ]);
+        using var http = escenario switch
+        {
+            "vacia" => ClienteVacio(),
+            "con-error" => ClienteQueFalla(),
+            _ => _fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
+            {
+                s.RemoveAll<IUsuarioClient>();
+                s.AddSingleton(cliente);
+            })).CreateClient()
+        };
+
+        var html = await http.GetStringAsync(ruta);
+
+        AtributoStyle().IsMatch(html).ShouldBeFalse($"{ruta} ({escenario}) emite un atributo style en linea");
+        EtiquetaStyle().IsMatch(html).ShouldBeFalse($"{ruta} ({escenario}) emite un bloque <style>");
+        ScriptEnLinea().IsMatch(html).ShouldBeFalse($"{ruta} ({escenario}) emite un <script> en linea");
+        TieneManejadorEnLinea(html).ShouldBeFalse($"{ruta} ({escenario}) emite un manejador de evento en linea");
+        foreach (Match m in Destinos().Matches(html))
+        {
+            var destino = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value;
+            destino.ShouldNotStartWith("http", Case.Insensitive, $"{ruta} ({escenario}) apunta a otro origen: {destino}");
+            destino.ShouldNotStartWith("//", Case.Insensitive);
+        }
+    }
+
+    [Fact]
+    public async Task SinErroresNoSeDibujaElRecuadroDeError()
+    {
+        using var http = ClienteVacio();
+
+        var html = await http.GetStringAsync("/Usuarios/Consultar");
+
+        html.ShouldNotContain("alerta error", Case.Insensitive);
+        html.ShouldNotContain("data-valmsg-summary");
+    }
+
+    [Fact]
+    public async Task UnErrorDelServicioSeMuestraComoListaDeAvisos()
+    {
+        using var http = ClienteQueFalla();
+
+        var html = await http.GetStringAsync("/Usuarios/Consultar");
+
+        html.ShouldContain("class=\"alerta error\"");
+        html.ShouldContain("<li>No fue posible comunicarse con el servicio de negocios.</li>");
+    }
+
     [Fact]
     public async Task EditarMuestraLosValoresActualesEnElFormulario()
     {

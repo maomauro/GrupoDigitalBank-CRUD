@@ -42,6 +42,13 @@ services:
     depends_on:
       migrador:
         condition: service_completed_successfully
+    # La imagen base no trae curl ni wget: se usa bash con /dev/tcp contra el propio /health y se exige HTTP 200
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     expose:
       - "8080"
 
@@ -56,7 +63,15 @@ services:
     volumes:
       - dpkeys:/keys
     depends_on:
-      - negocios
+      negocios:
+        condition: service_healthy
+    # La imagen base no trae curl ni wget: se usa bash con /dev/tcp contra el propio /health y se exige HTTP 200
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     expose:
       - "8080"
 
@@ -67,6 +82,7 @@ services:
       DOMINIO: ${DOMINIO}
       AUTH_USUARIO: ${AUTH_USUARIO:?Define AUTH_USUARIO en .env (usuario de acceso a la web)}
       AUTH_HASH: ${AUTH_HASH:?Define AUTH_HASH en .env (generalo con scripts/generar-hash-auth.ps1)}
+      HSTS_MAX_AGE: ${HSTS_MAX_AGE:-31536000}   # segundos; 0 en desarrollo (ver Caddyfile)
     ports:
       - "80:80"
       - "443:443"
@@ -76,7 +92,15 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    # Caddy expone su API de administracion solo dentro del contenedor (localhost:2019)
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 volumes:
   pgdata:

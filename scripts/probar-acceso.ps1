@@ -12,7 +12,10 @@
 param(
     [string]$Base = 'https://localhost',
     [string]$Usuario = 'admin',
-    [securestring]$Clave
+    [securestring]$Clave,
+    # max-age esperado en Strict-Transport-Security. Por omision: 0 en localhost (el compose de desarrollo
+    # lo desactiva) y 31536000 (1 ano) en cualquier otro dominio.
+    [Nullable[int]]$HstsEsperado = $null
 )
 
 $ErrorActionPreference = 'Continue'
@@ -76,6 +79,42 @@ if ($Base -like 'https://*') {
     $http = $Base -replace '^https', 'http'
     $r = (& curl.exe -s -o NUL -w "%{http_code} %{redirect_url}" --max-time 20 "$http/")
     Check 'HTTP redirige a HTTPS antes de pedir credenciales' ($r -match '^30[78] https://') "-> $r"
+}
+
+Write-Host "`n== Cabeceras de seguridad (en todo tipo de respuesta) ==" -ForegroundColor Cyan
+if ($null -eq $HstsEsperado) { $HstsEsperado = $(if ($Base -like 'https://localhost*' -or $Base -like 'https://127.*') { 0 } else { 31536000 }) }
+
+function Cabeceras([string[]]$argumentos) {
+    $crudo = (& curl.exe -s $curlInseguro -D - -o NUL --max-time 20 @argumentos) -join "`n"
+    $h = @{}
+    foreach ($linea in ($crudo -split "`r?`n")) { if ($linea -match '^([A-Za-z0-9-]+):\s*(.*)$') { $h[$Matches[1].ToLower()] = $Matches[2].Trim() } }
+    $h
+}
+$respuestas = [ordered]@{
+    '401 sin credenciales (GET /)'   = @("$Base/")
+    '401 sin credenciales (POST)'    = @('-X', 'POST', "$Base/Usuarios/Eliminar/1")
+    '200 /health (abierto)'          = @("$Base/health")
+    '200 pagina con credenciales'    = ($auth + "$Base/Usuarios/Registrar")
+    '200 estatico CSS'               = ($auth + "$Base/css/site.css")
+    '200 estatico JS'                = ($auth + "$Base/js/site.js")
+    '404 con credenciales'           = ($auth + "$Base/ruta-que-no-existe")
+}
+foreach ($nombre in $respuestas.Keys) {
+    $h = Cabeceras $respuestas[$nombre]
+    $csp = $h['content-security-policy']
+    $problemas = @()
+    if ($h['x-content-type-options'] -ne 'nosniff') { $problemas += 'X-Content-Type-Options' }
+    if ($h['x-frame-options'] -ne 'DENY') { $problemas += 'X-Frame-Options' }
+    if ($h['referrer-policy'] -ne 'no-referrer') { $problemas += 'Referrer-Policy' }
+    if (-not $h['permissions-policy']) { $problemas += 'Permissions-Policy' }
+    if ($h['cross-origin-opener-policy'] -ne 'same-origin') { $problemas += 'COOP' }
+    if ($h['cross-origin-resource-policy'] -ne 'same-origin') { $problemas += 'CORP' }
+    foreach ($d in "default-src 'self'", "script-src 'self'", "style-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'") { if (-not $csp -or -not $csp.Contains($d)) { $problemas += "CSP:$d" } }
+    if ($csp -and ($csp -match 'unsafe-inline|unsafe-eval|\*|data:|http:')) { $problemas += 'CSP demasiado permisiva' }
+    if ($Base -like 'https://*' -and $h['strict-transport-security'] -ne "max-age=$HstsEsperado") { $problemas += "HSTS=[$($h['strict-transport-security'])] esperado max-age=$HstsEsperado" }
+    if ($h.ContainsKey('server')) { $problemas += "Server=[$($h['server'])]" }
+    if ($h.ContainsKey('x-powered-by')) { $problemas += 'X-Powered-By' }
+    Check $nombre ($problemas.Count -eq 0) $(if ($problemas.Count) { '-> ' + ($problemas -join '; ') } else { '' })
 }
 
 Write-Host "`n== Aplicacion de punta a punta a traves del proxy ==" -ForegroundColor Cyan

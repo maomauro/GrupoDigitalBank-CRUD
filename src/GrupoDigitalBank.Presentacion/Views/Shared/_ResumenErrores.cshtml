@@ -1,0 +1,15 @@
+@* Avisos de error del modelo. Reemplaza a asp-validation-summary: ese helper siempre emite un recuadro y un
+   elemento de lista oculto con un atributo style en linea (para la validacion en el cliente, que aqui no se
+   usa), y la politica de contenido (CSP) del proxy bloquea el style en linea. Aqui solo se dibuja algo si
+   hay errores. *@
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alerta error" role="alert">
+        <ul>
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
