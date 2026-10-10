@@ -16,9 +16,9 @@ Leyenda de estado: ✅ hecho · 🔄 en curso · ⏳ pendiente.
 | Revisión | CI + checklist del PR, sin aprobación de terceros (D4). En plan Free no se puede imponer en el servidor: se sostiene con el hook y disciplina |
 | Hook local | `pre-push` con `format` + `build`, y rechazo del push directo a `main` y `develop` (D6) |
 | VPS | **Compartido y ya en producción** (Contabo, 6 vCPU, 12 GB, 200 GB; usuario `maomauro`; IP `13.140.188.159`). Aloja PortalCV y Colfe: se audita, no se reinstala (fase 6) |
-| Dominio y DNS | `sitiosapps.com` en Cloudflare (proxy activo); cada proyecto recibe `<proyecto>.sitiosapps.com`. Este: `gdb-crud.sitiosapps.com` (provisional) |
-| TLS y entrada | Cloudflare → `portalcv-nginx-prod` (único que publica 80/443, certificado de origen en `/etc/nginx/ssl/`) → Caddy interno por la red compartida con el alias `gdb-web`. Detalle en [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) (propuesta) |
-| Carpetas en el VPS | `/srv/sitiosapps/gdb/` y `/srv/sitiosapps/_backups/gdb/` (provisional) |
+| Dominio y DNS | `sitiosapps.com` en Cloudflare (proxy activo); cada proyecto recibe `<proyecto>.sitiosapps.com`. Este: `gdb-crud.sitiosapps.com` |
+| TLS y entrada | Cloudflare → `portalcv-nginx-prod` (único que publica 80/443, certificado de origen en `/etc/nginx/ssl/`) → Caddy interno por la red compartida con el alias `gdb-crud-web`. Detalle en [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) (propuesta) |
+| Carpetas en el VPS | `/srv/sitiosapps/gdb-crud/` y `/srv/sitiosapps/_backups/gdb-crud/` |
 | Registro de imágenes | GitHub Container Registry (`ghcr.io`) |
 | Despliegue | GitHub Actions → SSH con llave restringida a un script de entrada → `docker compose pull && up -d` |
 | Migraciones | Scripts SQL numerados + contenedor one-shot con `psql` |
@@ -524,7 +524,7 @@ Criterio: un PR con una prueba rota se ve en rojo y no se fusiona (por disciplin
 
 El VPS **ya existe y aloja otros proyectos** (PortalCV y Colfe). Aquí no se instala ni se endurece desde cero: se **audita**, se añade un proyecto más y cada cambio a lo compartido (nginx, daemon de Docker, firewall, SSH) se trata aparte, con ventana y aprobación. Decisión y alternativas en [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) (propuesta).
 
-Los comandos del servidor los ejecuta quien administra el VPS por SSH y pega la salida; las rutas, el subdominio es `gdb-crud` (confirmado); la carpeta (`gdb`) y el alias (`gdb-web`) son provisionales hasta confirmarlos (ver «Decisiones pendientes»).
+Los comandos del servidor los ejecuta quien administra el VPS por SSH y pega la salida; el proyecto se llama `gdb-crud` en el servidor (subdominio, carpeta y backups) y su alias de red es `gdb-crud-web`, como `colfe-web` en Colfe.
 
 **Estado verificado por SSH el 2026-10-10:**
 
@@ -560,12 +560,12 @@ timedatectl | grep -i 'time zone'; free -h
 ### 6.3 Carpetas y configuración del proyecto
 
 ```bash
-mkdir -p /srv/sitiosapps/gdb/deploy /srv/sitiosapps/_backups/gdb
-chmod 750 /srv/sitiosapps/gdb /srv/sitiosapps/gdb/deploy
-chmod 700 /srv/sitiosapps/_backups/gdb
+mkdir -p /srv/sitiosapps/gdb-crud/deploy /srv/sitiosapps/_backups/gdb-crud
+chmod 750 /srv/sitiosapps/gdb-crud /srv/sitiosapps/gdb-crud/deploy
+chmod 700 /srv/sitiosapps/_backups/gdb-crud
 ```
 
-`/srv/sitiosapps/gdb/.env` (permisos `600`, **solo en el servidor**; `$` en comillas simples). Permisos del resto: `deploy/*.sh` `750`; backups y su carpeta `600` y `700`; llave del certificado `600` (dueño root) y certificado `644`; `~/.ssh` `700` y `authorized_keys` `600`.
+`/srv/sitiosapps/gdb-crud/.env` (permisos `600`, **solo en el servidor**; `$` en comillas simples). Permisos del resto: `deploy/*.sh` `750`; backups y su carpeta `600` y `700`; llave del certificado `600` (dueño root) y certificado `644`; `~/.ssh` `700` y `authorized_keys` `600`.
 
 
 
@@ -592,10 +592,10 @@ Hoy el único usuario con Docker es `maomauro`, y pertenecer al grupo `docker` e
 2. En `~/.ssh/authorized_keys` del servidor, una línea con restricciones delante de la clave pública:
 
    ```
-   restrict,command="/usr/local/sbin/gdb-entrada.sh" ssh-ed25519 AAAA... gdb-deploy
+   restrict,command="/usr/local/sbin/gdb-crud-entrada.sh" ssh-ed25519 AAAA... gdb-deploy
    ```
 
-3. `gdb-entrada.sh` (versionado en el repo como `deploy/entrada.sh`, pero instalado **a mano** en `/usr/local/sbin/`, dueño `root`, permiso `755`, **fuera** de la carpeta donde se extrae el paquete: así un paquete no puede reemplazar el script que restringe la llave; se actualiza solo por un PR revisado y copia manual) lee `$SSH_ORIGINAL_COMMAND`, acepta **solo** `desplegar <tag>` con el tag validado por expresión regular, extrae el paquete recibido por la entrada estándar en `/srv/sitiosapps/gdb` y ejecuta `desplegar.sh <tag>`. Cualquier otra orden se rechaza.
+3. `gdb-crud-entrada.sh` (versionado en el repo como `deploy/entrada.sh`, pero instalado **a mano** en `/usr/local/sbin/`, dueño `root`, permiso `755`, **fuera** de la carpeta donde se extrae el paquete: así un paquete no puede reemplazar el script que restringe la llave; se actualiza solo por un PR revisado y copia manual) lee `$SSH_ORIGINAL_COMMAND`, acepta **solo** `desplegar <tag>` con el tag validado por expresión regular, extrae el paquete recibido por la entrada estándar en `/srv/sitiosapps/gdb-crud` y ejecuta `desplegar.sh <tag>`. Cualquier otra orden se rechaza.
 
 Verificar desde otra terminal que la llave **no** puede ejecutar `ls` ni abrir una shell. No se desactiva la verificación de host: el `known_hosts` se fija con `ssh-keyscan`.
 
@@ -607,7 +607,7 @@ Docker ya está instalado. **No se edita `/etc/docker/daemon.json`**: reiniciar 
 
 Cambio en **otro repositorio y sobre infraestructura de producción compartida**: se hace en un PR propio, con aprobación explícita y en una ventana. Añadir un volumen exige **recrear** `portalcv-nginx-prod`, unos segundos sin servicio para PortalCV y Colfe.
 
-1. `docker/gdb.conf`, copiando la estructura de `docker/colfe.conf`:
+1. `docker/gdb-crud.conf`, copiando la estructura de `docker/colfe.conf`:
 
    ```nginx
    server {
@@ -630,10 +630,10 @@ Cambio en **otro repositorio y sobre infraestructura de producción compartida**
        # Se resuelve en cada petición: con un proxy_pass fijo, si el contenedor no existe al arrancar o
        # recargar, nginx no inicia y se caen también PortalCV y Colfe.
        resolver 127.0.0.11 valid=10s ipv6=off;
-       set $gdb_upstream http://gdb-web:80;
+       set $gdb_crud_upstream http://gdb-crud-web:80;
 
        location / {
-           proxy_pass $gdb_upstream;
+           proxy_pass $gdb_crud_upstream;
            proxy_set_header Host $host;
            proxy_set_header X-Real-IP $remote_addr;
            proxy_set_header X-Forwarded-For $http_cf_connecting_ip;
@@ -657,10 +657,10 @@ Cambio en **otro repositorio y sobre infraestructura de producción compartida**
   | `VPS_HOST` | `13.140.188.159` |
   | `VPS_PORT` | Puerto SSH |
   | `VPS_USER` | `maomauro` |
-  | `VPS_SSH_KEY` | Llave privada `gdb_deploy` (solo puede ejecutar `gdb-entrada.sh`) |
+  | `VPS_SSH_KEY` | Llave privada `gdb_deploy` (solo puede ejecutar `gdb-crud-entrada.sh`) |
   | `VPS_KNOWN_HOSTS` | Salida de `ssh-keyscan -p <puerto> <host>` |
 
-  Las contraseñas de la app **no** van en GitHub: viven en `/srv/sitiosapps/gdb/.env`.
+  Las contraseñas de la app **no** van en GitHub: viven en `/srv/sitiosapps/gdb-crud/.env`.
 - *Packages*: tras la primera publicación, vincular el paquete al repo y mantenerlo privado.
 
 ---
@@ -703,7 +703,7 @@ services:
     networks:
       default: {}
       compartida:
-        aliases: [gdb-web]
+        aliases: [gdb-crud-web]
 
 networks:
   compartida:
@@ -724,8 +724,8 @@ Disparo (D7): **el merge de `develop` a `main`**, es decir, `workflow_run` de `c
 
      ```bash
      set -euo pipefail
-     cd /srv/sitiosapps/gdb
-     C="docker compose -p gdb -f docker-compose.yml -f docker-compose.prod.yml"
+     cd /srv/sitiosapps/gdb-crud
+     C="docker compose -p gdb-crud -f docker-compose.yml -f docker-compose.prod.yml"
      NUEVO="$1"
      PREVIO=$(grep '^IMAGE_TAG=' .env | cut -d= -f2)
      # Backup previo: el migrador puede cambiar el esquema al subir
@@ -741,13 +741,13 @@ Disparo (D7): **el merge de `develop` a `main`**, es decir, `workflow_run` de `c
      docker image prune -f
      ```
 
-     El nginx compartido **no se toca en cada despliegue**: resuelve `gdb-web` en cada petición.
+     El nginx compartido **no se toca en cada despliegue**: resuelve `gdb-crud-web` en cada petición.
 3. **Smoke test:** `curl -fsS --retry 10 --retry-delay 5 https://gdb-crud.sitiosapps.com/health` (pasa por Cloudflare y nginx, como un usuario) y comprobación de la cabecera HSTS.
 
 ### 7.3 Rollback
 
 - Automático si `up --wait` falla (también cuando el migrador termina con error).
-- Manual: relanzar el workflow con un tag/SHA anterior (`workflow_dispatch` con input `tag`) o, en el VPS, cambiar `IMAGE_TAG` y `docker compose -p gdb up -d`.
+- Manual: relanzar el workflow con un tag/SHA anterior (`workflow_dispatch` con input `tag`) o, en el VPS, cambiar `IMAGE_TAG` y `docker compose -p gdb-crud up -d`.
 - Esquema: el rollback de imágenes no deshace migraciones. Se diseñan como *expand/contract* (compatibles hacia atrás); si hay que revertir datos, se restaura el backup tomado justo antes.
 
 ---
@@ -755,11 +755,11 @@ Disparo (D7): **el merge de `develop` a `main`**, es decir, `workflow_run` de `c
 ## Fase 8. Primera publicación ⏳
 
 1. Registro DNS en Cloudflare, SSL en Full (strict) y certificado de origen instalado (6.2).
-2. Auditoría del VPS registrada (6.1), `/srv/sitiosapps/gdb/.env` completo y llave restringida probada (6.3, 6.4).
-3. PR de `docker/gdb.conf` fusionado en `Curriculum-Vitae-Web` y nginx recreado en la ventana acordada (6.6); PortalCV y Colfe responden igual que antes.
+2. Auditoría del VPS registrada (6.1), `/srv/sitiosapps/gdb-crud/.env` completo y llave restringida probada (6.3, 6.4).
+3. PR de `docker/gdb-crud.conf` fusionado en `Curriculum-Vitae-Web` y nginx recreado en la ventana acordada (6.6); PortalCV y Colfe responden igual que antes.
 4. Secretos y environment `production` creados (6.7).
 5. `develop` con las fases 3 a 5 y 7.1 fusionadas y CI verde; PR de release `develop` → `main` (título `release: v1.0.0`), fusionado con **merge commit**. Ese merge dispara el despliegue.
-6. En el VPS: `docker compose -p gdb ps` todo `healthy`; `docker ps` confirma que los contenedores de PortalCV y Colfe no se reiniciaron (tiempo de actividad intacto).
+6. En el VPS: `docker compose -p gdb-crud ps` todo `healthy`; `docker ps` confirma que los contenedores de PortalCV y Colfe no se reiniciaron (tiempo de actividad intacto).
 7. Verificación externa:
    - `https://gdb-crud.sitiosapps.com` pide usuario y clave.
    - Registrar → consultar → modificar → eliminar.
@@ -782,16 +782,16 @@ Se parte del patrón maduro de Colfe (`deploy/backup.sh` en su repo; **leerlo an
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-cd /srv/sitiosapps/gdb
+cd /srv/sitiosapps/gdb-crud
 umask 077   # los volcados solo los lee el dueño
-DESTINO="${BACKUP_DIR:-/srv/sitiosapps/_backups/gdb}"
+DESTINO="${BACKUP_DIR:-/srv/sitiosapps/_backups/gdb-crud}"
 F="$DESTINO/usuarios_$(date +%F_%H%M).sql.gz"
-docker compose -p gdb -f docker-compose.yml -f docker-compose.prod.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' | gzip > "$F"
+docker compose -p gdb-crud -f docker-compose.yml -f docker-compose.prod.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' | gzip > "$F"
 gzip -t "$F" && sha256sum "$F" > "$F.sha256"
 find "$DESTINO" -name 'usuarios_*.sql.gz*' -mtime +"${RETENTION_DAYS:-14}" -delete
 ```
 
-- Cron del usuario `maomauro`, a una hora que no choque con las existentes (PortalCV: último día del mes 03:00; Colfe: domingos 02:15): `45 2 * * * BACKUP_DIR=/srv/sitiosapps/_backups/gdb RETENTION_DAYS=14 /srv/sitiosapps/gdb/deploy/backup.sh >> /srv/sitiosapps/_backups/gdb/backup.log 2>&1`.
+- Cron del usuario `maomauro`, a una hora que no choque con las existentes (PortalCV: último día del mes 03:00; Colfe: domingos 02:15): `45 2 * * * BACKUP_DIR=/srv/sitiosapps/_backups/gdb-crud RETENTION_DAYS=14 /srv/sitiosapps/gdb-crud/deploy/backup.sh >> /srv/sitiosapps/_backups/gdb-crud/backup.log 2>&1`.
 - **Un cron documentado no es un cron instalado** (ya falló en silencio en PortalCV): verificar `crontab -l`, que el script exista con permiso de ejecución y correrlo a mano una vez antes de dar el backup por resuelto.
 - Copia **fuera del servidor** (regla 3-2-1): `rclone` a un bucket (Backblaze B2, S3, Drive) o `rsync` a otra máquina.
 - **Probar la restauración** al menos una vez en un contenedor desechable (`deploy/probar_restauracion.sh`): `gunzip -c backup.sql.gz | docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`. Un backup sin restauración probada no cuenta.
@@ -800,7 +800,7 @@ find "$DESTINO" -name 'usuarios_*.sql.gz*' -mtime +"${RETENTION_DAYS:-14}" -dele
 
 - Uptime externo (UptimeRobot / Better Stack) sobre `https://gdb-crud.sitiosapps.com/health`, con alerta a tu correo.
 - Alerta de espacio en disco (`df`): el disco es compartido por los tres proyectos (9 % usado al 2026-10-10).
-- Logs: `docker compose -p gdb logs --since 1h`; rotación limitada por servicio en el compose (7.1).
+- Logs: `docker compose -p gdb-crud logs --since 1h`; rotación limitada por servicio en el compose (7.1).
 
 ### 9.3 Mantenimiento
 
@@ -839,7 +839,7 @@ Cómo desplegar, hacer rollback, restaurar backup, rotar secretos, y qué hacer 
 - [ ] H1–H8 cerrados; B1–B8 cerrados o en backlog con motivo
 - [ ] Pruebas unitarias e integración pasando; cobertura ≥ 80 % en Negocios
 - [ ] CI obligatorio en PR (format, build, tests, vulnerabilidades, Trivy)
-- [ ] VPS compartido: auditoría de solo lectura registrada (SSH por llave, firewall, fail2ban, actualizaciones) y llave de despliegue restringida a `gdb-entrada.sh`
+- [ ] VPS compartido: auditoría de solo lectura registrada (SSH por llave, firewall, fail2ban, actualizaciones) y llave de despliegue restringida a `gdb-crud-entrada.sh`
 - [ ] DNS en Cloudflare + HTTPS válido (Full strict, certificado de origen) con HSTS y cabeceras de seguridad; PortalCV y Colfe intactos tras el cambio en el nginx
 - [ ] Aplicación protegida con autenticación
 - [ ] BD solo en red interna y con rol de mínimo privilegio
@@ -860,7 +860,7 @@ Cómo desplegar, hacer rollback, restaurar backup, rotar secretos, y qué hacer 
 | Cambiar `daemon.json`, firewall o SSH del VPS afecta a todos los proyectos | No se hace dentro de este plan; si la auditoría (6.1) lo pide, issue aparte |
 | Cabeceras reenviadas mal con dos proxies en cadena (IP o esquema erróneos) | `trusted_proxies` en Caddy y prueba local con un nginx delante antes de desplegar (7.1) |
 | Perder datos en una migración | Backup obligatorio antes de cada despliegue; migraciones *expand/contract* |
-| Llave de despliegue comprometida | Llave exclusiva con `restrict,command=` que solo ejecuta `gdb-entrada.sh` (no abre shell, aunque `maomauro` esté en el grupo `docker`), rotación semestral |
+| Llave de despliegue comprometida | Llave exclusiva con `restrict,command=` que solo ejecuta `gdb-crud-entrada.sh` (no abre shell, aunque `maomauro` esté en el grupo `docker`), rotación semestral |
 | Docker salta `ufw` | Ningún servicio de este proyecto publica puertos en producción (el base no los lleva y CI lo comprueba); el compose de desarrollo no se despliega |
 | Un solo VPS (sin alta disponibilidad) | Aceptado a esta escala; backups externos + runbook permiten reconstruir |
 | Dockerfile ignora `Directory.*.props` | Copiarlos antes del `restore` (3.6) |
@@ -868,7 +868,7 @@ Cómo desplegar, hacer rollback, restaurar backup, rotar secretos, y qué hacer 
 ## Decisiones pendientes (afectan a las fases 4, 6 y 7)
 
 1. ~~Proveedor, SO y acceso del VPS~~ — resuelto: Contabo compartido, usuario `maomauro` (fase 6).
-2. ~~Dominio y DNS~~ — resuelto: `sitiosapps.com` en Cloudflare. subdominio confirmado: `gdb-crud`. **Falta confirmar** la carpeta (`/srv/sitiosapps/gdb`) y el alias (`gdb-web`).
+2. ~~Dominio y DNS~~ — resuelto: `sitiosapps.com` en Cloudflare. nombres confirmados: subdominio y carpeta `gdb-crud`, alias `gdb-crud-web`.
 3. Si Basic Auth basta como autenticación inicial (4.2) o se quiere login propio ya.
 4. Barreras de rama (2.3): se mantiene la opción A (disciplina + hook) o se pasa a B (repo público) o C (GitHub Pro). La cuenta es Free.
 

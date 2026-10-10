@@ -86,7 +86,7 @@ Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen
 
 ## Despliegue
 
-Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción (diseño propuesto en [ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md), aún sin implementar): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el nginx `portalcv-nginx-prod` (único con 80/443) van delante y enrutan `gdb-crud.sitiosapps.com` a nuestro Caddy por la red compartida. GitHub Actions construye imágenes a GHCR y despliega por SSH con una llave restringida a `/srv/sitiosapps/gdb`. El `.env` de producción vive solo en el servidor. No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación: afectan a los otros proyectos.
+Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción (diseño propuesto en [ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md), aún sin implementar): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el nginx `portalcv-nginx-prod` (único con 80/443) van delante y enrutan `gdb-crud.sitiosapps.com` a nuestro Caddy por la red compartida. GitHub Actions construye imágenes a GHCR y despliega por SSH con una llave restringida a `/srv/sitiosapps/gdb-crud`. El `.env` de producción vive solo en el servidor. No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación: afectan a los otros proyectos.
 
 ## Documentos de referencia
 

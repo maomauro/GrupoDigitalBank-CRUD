@@ -210,7 +210,7 @@ El VPS es **compartido** con PortalCV y Colfe: un único nginx (`portalcv-nginx-
 flowchart LR
     nav["Navegador"] -->|HTTPS| cf["Cloudflare<br/>DNS y proxy"]
     cf -->|"HTTPS (certificado de origen)"| ng["portalcv-nginx-prod<br/>único con 80/443"]
-    ng -->|"HTTP, red compartida<br/>alias gdb-web"| px["proxy · Caddy<br/>Basic Auth, cabeceras, CSP"]
+    ng -->|"HTTP, red compartida<br/>alias gdb-crud-web"| px["proxy · Caddy<br/>Basic Auth, cabeceras, CSP"]
     subgraph gdb["Red interna del proyecto (sin puertos publicados)"]
         px --> web["web"]
         web -->|SOAP| neg["negocios"]
@@ -222,9 +222,9 @@ flowchart LR
 | Aspecto | Diseño |
 |---|---|
 | Quién termina TLS | Cloudflare (navegador) y nginx (certificado de origen en `/etc/nginx/ssl/`); Caddy escucha solo HTTP |
-| Enrutamiento | `docker/gdb.conf` en el repo de PortalCV, con `resolver` + `set $upstream` para que un contenedor ausente no tumbe el nginx compartido |
-| Despliegue | GitHub Actions → GHCR → SSH con una llave restringida a un script de entrada → `docker compose -p gdb up -d` en `/srv/sitiosapps/gdb` |
-| Copias de seguridad | `deploy/backup.sh` (patrón de Colfe) en `/srv/sitiosapps/_backups/gdb`, con cron y restauración probada |
+| Enrutamiento | `docker/gdb-crud.conf` en el repo de PortalCV, con `resolver` + `set $upstream` para que un contenedor ausente no tumbe el nginx compartido |
+| Despliegue | GitHub Actions → GHCR → SSH con una llave restringida a un script de entrada → `docker compose -p gdb-crud up -d` en `/srv/sitiosapps/gdb-crud` |
+| Copias de seguridad | `deploy/backup.sh` (patrón de Colfe) en `/srv/sitiosapps/_backups/gdb-crud`, con cron y restauración probada |
 | Pendiente de verificar | Que el `X-Forwarded-Proto` y la IP del cliente atraviesen los dos proxies (nginx y Caddy) sin perderse |
 
 ## 9. Calidad y verificación
