@@ -2,7 +2,7 @@
 
 Vista de conjunto de GrupoDigitalBank-CRUD, siguiendo el modelo C4 (contexto, contenedores, componentes) más los flujos que importan. Los porqués de cada decisión están en los [ADR](adr/README.md). Los diagramas son [Mermaid](https://mermaid.js.org/) y se verifican con un motor real antes de publicarse.
 
-> Estado: refleja `develop` al 2026-10-10. La **vista de despliegue en producción es una propuesta** (sección 8.2, ADR 0011) hasta implementarla en la fase 7: parte de la infraestructura real del VPS, verificada el 2026-10-10, según el [plan de trabajo](plan-de-trabajo.md).
+> Estado: refleja `develop` al 2026-10-10. La **vista de despliegue en producción está decidida pero aún sin implementar** (sección 8.2, ADR 0011) hasta implementarla en la fase 7: parte de la infraestructura real del VPS, verificada el 2026-10-10, según el [plan de trabajo](plan-de-trabajo.md).
 
 ## 1. Propósito y alcance
 
@@ -202,7 +202,7 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 | **B** | Solo `db`; Negocios (`:5081`) y Presentación (`:5080`) con `dotnet watch` o F5 | Programar y depurar a diario |
 | **con proxy** | Todo más `proxy` con HTTPS local (`--profile con-proxy`) | Probar autenticación, cabeceras y CSP |
 
-### 8.2 Producción (diseño propuesto, [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md))
+### 8.2 Producción (diseño aprobado, [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md))
 
 El VPS es **compartido** con PortalCV y Colfe: un único nginx (`portalcv-nginx-prod`) publica 80 y 443 y Cloudflare va delante. Este proyecto no publica ningún puerto: su `proxy` (Caddy) se une a la red compartida con un alias y el nginx le enruta el subdominio. Las secciones 2, 3 y 7 describen lo que **hoy** hace el `docker-compose.yml` (Caddy con HTTPS propio); los cambios (Caddy en HTTP, sin `ports`) llegan con la fase 7 del plan.
 
