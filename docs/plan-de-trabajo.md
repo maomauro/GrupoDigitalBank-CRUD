@@ -144,7 +144,7 @@ gh repo edit maomauro/GrupoDigitalBank-CRUD --default-branch develop --enable-sq
 - `develop` es la rama por defecto: los PR apuntan a ella por omisión y `Closes #n` cierra el issue al fusionar en ella.
 - Squash **y** merge commit habilitados (squash para feature → `develop`; merge commit para `develop` → `main`). Rebase deshabilitado.
 - **Borrado automático de ramas desactivado**: con él GitHub borraría `develop` al fusionarla a `main`. Las ramas de feature se borran con `gh pr merge --squash --delete-branch`.
-- `.github/dependabot.yml`: ecosistemas `nuget`, `docker` (una entrada por carpeta con Dockerfile) y `github-actions`, semanal, con `target-branch: develop`. Se publica por PR.
+- ✅ `.github/dependabot.yml` (issue #30): `nuget` (con grupos `corewcf` y `pruebas`), `docker` (una entrada por carpeta con Dockerfile), `docker-compose` y `github-actions`; semanal los lunes, `target-branch: develop`, prefijo `build(deps)` y sin saltos de versión mayor de .NET ni de PostgreSQL.
 - Seguridad: Dependabot alerts; secret scanning y push protection solo si el plan lo permite.
 - *Actions → General*: `GITHUB_TOKEN` en solo lectura por defecto.
 
