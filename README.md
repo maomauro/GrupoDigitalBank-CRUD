@@ -16,12 +16,12 @@ Navegador ──HTTPS──▶ Caddy ──▶ Presentación (ASP.NET Core MVC)
 |---|---|---|
 | Presentación | `src/GrupoDigitalBank.Presentacion` | Vistas MVC (registro y consulta). Solo conoce el servicio de negocios vía SOAP. |
 | Negocios | `src/GrupoDigitalBank.Negocios` | Servicio `UsuarioService` (Agregar, Modificar, Consultar, Eliminar), validaciones y manejo de errores (SOAP faults). **Única capa con acceso a la BD.** |
-| Datos | `db/001_esquema_usuario.sql` | Tabla `usuario` y función `fn_usuario_crud(p_operacion, ...)` (`C`/`R`/`U`/`D`). |
+| Datos | `db/NNN_*.sql` + `db/migrate.sh` | Tabla `usuario` y función `fn_usuario_crud(p_operacion, ...)` (`C`/`R`/`U`/`D`). El servicio `migrador` aplica los scripts pendientes en orden, cada uno en una transacción, y guarda su checksum en `schema_migrations`. |
 
 ## Estructura
 
 ```
-├── db/001_esquema_usuario.sql      # Script SQL versionado (tabla + función)
+├── db/                             # Scripts SQL numerados (001_...) + migrate.sh (migrador)
 ├── src/
 │   ├── GrupoDigitalBank.Negocios/  # Contratos · Servicios · Validacion · Datos
 │   └── GrupoDigitalBank.Presentacion/  # Controllers · Models · Servicios (cliente SOAP) · Views
@@ -42,7 +42,7 @@ docker compose up -d --build
 - Producción: `https://<DOMINIO>` (Caddy emite y renueva el certificado).
 - Solo el proxy publica puertos; `web`, `negocios` y `db` quedan en la red interna.
 - Local sin dominio: usar `DOMINIO=localhost` (Caddy usa su CA interna).
-- El script SQL se ejecuta automáticamente al crear el volumen por primera vez. Para reaplicarlo: `docker compose down -v` (borra datos).
+- Los cambios de esquema se aplican con el servicio `migrador` en cada `docker compose up`: ejecuta solo los scripts `db/NNN_*.sql` que falten, en orden y en una transacción cada uno. **Un script ya aplicado no se edita** (el migrador aborta si cambia su checksum): todo cambio es un script nuevo. Ya no hace falta `docker compose down -v` ni se pierden datos al cambiar el esquema. Probar el migrador: `scripts/probar-migrador.ps1`.
 
 Desarrollo sin Docker: levantar PostgreSQL, ejecutar el script SQL, luego `dotnet run` en `Negocios` y en `Presentacion` (ajustar `Negocios:Url` y `ConnectionStrings:Postgres` en `appsettings.json`).
 

@@ -19,7 +19,7 @@ Navegador ─HTTPS─▶ Caddy ─▶ Presentacion (ASP.NET Core MVC)
 |---|---|---|
 | Presentación | `src/GrupoDigitalBank.Presentacion` | Solo habla SOAP con Negocios. **No referenciar el proyecto Negocios** ni acceder a la BD. |
 | Negocios | `src/GrupoDigitalBank.Negocios` | Única capa con acceso a la BD. Contratos, validación, repositorio, servicio. |
-| Datos | `db/NNN_*.sql` | Scripts numerados. Una vez aplicados **no se editan**; todo cambio es un script nuevo. |
+| Datos | `db/NNN_*.sql`, `db/migrate.sh` | Scripts numerados que aplica el servicio `migrador` (checksum en `schema_migrations`, una transacción por script, aborta si un script aplicado cambia). Una vez aplicados **no se editan**; todo cambio es un script nuevo. |
 
 El contrato SOAP está duplicado a mano en `Presentacion/Servicios/ContratoServicio.cs`. Al cambiar `Negocios/Contratos/*`, actualizar también ese archivo.
 
@@ -29,6 +29,7 @@ El contrato SOAP está duplicado a mano en `Presentacion/Servicios/ContratoServi
 powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1            # format + build + test (igual que CI)
 powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1 -Rapido    # format whitespace + build (~10 s)
 powershell -ExecutionPolicy Bypass -File scripts\verificar-herramientas.ps1   # chequeo del entorno
+powershell -ExecutionPolicy Bypass -File scripts\probar-migrador.ps1         # prueba db/migrate.sh en una BD desechable (requiere Docker)
 git config core.hooksPath .githooks          # una vez por clon: activa el hook pre-push
 docker compose logs -f negocios
 ```
@@ -84,9 +85,9 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 
 ## Estado conocido
 
-- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1 (XSS) corregido** con pruebas de regresión. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
+- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1 (XSS) y H5 (migraciones) resueltos**, con pruebas. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
 - El proyecto compila sin advertencias, corre en modo A y B y tiene 13 pruebas (unitarias, vistas con `WebApplicationFactory` e integración con PostgreSQL real). Falta la batería completa de H7.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Siguiente: **H5 (migraciones, #10) antes que H4 (rol de BD, #11)**, luego H2, H6, H7, hardening (B3/B4/B5/B8), B6, H8; después CI (fase 5), VPS (6) y despliegue (7).
-- No existen todavía CI/CD, autenticación, migraciones automáticas ni healthchecks; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
+- Siguiente: **H4 (rol de BD, #11)**, luego H2, H6, H7, hardening (B3/B4/B5/B8), B6, H8; después CI (fase 5), VPS (6) y despliegue (7).
+- No existen todavía CI/CD, autenticación ni healthchecks; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.
