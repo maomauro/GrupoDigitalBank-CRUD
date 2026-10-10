@@ -104,14 +104,16 @@ async function regresionH1(browser) {
 
   const fila = () => page.evaluateHandle(p => [...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent === p) || null, payload);
   let f = await fila();
-  resultados.push(comprobar(f.asElement() !== null, 'H1: el nombre malicioso aparece en la grilla como TEXTO (no se ejecuto)', `(${payload})`));
-  resultados.push(comprobar(dialogos.length === 0, 'H1: cargar la grilla con el nombre malicioso NO ejecuta alert(1)', `(dialogos: ${dialogos.length})`));
+  resultados.push(
+    comprobar(f.asElement() !== null, 'H1: el nombre malicioso aparece en la grilla como TEXTO (no se ejecuto)', `(${payload})`),
+    comprobar(dialogos.length === 0, 'H1: cargar la grilla con el nombre malicioso NO ejecuta alert(1)', `(dialogos: ${dialogos.length})`));
 
   // Clic en Eliminar y CANCELAR: debe haber exactamente un confirm con el nombre literal, y el usuario sigue ahi
   await (await f.asElement().$('button.peligro')).click();
   await new Promise(r => setTimeout(r, 600));
-  resultados.push(comprobar(dialogos.length === 1 && dialogos[0].tipo === 'confirm', 'H1: el clic en Eliminar abre UN solo dialogo y es un confirm (ningun alert)', JSON.stringify(dialogos.map(d => d.tipo))));
-  resultados.push(comprobar(dialogos[0]?.mensaje === `¿Eliminar a ${payload}?`, 'H1: el confirm muestra el nombre literal', `(${dialogos[0]?.mensaje})`));
+  resultados.push(
+    comprobar(dialogos.length === 1 && dialogos[0].tipo === 'confirm', 'H1: el clic en Eliminar abre UN solo dialogo y es un confirm (ningun alert)', JSON.stringify(dialogos.map(d => d.tipo))),
+    comprobar(dialogos[0]?.mensaje === `¿Eliminar a ${payload}?`, 'H1: el confirm muestra el nombre literal', `(${dialogos[0]?.mensaje})`));
   f = await fila();
   resultados.push(comprobar(f.asElement() !== null, 'H1: al CANCELAR el confirm el usuario NO se elimina'));
 
