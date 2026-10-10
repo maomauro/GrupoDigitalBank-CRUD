@@ -2,10 +2,21 @@ version: 2
 
 # Actualizaciones semanales hacia develop. Los PR llevan el prefijo "build(deps)" (Conventional Commits).
 #
-# GitHub Actions (package-ecosystem: "github-actions", directory: "/", prefijo "ci") NO esta incluido a proposito:
-# Dependabot falla con "/action.yml or /.github/workflows/<anything>.yml not found" mientras el repositorio no tenga
-# workflows. Agregarlo cuando exista .github/workflows/ci.yml (fase 5, issue #20).
+# Las acciones de .github/workflows/ci.yml van fijadas por SHA completo con la version en un comentario; Dependabot
+# actualiza ambos. (Estuvo fuera de este archivo mientras no habia workflows: sin ellos Dependabot falla con
+# "/action.yml or /.github/workflows/<anything>.yml not found".)
 updates:
+  # Acciones de GitHub
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
   # Paquetes NuGet (versiones centralizadas en Directory.Packages.props)
   - package-ecosystem: "nuget"
     directory: "/"
