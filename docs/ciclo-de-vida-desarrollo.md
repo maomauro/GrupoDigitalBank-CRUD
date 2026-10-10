@@ -89,7 +89,7 @@ Principio: **Docker es el entorno de ejecución; el SDK de .NET es la herramient
 | L9 | El proyecto nunca se ha compilado | Primer `dotnet build` y `docker compose up --build` y corregir, fase 3.2 | P0 · ✅ |
 | L10 | No hay proyectos de prueba | Esqueleto en `tests/` (xUnit + Testcontainers), fase 3.6 | P1 · ✅ |
 | L11 | Sin automatización de la verificación local | `scripts/verificar.ps1` (format + build + test) y hook `pre-push` (D6), fase 3.5 | P1 · ✅ |
-| L12 | Repositorio remoto | `gh repo create` ✅, etiquetas ✅, rama `develop` por defecto, ajustes de merge, Dependabot (fase 2). La protección de ramas no existe en plan Free; se sustituye por el hook (L11) | P0 · 🔄 |
+| L12 | Repositorio remoto | `gh repo create` ✅, etiquetas ✅, rama `develop` por defecto ✅, ajustes de merge ✅, `dependabot.yml` ✅ y alertas de seguridad ✅ (fase 2). La protección de ramas no existe en plan Free; se sustituye por el hook (L11) | P0 · ✅ |
 | L13 | CI | Workflow `ci.yml` que repite lo de la etapa 4 (fase 5) | P1 |
 
 Cerrar L1 a L12 deja el ciclo de las etapas 1–6 operativo; L13 completa la etapa 7.
