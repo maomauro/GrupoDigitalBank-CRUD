@@ -20,7 +20,7 @@ Leyenda de estado: ✅ hecho · 🔄 en curso · ⏳ pendiente.
 | Registro de imágenes | GitHub Container Registry (`ghcr.io`) |
 | Despliegue | GitHub Actions → SSH al VPS → `docker compose pull && up -d` |
 | Migraciones | Scripts SQL numerados + contenedor one-shot con `psql` |
-| Autenticación mínima | Basic Auth en Caddy; login propio es mejora futura |
+| Autenticación mínima | Basic Auth en Caddy (un usuario y una clave compartidos); login propio es mejora futura |
 
 ## Resumen de fases
 
@@ -290,27 +290,39 @@ Hecho (issue #2):
 - Pendiente (defensa en profundidad, B4): CSP en Caddy sin `'unsafe-inline'` para scripts; ya es posible porque no hay scripts en línea. Los estilos en línea tampoco existen en las vistas.
 - Falta una comprobación manual en un navegador real con la carga `x');alert(1);//`; no se pudo automatizar un clic real en este entorno.
 
-### 4.2 H2 · Autenticación mínima (alta, P1)
+### 4.2 H2 · Autenticación mínima (alta, P1) ✅
 
-Basic Auth en Caddy, sin código:
+**Qué es:** Basic Auth en Caddy. El navegador pide usuario y clave y el proxy los verifica antes de dejar pasar cualquier petición a la aplicación; no hay código de autenticación en .NET. Es **un solo usuario y una sola clave compartidos**: cierra el acceso anónimo desde internet, pero no distingue personas ni tiene «cerrar sesión». Un login propio (ASP.NET Core Identity), un proveedor externo (OIDC) o restringir por IP quedan como mejora futura, a registrar en el ADR `0004-autenticacion`.
 
-```caddyfile
-{$DOMINIO} {
-	encode gzip
-	@salud path /health
-	handle @salud {
-		reverse_proxy web:8080
-	}
-	handle {
-		basic_auth {
-			{$AUTH_USUARIO} {$AUTH_HASH}
-		}
-		reverse_proxy web:8080
-	}
-}
-```
+Hecho (issue #12):
 
-Hash: `docker run --rm caddy:2-alpine caddy hash-password --plaintext 'clave'`. En `.env` se escribe entre comillas simples y con `$` duplicado como `$$` (Compose interpola `$`). Añadir `AUTH_USUARIO` y `AUTH_HASH` a `.env.example` y pasarlos al servicio `proxy` en Compose. `/health` queda fuera para los monitores externos. Login propio (Identity/OIDC): fuera de este plan, ADR `0004-autenticacion`.
+- `Caddyfile`: `/health` queda abierto (coincidencia exacta); **todo lo demás** —páginas, estáticos y cualquier método HTTP— pasa por `basic_auth` con `AUTH_USUARIO` y `AUTH_HASH`, y el proxy elimina el encabezado `Authorization` antes de reenviar a la aplicación (`header_up -Authorization`).
+- `docker-compose.yml`: el servicio `proxy` recibe `AUTH_USUARIO` y `AUTH_HASH`, ambas obligatorias (`${VAR:?}`). **Seguro por defecto:** el `.env.example` trae un valor de ejemplo que *no* es un hash válido a propósito, y con él Caddy se niega a cargar (`illegal base64 data`), así que el proxy no arranca sin protección.
+- `web` no tenía `/health` (solo Negocios; el diagnóstico se equivocó en ese punto). Se creó `GET /health` en `Presentacion/Program.cs` (texto plano `ok`, sin consultar el servicio de negocios), con `SaludTests`, escritas primero y vistas en rojo. Sirve también para la prueba de humo de la fase 7 y para B3.
+- `scripts/generar-hash-auth.ps1 [-Usuario admin] [-ActualizarEnv]`: pide la clave sin mostrarla (mínimo 12 caracteres), genera el hash bcrypt con Caddy (coste 14) y escribe `AUTH_USUARIO` y `AUTH_HASH` en el `.env` con el entrecomillado correcto. La clave en claro no se guarda en ningún archivo.
+- `scripts/probar-acceso.ps1`: batería de **38 comprobaciones** contra un stack con el proxy en marcha (ver abajo).
+
+**Trampas encontradas (por si se vuelve a tocar):**
+
+- `docker compose --env-file`/`.env`: el hash va **entre comillas simples** y *sin* duplicar los `$`. Dentro de comillas simples Compose no interpola, y el hash llega intacto al contenedor (verificado, 60 caracteres). El plan original decía duplicar `$$`; no hace falta con comillas simples.
+- PowerShell 5.1 **no sirve para enviar la clave a Caddy por la tubería**: antepone un BOM UTF-8 y añade CRLF, de modo que el hash salía de otra cadena y la clave correcta daba 401. Tampoco por argumento (visible en la lista de procesos) ni con comillas dobles (PowerShell 5.1 las altera al llamar a `docker`). La solución del script: la clave viaja en **base64 por una variable de entorno** y la tubería `base64 -d | caddy hash-password` corre dentro del contenedor. Probado con claves con espacios, comillas, `$`, `&|<>!` y acentos.
+- `caddy hash-password` por entrada estándar descarta **el último byte** leído (asume `\n`): sin salto de línea final falla con `EOF`.
+- `Results.Ok("ok")` en minimal API devuelve `"ok"` con comillas (JSON); para el chequeo de salud se usa `Results.Text("ok")`.
+
+**Verificación (`scripts/probar-acceso.ps1`, HTTPS local con `DOMINIO=localhost`, perfil `con-proxy`):**
+
+- Credenciales: sin ellas, con clave incorrecta y con usuario incorrecto → 401; correctas → 200.
+- Todo lo demás exige credenciales: `GET` de páginas y estáticos (`/css`, `/js`) y `POST/PUT/DELETE/PATCH/OPTIONS` → 401.
+- `/health` abierto **solo** él: `/HEALTH` y `/%68ealth` (equivalentes) → 200; `/health/`, `/health/x`, `/healthz`, `/health.json`, `/healthcheck`, `/health;x`, `/health/../Usuarios/Consultar` y `//Usuarios/Consultar` → 401. `//health` → 404 (Caddy lo trata como `/health` y la aplicación no tiene esa ruta; no expone nada protegido). Su cuerpo es solo `ok`.
+- HTTP redirige a HTTPS (308) antes de pedir credenciales; el 401 trae `WWW-Authenticate: Basic`.
+- **Aplicación completa a través del proxy** (antiforgery, cookies y cabeceras reenviadas): registrar, aparecer en la grilla, modificar, validación y eliminar, dejando intactos los usuarios previos.
+
+**Límites conocidos:**
+
+- **Sin bloqueo por intentos fallidos.** El bcrypt de coste 14 hace que cada intento tarde ≈0,9 s (5 intentos: 4,5 s), pero Caddy no bloquea la IP. Mitigaciones previstas: clave larga (≥ 12, idealmente 20+), `fail2ban` sobre el log de Caddy en el VPS (fase 6) o un plugin de rate limiting.
+- Un solo usuario compartido; rotar la clave es volver a ejecutar `generar-hash-auth.ps1 -ActualizarEnv` y recrear el proxy.
+- En modo A de desarrollo sin `--profile con-proxy` la web se sirve en `http://localhost:8080` **sin autenticación** (solo accesible desde este equipo, `127.0.0.1`). La autenticación se prueba con `--profile con-proxy`, que exige `AUTH_USUARIO` y `AUTH_HASH` en el `.env`.
+- Los `.env` locales existentes deben añadir `AUTH_USUARIO` y `AUTH_HASH` (o Compose falla con un mensaje claro).
 
 ### 4.3 H3 · Git ✅
 
@@ -375,7 +387,7 @@ Casos mínimos: crear válido; nombre vacío o largo; fecha futura o muy antigua
 | H8 `docs/` vacío | `docs/arquitectura.md` (C4 en Mermaid), `docs/adr/0001-corewcf.md`, `0002-sin-orm.md`, `0003-contrato-soap-duplicado.md` (B2), `0004-autenticacion.md`, `0005-proteccion-de-rama.md` (si aplica 2.3). `.dockerignore` sigue excluyendo `docs/` |
 | B1 versiones flotantes | Hecho en 3.6 |
 | B2 contrato duplicado | ADR; prueba opcional que compare el WSDL de Negocios con `ContratoServicio.cs` |
-| B3 healthchecks | `healthcheck` en `negocios` y `web` sobre `/health` (instalar `wget` o `curl` en la imagen si no existe); `depends_on` con `service_healthy` |
+| B3 healthchecks | `healthcheck` en `negocios` y `web` sobre `/health` (el de `web` se creó en H2) (instalar `wget` o `curl` en la imagen si no existe); `depends_on` con `service_healthy` |
 | B4 cabeceras | Caddy: `Strict-Transport-Security "max-age=31536000"`, `X-Content-Type-Options nosniff`, `X-Frame-Options DENY`, `Referrer-Policy no-referrer`, `Content-Security-Policy "default-src 'self'; object-src 'none'; frame-ancestors 'none'"`, `-Server` |
 | B5 contraseña en `appsettings.json` | Cadena vacía; fallar al arrancar si falta la cadena de conexión |
 | B6 zona horaria | `TimeProvider` inyectable con `America/Bogota`; en la BD, `(now() AT TIME ZONE 'America/Bogota')::date`; pruebas con `FakeTimeProvider` |
@@ -511,7 +523,7 @@ POSTGRES_PASSWORD=<openssl rand -base64 32>
 APP_DB_USER=usuarios_app
 APP_DB_PASSWORD=<openssl rand -base64 32>
 AUTH_USUARIO=admin
-AUTH_HASH='<hash de caddy con $ como $$>'
+AUTH_HASH='<hash generado con scripts/generar-hash-auth.ps1, entre comillas simples>'
 IMAGE_TAG=latest
 GITHUB_REPOSITORY=maomauro/grupodigitalbank-crud
 ```

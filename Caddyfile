@@ -1,4 +1,21 @@
 {$DOMINIO} {
 	encode gzip
-	reverse_proxy web:8080
+
+	# Salud del proceso web: sin autenticacion, para monitores externos y la prueba de humo del despliegue.
+	@salud path /health
+	handle @salud {
+		reverse_proxy web:8080
+	}
+
+	# Todo lo demas exige usuario y clave (hallazgo H2). AUTH_HASH es un hash bcrypt generado con
+	# scripts/generar-hash-auth.ps1 (caddy hash-password); la clave en claro nunca se guarda.
+	handle {
+		basic_auth {
+			{$AUTH_USUARIO} {$AUTH_HASH}
+		}
+		reverse_proxy web:8080 {
+			# La aplicacion no necesita las credenciales
+			header_up -Authorization
+		}
+	}
 }

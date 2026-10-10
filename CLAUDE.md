@@ -30,6 +30,8 @@ powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1            # form
 powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1 -Rapido    # format whitespace + build (~10 s)
 powershell -ExecutionPolicy Bypass -File scripts\verificar-herramientas.ps1   # chequeo del entorno
 powershell -ExecutionPolicy Bypass -File scripts\probar-migrador.ps1         # prueba db/migrate.sh en una BD desechable (requiere Docker)
+powershell -ExecutionPolicy Bypass -File scripts\generar-hash-auth.ps1 -ActualizarEnv   # hash de la clave de acceso (AUTH_USUARIO/AUTH_HASH en .env)
+powershell -ExecutionPolicy Bypass -File scripts\probar-acceso.ps1 -Usuario admin       # batería de acceso del proxy (stack con --profile con-proxy)
 git config core.hooksPath .githooks          # una vez por clon: activa el hook pre-push
 docker compose logs -f negocios
 ```
@@ -70,6 +72,8 @@ Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen
 - Versionar `.env`, contraseñas, llaves o hashes reales.
 - Publicar puertos de `db`, `negocios` o `web` en Compose (solo `proxy` publica 80/443; el `docker-compose.dev.yml` publica la BD solo en `127.0.0.1` y nunca se despliega).
 - Conectar la aplicación con `POSTGRES_USER` (administrador): usa siempre `APP_DB_USER`, el rol de mínimo privilegio.
+- Guardar la clave de acceso a la web en claro (solo va su hash `AUTH_HASH`, entre comillas simples en el `.env`) ni dejar rutas fuera del Basic Auth salvo `/health`. Al editar el `Caddyfile`, reejecutar `scripts/probar-acceso.ps1`.
+- Enviar una clave a `caddy hash-password` por la tubería de PowerShell 5.1 (agrega BOM y CRLF y el hash sale de otra cadena): usar `scripts/generar-hash-auth.ps1`.
 - Editar un script SQL ya aplicado.
 - Desactivar verificación de host SSH o de certificados para "hacerlo funcionar".
 
@@ -86,9 +90,9 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 
 ## Estado conocido
 
-- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1 (XSS), H5 (migraciones) y H4 (rol de BD de mínimo privilegio) resueltos**, con pruebas. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
-- El proyecto compila sin advertencias, corre en modo A y B y tiene 13 pruebas (unitarias, vistas con `WebApplicationFactory` e integración con PostgreSQL real). Falta la batería completa de H7.
+- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1 (XSS), H5 (migraciones), H4 (rol de BD de mínimo privilegio) y H2 (Basic Auth en Caddy) resueltos**, con pruebas. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
+- El proyecto compila sin advertencias, corre en modo A y B y tiene 21 pruebas (unitarias, vistas con `WebApplicationFactory` e integración con PostgreSQL real). Falta la batería completa de H7.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Siguiente: **H2 (autenticación, #12)**, luego H6, H7, hardening (B3/B4/B5/B8), B6, H8; después CI (fase 5), VPS (6) y despliegue (7).
-- No existen todavía CI/CD, autenticación ni healthchecks; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
+- Siguiente: **H6 (claves de Data Protection, #13)**, luego H7, hardening (B3/B4/B5/B8), B6, H8; después CI (fase 5), VPS (6) y despliegue (7).
+- No existen todavía CI/CD ni healthchecks de Docker (`web` y `negocios` ya exponen `/health`); están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.

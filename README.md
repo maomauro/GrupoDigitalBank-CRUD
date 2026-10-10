@@ -35,7 +35,8 @@ Navegador ──HTTPS──▶ Caddy ──▶ Presentación (ASP.NET Core MVC)
 Requisitos: Docker + Docker Compose (en el VPS, el dominio debe apuntar a su IP y los puertos 80/443 estar abiertos).
 
 ```bash
-cp .env.example .env      # ajustar DOMINIO y las DOS contraseñas: POSTGRES_PASSWORD (administrador/migrador) y APP_DB_PASSWORD (rol de la aplicación)
+cp .env.example .env      # ajustar DOMINIO, POSTGRES_PASSWORD (administrador/migrador) y APP_DB_PASSWORD (rol de la aplicación)
+powershell -ExecutionPolicy Bypass -File scripts/generar-hash-auth.ps1 -ActualizarEnv   # crea AUTH_USUARIO y AUTH_HASH (acceso a la web)
 docker compose up -d --build
 ```
 
@@ -44,6 +45,7 @@ docker compose up -d --build
 - Local sin dominio: usar `DOMINIO=localhost` (Caddy usa su CA interna).
 - Los cambios de esquema se aplican con el servicio `migrador` en cada `docker compose up`: ejecuta solo los scripts `db/NNN_*.sql` que falten, en orden y en una transacción cada uno. **Un script ya aplicado no se edita** (el migrador aborta si cambia su checksum): todo cambio es un script nuevo. Ya no hace falta `docker compose down -v` ni se pierden datos al cambiar el esquema. Probar el migrador: `scripts/probar-migrador.ps1`.
 
+- **Acceso a la web:** Caddy exige usuario y clave (Basic Auth) en todas las rutas salvo `/health`. Es un solo usuario compartido; la clave nunca se guarda en claro, solo su hash (`AUTH_HASH`) en el `.env`. Generarlo o rotarlo: `scripts/generar-hash-auth.ps1 -ActualizarEnv`. Verificarlo: `scripts/probar-acceso.ps1`. Sin bloqueo por intentos fallidos (ver plan, 4.2): usar claves largas.
 - **Roles de PostgreSQL:** `POSTGRES_USER` (administrador) es el propietario y ejecuta las migraciones; la aplicación se conecta con `APP_DB_USER`, un rol que solo puede ejecutar `fn_usuario_crud` (no puede leer la tabla, borrar ni crear objetos). Rotar la contraseña de la aplicación es cambiar `APP_DB_PASSWORD` y volver a desplegar.
 
 Desarrollo local (modos A y B, con `docker-compose.dev.yml`) y pruebas: ver `CLAUDE.md` y `docs/plan-de-trabajo.md` (fase 3.3).

@@ -62,6 +62,8 @@ services:
     restart: unless-stopped
     environment:
       DOMINIO: ${DOMINIO}
+      AUTH_USUARIO: ${AUTH_USUARIO:?Define AUTH_USUARIO en .env (usuario de acceso a la web)}
+      AUTH_HASH: ${AUTH_HASH:?Define AUTH_HASH en .env (generalo con scripts/generar-hash-auth.ps1)}
     ports:
       - "80:80"
       - "443:443"
