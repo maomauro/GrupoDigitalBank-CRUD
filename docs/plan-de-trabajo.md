@@ -316,16 +316,18 @@ Hash: `docker run --rm caddy:2-alpine caddy hash-password --plaintext 'clave'`. 
 
 Cerrado en la fase 1.
 
-### 4.4 H5 · Migraciones (media, P1) — va antes que H4
+### 4.4 H5 · Migraciones (media, P1) ✅ — va antes que H4
 
-Reemplazar `docker-entrypoint-initdb.d` por un servicio one-shot:
+Hecho (issue #10):
 
-- `db/migrate.sh`: crea `schema_migrations(version text primary key, aplicada_en timestamptz default now())`, recorre `db/[0-9]*.sql` en orden y aplica con `psql -v ON_ERROR_STOP=1 --single-transaction` los que falten, registrándolos. Pasa las variables necesarias a `psql` con `-v` (p. ej. `-v app_pass="$APP_DB_PASSWORD"` para H4).
-- Servicio `migrador` en Compose: `postgres:17-alpine`, monta `./db`, conecta como `POSTGRES_USER` (propietario), `depends_on: db: service_healthy`, `restart: "no"`. `negocios` depende de `migrador: condition: service_completed_successfully`.
-- Quitar el montaje de `./db` en `docker-entrypoint-initdb.d`.
-- Regla: **los scripts aplicados nunca se editan**; todo cambio es un `00N_…sql` nuevo. Si dos ramas crean el mismo número, la segunda en fusionarse renumera.
-- Al adoptar el migrador, el volumen de desarrollo existente no tiene `schema_migrations`: recrearlo con `down -v` (en local no hay datos reales). En producción se adopta antes del primer despliegue, por lo que no hay datos que migrar.
-- `shellcheck` sobre `migrate.sh` en CI.
+- `db/migrate.sh` (POSIX sh, pasa `shellcheck`, LF y bit de ejecución): crea `schema_migrations(version, checksum, aplicada_en)`, recorre `db/NNN_*.sql` en orden y aplica solo los que faltan. Cada script corre con `psql -v ON_ERROR_STOP=1 --single-transaction` **junto con su registro**, así que un fallo no deja nada a medias. Guarda el **checksum sha256** y **aborta si un script ya aplicado cambió** (los aplicados no se editan). Pasa `app_pass` a los scripts desde `APP_DB_PASSWORD` (lo usará H4).
+- Servicio `migrador` en `docker-compose.yml` (`postgres:17-alpine`, `./db` montada en `/migraciones`, conecta como `POSTGRES_USER`, `restart: "no"`, espera a que `db` esté sana). `negocios` depende de `migrador: service_completed_successfully`. Se quitó el montaje en `docker-entrypoint-initdb.d`.
+- **No hizo falta recrear el volumen**: el `001` es idempotente (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`), así que el migrador lo registró sobre la base de desarrollo existente sin tocar los datos. Para scripts futuros, mantener la idempotencia cuando sea razonable, pero ya no es obligatoria: el migrador garantiza que cada uno corre una sola vez.
+- Pruebas (`scripts/probar-migrador.ps1`, base PostgreSQL desechable, 16 comprobaciones): base vacía, segunda ejecución sin repetir, script nuevo válido, script con error (transacción revertida y sin registro), script aplicado modificado (aborta) y base existente sin registro (conserva los datos).
+- Verificado en el stack real: caso A (base existente con datos, sobre la que se aplicó y registró el `001`), caso B (base nueva en un proyecto Compose aislado, Negocios arranca) y caso C (una migración rota deja a `negocios` en `Created`, sin arrancar).
+- Regla vigente: **los scripts aplicados nunca se editan**; todo cambio es un `00N_…sql` nuevo. Si dos ramas crean el mismo número, la segunda en fusionarse renumera.
+- Pendiente para el CI (fase 5): ejecutar `shellcheck db/migrate.sh` y `scripts/probar-migrador.ps1` (requiere Docker; en Linux habría que portarlo a un script `sh`/job de GitHub Actions).
+- Para H4: añadir `APP_DB_PASSWORD` al entorno del servicio `migrador` y a `.env.example`.
 
 ### 4.5 H4 · Rol de aplicación en PostgreSQL (media, P1) — depende de 4.4
 

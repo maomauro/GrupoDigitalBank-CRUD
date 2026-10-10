@@ -8,12 +8,27 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db:/docker-entrypoint-initdb.d:ro   # scripts SQL se ejecutan al crear el volumen por primera vez
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Aplica los scripts db/NNN_*.sql pendientes y termina (ver db/migrate.sh). Si falla, negocios no arranca.
+  migrador:
+    image: postgres:17-alpine
+    restart: "no"
+    entrypoint: ["sh", "/migraciones/migrate.sh"]
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./db:/migraciones:ro
+    depends_on:
+      db:
+        condition: service_healthy
 
   negocios:
     build:
@@ -23,8 +38,8 @@ services:
     environment:
       ConnectionStrings__Postgres: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
     depends_on:
-      db:
-        condition: service_healthy
+      migrador:
+        condition: service_completed_successfully
     expose:
       - "8080"
 
