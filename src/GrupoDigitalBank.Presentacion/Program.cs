@@ -24,6 +24,8 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseRouting();
+// Liveness del proceso web: no consulta el servicio de negocios. El proxy lo deja fuera del Basic Auth.
+app.MapGet("/health", () => Results.Text("ok"));
 app.MapControllerRoute("default", "{controller=Usuarios}/{action=Consultar}/{id?}");
 
 app.Run();

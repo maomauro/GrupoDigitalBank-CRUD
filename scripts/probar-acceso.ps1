@@ -1,0 +1,113 @@
+# Prueba el control de acceso del proxy (Basic Auth de Caddy, hallazgo H2) contra un stack en marcha.
+# Verifica que todo exige credenciales salvo /health, que ninguna variante de ruta evade la proteccion,
+# que HTTP redirige a HTTPS y que la aplicacion funciona de punta a punta a traves del proxy.
+#
+# Requisitos: el stack levantado con el perfil del proxy y AUTH_USUARIO/AUTH_HASH en .env, p. ej.:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile con-proxy up -d --build
+# Uso:
+#   powershell -ExecutionPolicy Bypass -File scripts\probar-acceso.ps1 -Usuario admin     (pide la clave)
+#   powershell -ExecutionPolicy Bypass -File scripts\probar-acceso.ps1 -Usuario admin -Clave $secure -Base https://localhost
+# No borra datos previos: el flujo de punta a punta solo elimina lo que el mismo crea.
+
+param(
+    [string]$Base = 'https://localhost',
+    [string]$Usuario = 'admin',
+    [securestring]$Clave
+)
+
+$ErrorActionPreference = 'Continue'
+$Base = $Base.TrimEnd('/')
+if (-not $Clave) { $Clave = Read-Host "Clave de '$Usuario'" -AsSecureString }
+$ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Clave)
+$claveTexto = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+
+# Certificado local de Caddy (CA interna) no es de confianza en este equipo: solo para pruebas locales
+if ($Base -like 'https://localhost*' -or $Base -like 'https://127.*') {
+    [Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+    $curlInseguro = '-k'
+} else { $curlInseguro = '' }
+
+$fallos = 0
+function Check($nombre, $ok, $detalle = '') {
+    if (-not $ok) { $script:fallos++ }
+    Write-Host ("{0,-6} {1,-58} {2}" -f $(if ($ok) { 'OK' } else { 'FALLA' }), $nombre, $detalle) -ForegroundColor $(if ($ok) { 'Green' } else { 'Red' })
+}
+
+function Http([string[]]$esperados, [string[]]$argumentos) {
+    $c = & curl.exe -s $curlInseguro -o NUL -w "%{http_code}" --max-time 20 @argumentos
+    [pscustomobject]@{ Codigo = $c; Ok = ($esperados -contains $c) }
+}
+function Prueba($nombre, [string[]]$esperados, [string[]]$argumentos) {
+    $r = Http $esperados $argumentos
+    Check $nombre $r.Ok "-> HTTP $($r.Codigo) (esperado $($esperados -join ' o '))"
+}
+# Encabezado armado a mano: curl -u tropieza con algunos caracteres especiales
+$basic = [Convert]::ToBase64String((New-Object Text.UTF8Encoding($false)).GetBytes("${Usuario}:$claveTexto"))
+$auth = @('-H', "Authorization: Basic $basic")
+
+Write-Host "`n== Credenciales ==" -ForegroundColor Cyan
+Prueba 'GET / sin credenciales' @('401') @("$Base/")
+Prueba 'GET / con clave incorrecta' @('401') @('-H', ('Authorization: Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${Usuario}:clave-equivocada-xyz"))), "$Base/")
+Prueba 'GET / con usuario incorrecto' @('401') @('-H', ('Authorization: Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("otro:$claveTexto"))), "$Base/")
+Prueba 'GET / con credenciales correctas' @('200') ($auth + "$Base/")
+Prueba 'GET /Usuarios/Registrar con credenciales' @('200') ($auth + "$Base/Usuarios/Registrar")
+
+Write-Host "`n== Todo lo demas exige credenciales ==" -ForegroundColor Cyan
+foreach ($ruta in '/css/site.css', '/js/site.js', '/Usuarios/Consultar', '/Usuarios/Registrar', '/Usuarios/Editar/1') { Prueba "GET $ruta" @('401') @("$Base$ruta") }
+foreach ($m in 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS') { Prueba "$m /Usuarios/Eliminar/1" @('401') @('-X', $m, "$Base/Usuarios/Eliminar/1") }
+
+Write-Host "`n== /health abierto, pero SOLO /health ==" -ForegroundColor Cyan
+Prueba 'GET /health sin credenciales' @('200') @("$Base/health")
+Prueba 'GET /HEALTH (mayusculas)' @('200') @("$Base/HEALTH")
+Prueba 'GET /health?x=/Usuarios/Consultar' @('200') @("$Base/health?x=/Usuarios/Consultar")
+foreach ($ruta in '/health/', '/health/x', '/healthz', '/health.json', '/healthcheck', '/health;x') { Prueba "GET $ruta" @('401') @("$Base$ruta") }
+Prueba 'GET /health/../Usuarios/Consultar' @('401') @('--path-as-is', "$Base/health/../Usuarios/Consultar")
+Prueba 'GET //Usuarios/Consultar (doble barra)' @('401') @("$Base//Usuarios/Consultar")
+# Caddy trata //health como /health y la app no tiene esa ruta: 404, sin exponer nada protegido
+Prueba 'GET //health (doble barra)' @('404', '401') @("$Base//health")
+$cuerpo = (& curl.exe -s $curlInseguro --max-time 20 "$Base/health?x=/Usuarios/Consultar")
+Check '/health devuelve solo "ok" (no contenido protegido)' ($cuerpo -eq 'ok') "cuerpo=[$cuerpo]"
+
+Write-Host "`n== Cabeceras ==" -ForegroundColor Cyan
+$cab = (& curl.exe -s $curlInseguro -D - -o NUL --max-time 20 "$Base/") -join "`n"
+Check 'responde 401 con desafio Basic' ($cab -match '401' -and $cab -match 'WWW-Authenticate: Basic')
+if ($Base -like 'https://*') {
+    $http = $Base -replace '^https', 'http'
+    $r = (& curl.exe -s -o NUL -w "%{http_code} %{redirect_url}" --max-time 20 "$http/")
+    Check 'HTTP redirige a HTTPS antes de pedir credenciales' ($r -match '^30[78] https://') "-> $r"
+}
+
+Write-Host "`n== Aplicacion de punta a punta a traves del proxy ==" -ForegroundColor Cyan
+$cookies = Join-Path ([IO.Path]::GetTempPath()) "gdb-cookies-$([guid]::NewGuid().ToString('N')).txt"
+function Pagina($ruta) { & curl.exe -s $curlInseguro -b $cookies -c $cookies @auth --max-time 20 "$Base$ruta" }
+function Token($html) { [regex]::Match($html, 'name="__RequestVerificationToken"[^>]*value="([^"]+)"').Groups[1].Value }
+function Ids($html) { [regex]::Matches($html, '/Usuarios/Editar/(\d+)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object { [int]$_ } -Unique }
+function Enviar($ruta, [string[]]$campos) {
+    $t = Token (Pagina '/Usuarios/Registrar')
+    $datos = @(); foreach ($c in $campos) { $datos += @('--data-urlencode', $c) }
+    & curl.exe -s $curlInseguro -b $cookies -c $cookies @auth -L --max-time 20 @datos --data-urlencode "__RequestVerificationToken=$t" "$Base$ruta"
+}
+try {
+    $antes = @(Ids (Pagina '/'))
+    $r = Enviar '/Usuarios/Registrar' @('Nombre=Prueba Proxy', 'FechaNacimiento=1990-05-20', 'Sexo=F')
+    Check 'Registrar un usuario (antiforgery + cookies via proxy)' ($r -match 'Prueba Proxy' -and $r -match 'registrado correctamente')
+    $despues = @(Ids (Pagina '/'))
+    $nuevo = $despues | Where-Object { $antes -notcontains $_ } | Select-Object -First 1
+    Check 'Aparece en la grilla con id nuevo' ($null -ne $nuevo) "id=$nuevo"
+    $r = Enviar '/Usuarios/Editar' @("Id=$nuevo", 'Nombre=Prueba Proxy Modificada', 'FechaNacimiento=1991-06-21', 'Sexo=F')
+    Check 'Modificar' ($r -match 'Prueba Proxy Modificada' -and $r -match 'modificado correctamente')
+    $r = Enviar '/Usuarios/Registrar' @('Nombre=', 'FechaNacimiento=1990-05-20', 'Sexo=F')
+    Check 'Validacion: nombre vacio rechazado' ($r -match 'El nombre es obligatorio')
+    $null = Enviar '/Usuarios/Eliminar' @("id=$nuevo")
+    $final = @(Ids (Pagina '/'))
+    Check 'Eliminar: quedan exactamente los usuarios previos' (($final -join ',') -eq ($antes -join ',')) "previos=[$($antes -join ',')] ahora=[$($final -join ',')]"
+}
+finally {
+    Remove-Item $cookies -ErrorAction SilentlyContinue
+    $claveTexto = $null
+}
+
+Write-Host ''
+if ($fallos -eq 0) { Write-Host 'Acceso: todas las pruebas pasaron.' -ForegroundColor Green; exit 0 }
+Write-Host "Acceso: $fallos prueba(s) fallaron." -ForegroundColor Red; exit 1
