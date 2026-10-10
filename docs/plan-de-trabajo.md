@@ -278,11 +278,17 @@ Cumplido el 2026-10-09: `scripts/verificar.ps1` en verde, el stack arranca en mo
 
 Una rama y un PR por ítem, cada uno con su issue. Ramas en la tabla de [git-guia-tecnica.md](git-guia-tecnica.md). Orden: 4.1 → 4.4 → 4.5 → 4.2 → 4.6 → 4.7 → 4.8.
 
-### 4.1 H1 · XSS en el botón Eliminar (alta, P0)
+### 4.1 H1 · XSS en el botón Eliminar (alta, P0) ✅
 
-- `Views/Usuarios/Consultar.cshtml`: quitar `onsubmit="return confirm('…@u.Nombre…')"`. Usar `<form data-confirmar="¿Eliminar este usuario?">` y un único listener en `wwwroot/js/site.js` (texto genérico, o `data-nombre` leído como texto, nunca interpolado en JS).
-- Prueba de regresión: usuario `x');alert(1);//` → la grilla carga sin ejecutar código.
-- Defensa en profundidad: CSP en Caddy (4.8) sin `'unsafe-inline'` para scripts; confirmar que el layout no usa scripts ni estilos en línea que la CSP bloquearía.
+Hecho (issue #2):
+
+- `Views/Usuarios/Consultar.cshtml`: se quitó `onsubmit="return confirm('…@u.Nombre…')"`. Ahora el formulario lleva `data-confirmar="¿Eliminar a @u.Nombre?"` (Razor lo codifica como atributo) y un único listener en `wwwroot/js/site.js`, cargado desde el layout con `<script src defer>`, que lee el atributo **como texto** y se lo pasa a `confirm()`. Nada del nombre llega a un contexto ejecutable.
+- No quedan manejadores en línea en ninguna vista (`grep` de `on*=`, `<script` y `javascript:` en `Views/`).
+- Pruebas de regresión (`UsuariosVistasTests`, con `WebApplicationFactory<Program>` y cliente SOAP simulado): cinco cargas maliciosas (`x');alert(1);//`, `");alert(1);//`, `<script>`, `"><img onerror>`, `'-alert(1)-'`), el nombre se muestra como texto codificado, el formulario usa `data-confirmar` y el layout sirve `site.js`. **Se verificó en rojo con el código anterior** (las 5 cargas fallaban) y en verde con la corrección.
+- Comprobación del navegador con jsdom (fuera del repo): `confirm` recibe el nombre literal, cancelar detiene el envío, aceptar lo permite, otros formularios no se afectan y la carga nunca se ejecuta.
+- Soporte: `public partial class Program;` en `Presentacion/Program.cs` y `Microsoft.AspNetCore.Mvc.Testing` 10.0.0 (cota inferior segura para cualquier runtime ≥ 10.0.0).
+- Pendiente (defensa en profundidad, B4): CSP en Caddy sin `'unsafe-inline'` para scripts; ya es posible porque no hay scripts en línea. Los estilos en línea tampoco existen en las vistas.
+- Falta una comprobación manual en un navegador real con la carga `x');alert(1);//`; no se pudo automatizar un clic real en este entorno.
 
 ### 4.2 H2 · Autenticación mínima (alta, P1)
 
@@ -342,7 +348,7 @@ Compose y `.env.example`: `POSTGRES_USER=usuarios_admin` (propietario/migrador) 
 |---|---|---|
 | `GrupoDigitalBank.Negocios.Tests` | Unitarias de `UsuarioValidador` y `UsuarioService` (repositorio simulado) | xUnit, Shouldly, NSubstitute |
 | `GrupoDigitalBank.Negocios.IntegrationTests` | Repositorio contra PostgreSQL real aplicando los scripts de `db/` (`PostgresFixture`, requiere Docker) | Testcontainers for .NET |
-| `GrupoDigitalBank.Presentacion.Tests` | Controlador con `IUsuarioClient` simulado; vistas (regresión H1) | xUnit, NSubstitute; para las vistas, añadir `Microsoft.AspNetCore.Mvc.Testing` (versión ≤ la del runtime del CI) y exponer `Program` con `public partial class Program;` cuando se haga H1 |
+| `GrupoDigitalBank.Presentacion.Tests` | Controlador con `IUsuarioClient` simulado; vistas renderizadas (regresión H1, ya hecha) | xUnit, NSubstitute, `Microsoft.AspNetCore.Mvc.Testing` (`WebApplicationFactory<Program>`) |
 
 Esqueleto ya creado en la fase 3.6 (una prueba por proyecto). Notas de implementación:
 
