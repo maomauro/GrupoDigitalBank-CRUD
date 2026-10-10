@@ -52,6 +52,9 @@ services:
     restart: unless-stopped
     environment:
       Negocios__Url: http://negocios:8080/UsuarioService.svc
+      DataProtection__RutaClaves: /keys   # claves de antiforgery/cookies: deben sobrevivir a un redespliegue (H6)
+    volumes:
+      - dpkeys:/keys
     depends_on:
       - negocios
     expose:
@@ -79,3 +82,4 @@ volumes:
   pgdata:
   caddy_data:
   caddy_config:
+  dpkeys:   # claves de Data Protection de web

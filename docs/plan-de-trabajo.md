@@ -360,9 +360,21 @@ Hecho (issue #11). Modelo de roles:
 - Riesgo residual documentado: la función pertenece al administrador (superusuario) y corre con sus privilegios (`SECURITY DEFINER`). Está acotada porque el SQL es estático y parametrizado y el `search_path` está fijo; un rol propietario sin superusuario (`NOLOGIN`) sería más estricto pero obliga a reasignar el dueño en cada migración futura. Se deja como mejora.
 - En producción (fase 6.6) el `.env` del servidor ya prevé `POSTGRES_USER=usuarios_admin` y `APP_DB_*`.
 
-### 4.6 H6 · Claves de Data Protection (media, P1)
+### 4.6 H6 · Claves de Data Protection (media, P1) ✅
 
-`Presentacion/Program.cs`: `AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo("/keys")).SetApplicationName("GrupoDigitalBank")`. Compose: volumen `dpkeys:/keys` en `web`. Dockerfile: crear `/keys` con propietario del usuario no root.
+**Problema:** ASP.NET Core firma el token antiforgery y las cookies de TempData con claves de Data Protection. En un contenedor las claves viven en memoria; al recrearlo (cada redespliegue) se generan otras, y un formulario abierto antes falla con **400**. Reproducido antes de corregir: el formulario se aceptaba (302) sin redesplegar y daba 400 después de `--force-recreate`.
+
+Hecho (issue #13):
+
+- `Presentacion/Program.cs`: `AddDataProtection().SetApplicationName("GrupoDigitalBank")` y, si existe la configuración `DataProtection:RutaClaves`, `PersistKeysToFileSystem`. En Docker la ruta es un volumen (`DataProtection__RutaClaves=/keys`); en desarrollo local se omite y rige el valor por omisión de ASP.NET Core (el perfil del usuario). El nombre de aplicación es fijo para que las claves no dependan de la ruta del contenido.
+- `Presentacion/Dockerfile`: `RUN mkdir /keys && chown $APP_UID /keys` antes de `USER $APP_UID`. El directorio debe existir en la imagen con el dueño no root: un volumen nombrado nuevo hereda ese dueño y el proceso (UID 1654) puede escribir.
+- `docker-compose.yml`: volumen nombrado `dpkeys` montado en `/keys` del servicio `web`, y la variable de entorno. Solo `web` lo monta.
+- Pruebas (`ClavesProteccionTests`, dos `WebApplicationFactory` como «dos despliegues»): las claves se escriben en el directorio configurado (que la aplicación crea si no existe); un formulario abierto en el primer despliegue es válido en el segundo (302); y un **control** con directorios distintos lo rechaza (400), para demostrar que las pruebas discriminan. Se escribieron primero: persistencia y control en rojo con el código anterior. La prueba «tras redespliegue» pasa en Windows aun sin la corrección, porque allí las claves se guardan por omisión en el perfil de usuario; en un contenedor Linux sin perfil sí falla, que es lo que se comprobó en Docker.
+- Verificado en Docker: tras `--force-recreate`, tras `--build --force-recreate` y tras `down` + `up` (sin borrar volúmenes) el formulario abierto antes se acepta (302). Control: al borrar el volumen `dpkeys` el formulario viejo se invalida (400), como corresponde. La clave aparece como `key-*.xml` (modo 600, dueño `app`) en el volumen.
+
+**Riesgo residual (aviso estándar de ASP.NET Core `No XML encryptor configured`):** las claves quedan **sin cifrar** en el volumen. Solo firman antiforgery y cookies de TempData; el archivo es privado a `web`; y para usar una clave robada habría que pasar primero el Basic Auth. Cifrarlas (`ProtectKeysWithCertificate`) exigiría gestionar un certificado y no compensa a esta escala. Si en el futuro hubiera sesiones o cuentas de usuario, reevaluarlo.
+
+**Operación:** el volumen `dpkeys` no es crítico para los backups (perderlo solo invalida los formularios abiertos y las cookies vigentes en ese momento), pero conviene **no** borrarlo en un redespliegue. `docker compose down -v` lo elimina junto con los demás.
 
 ### 4.7 H7 · Pruebas (media, P1)
 
