@@ -1,10 +1,23 @@
 using GrupoDigitalBank.Presentacion.Servicios;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<IUsuarioClient, UsuarioClient>();
+
+// Data Protection firma el token antiforgery y las cookies (TempData). Sin persistir las claves, cada
+// contenedor nuevo genera otras y un formulario abierto antes de un redespliegue falla con 400 (hallazgo H6).
+// En Docker la ruta es un volumen (DataProtection__RutaClaves=/keys); en desarrollo local se omite y rige el
+// valor por omision de ASP.NET Core (el perfil del usuario). El nombre de aplicacion es fijo para que las
+// claves no dependan de la ruta del contenido.
+var proteccion = builder.Services.AddDataProtection().SetApplicationName("GrupoDigitalBank");
+var rutaClaves = builder.Configuration["DataProtection:RutaClaves"];
+if (!string.IsNullOrWhiteSpace(rutaClaves))
+{
+    proteccion.PersistKeysToFileSystem(new DirectoryInfo(rutaClaves));
+}
 
 // Detras del proxy inverso (Caddy) dentro de la red interna de Docker.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>

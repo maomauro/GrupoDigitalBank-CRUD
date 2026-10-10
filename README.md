@@ -43,6 +43,7 @@ docker compose up -d --build
 - Producción: `https://<DOMINIO>` (Caddy emite y renueva el certificado).
 - Solo el proxy publica puertos; `web`, `negocios` y `db` quedan en la red interna.
 - Local sin dominio: usar `DOMINIO=localhost` (Caddy usa su CA interna).
+- **Volúmenes persistentes:** `pgdata` (base de datos), `caddy_data` (certificados HTTPS) y `dpkeys` (claves de Data Protection de la web: sin ellas, un formulario abierto antes de un redespliegue falla con 400). `docker compose down -v` los borra todos.
 - Los cambios de esquema se aplican con el servicio `migrador` en cada `docker compose up`: ejecuta solo los scripts `db/NNN_*.sql` que falten, en orden y en una transacción cada uno. **Un script ya aplicado no se edita** (el migrador aborta si cambia su checksum): todo cambio es un script nuevo. Ya no hace falta `docker compose down -v` ni se pierden datos al cambiar el esquema. Probar el migrador: `scripts/probar-migrador.ps1`.
 
 - **Acceso a la web:** Caddy exige usuario y clave (Basic Auth) en todas las rutas salvo `/health`. Es un solo usuario compartido; la clave nunca se guarda en claro, solo su hash (`AUTH_HASH`) en el `.env`. Generarlo o rotarlo: `scripts/generar-hash-auth.ps1 -ActualizarEnv`. Verificarlo: `scripts/probar-acceso.ps1`. Sin bloqueo por intentos fallidos (ver plan, 4.2): usar claves largas.
