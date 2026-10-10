@@ -12,7 +12,9 @@ WORKDIR /app
 COPY --from=build /app .
 # Claves de Data Protection (se monta un volumen aqui, ver docker-compose.yml). El directorio debe existir en
 # la imagen con el dueño no root: un volumen nuevo hereda ese dueño y el proceso puede escribir en el.
-RUN mkdir /keys && chown $APP_UID /keys
+RUN mkdir /keys && chown "$APP_UID" /keys
+# APP_UID lo define la imagen base de Microsoft (numerico, 1654): hadolint no puede verlo
+# hadolint ignore=DL3066
 USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "GrupoDigitalBank.Presentacion.dll"]

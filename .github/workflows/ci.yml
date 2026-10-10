@@ -1,0 +1,149 @@
+# Integracion continua: lo mismo que se corre en local (scripts/verificar.ps1, cobertura.ps1, probar-migrador.ps1),
+# mas lo que solo tiene sentido en un servidor limpio (vulnerabilidades, Dockerfile, imagenes).
+#
+# Se ejecuta en cada PR hacia develop y main, y en cada push a ambas (el push a main es el que, en la fase 7,
+# dispara el despliegue: solo despliega si este flujo termina en verde).
+#
+# Las acciones van fijadas por SHA completo, no por etiqueta: una etiqueta se puede mover, un SHA no. El
+# comentario indica la version; Dependabot (ecosistema github-actions) propone las actualizaciones.
+#
+# Los trabajos son independientes a proposito: un PR muestra de una vez todo lo que falla, no solo lo primero.
+# Los nombres "ci", "migrador" y "docker" son los checks que se marcarian como obligatorios si el repositorio
+# pasara a un plan con proteccion de ramas (ADR 0005).
+
+name: ci
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # Restaurar, formato, compilacion con TreatWarningsAsErrors y todas las pruebas (las de integracion usan
+      # PostgreSQL en Docker, que ya viene en el runner). Es el mismo contrato que se corre antes de cada push.
+      - name: Verificar (restore, format, build, test)
+        shell: pwsh
+        run: ./scripts/verificar.ps1
+
+      # Vuelve a correr las pruebas con cobertura y exige el minimo en Negocios
+      - name: Cobertura (minimo 80 % en Negocios)
+        shell: pwsh
+        run: ./scripts/cobertura.ps1
+
+      - name: Paquetes con vulnerabilidades conocidas
+        env:
+          DOTNET_CLI_UI_LANGUAGE: en
+        run: |
+          dotnet list GrupoDigitalBank.slnx package --vulnerable --include-transitive 2>&1 | tee vulnerables.txt
+          if grep -q "has the following vulnerable packages" vulnerables.txt; then
+            echo "::error::Hay paquetes NuGet con vulnerabilidades conocidas (ver arriba)."
+            exit 1
+          fi
+
+      - name: Informe de cobertura
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cobertura
+          path: TestResults/informe
+          if-no-files-found: ignore
+          retention-days: 14
+
+  migrador:
+    name: migrador
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # shellcheck ya viene en el runner
+      - name: shellcheck de db/migrate.sh
+        run: shellcheck db/migrate.sh
+
+      # 9 escenarios sobre una base desechable: base vacia, repeticion, script nuevo, script con error, script
+      # modificado, base sin registro, rol de aplicacion, validacion de entrada y datos invalidos previos
+      - name: Prueba del migrador
+        shell: pwsh
+        run: ./scripts/probar-migrador.ps1
+
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # .env.example trae todas las variables obligatorias: si Compose se queja, alguien agrego una sin documentarla
+      - name: Compose valido
+        run: |
+          cp .env.example .env
+          docker compose config -q
+
+      - name: hadolint (Negocios)
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: src/GrupoDigitalBank.Negocios/Dockerfile
+
+      - name: hadolint (Presentacion)
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: src/GrupoDigitalBank.Presentacion/Dockerfile
+
+      - name: Construir la imagen de Negocios
+        run: docker build -f src/GrupoDigitalBank.Negocios/Dockerfile -t negocios:ci .
+
+      - name: Construir la imagen de Presentacion
+        run: docker build -f src/GrupoDigitalBank.Presentacion/Dockerfile -t web:ci .
+
+      # Solo vulnerabilidades graves con correccion disponible: las que no tienen arreglo no se pueden resolver aqui
+      - name: Trivy (Negocios)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: negocios:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Trivy (Presentacion)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: web:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"

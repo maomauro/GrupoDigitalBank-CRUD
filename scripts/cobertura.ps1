@@ -30,7 +30,7 @@ Write-Host "`n== Informe ==" -ForegroundColor Cyan
 dotnet tool restore --verbosity quiet | Out-Null
 $archivos = Get-ChildItem $resultados -Recurse -Filter 'coverage.cobertura.xml'
 Write-Host "Se unen $($archivos.Count) archivos de cobertura (uno por proyecto de prueba)."
-dotnet reportgenerator "-reports:$resultados\**\coverage.cobertura.xml" "-targetdir:$informe" `
+dotnet reportgenerator "-reports:$resultados/**/coverage.cobertura.xml" "-targetdir:$informe" `
     '-reporttypes:TextSummary;Html;Cobertura' '-assemblyfilters:+GrupoDigitalBank.*;-*.Tests;-*.IntegrationTests' '-verbosity:Warning'
 if ($LASTEXITCODE -ne 0) { throw 'reportgenerator fallo.' }
 
@@ -43,7 +43,7 @@ $filas = foreach ($p in $xml.coverage.packages.package) {
 }
 Write-Host ''
 $filas | Format-Table -AutoSize | Out-String | Write-Host
-Write-Host "Informe HTML: $informe\index.html"
+Write-Host "Informe HTML: $(Join-Path $informe 'index.html')"
 
 if ($Abrir) { Start-Process (Join-Path $informe 'index.html') }
 if ($SinUmbral) { exit 0 }
