@@ -258,8 +258,8 @@ Hecho (issue #8):
 ### 3.6 Esqueleto de pruebas y versiones fijas (L10, B1)
 
 - Crear `tests/` con los tres proyectos de 4.7 (vacíos, solo compilan) y añadirlos a `GrupoDigitalBank.slnx`.
-- `Directory.Packages.props` con `ManagePackageVersionsCentrally=true` y las versiones exactas resueltas por el build; quitar `Version` de los `.csproj`.
-- Ajustar los Dockerfile para copiar `global.json`, `Directory.Build.props` y `Directory.Packages.props` antes del `restore` (si no, el build en Docker ignora esas reglas).
+- ✅ `Directory.Packages.props` con `ManagePackageVersionsCentrally=true` y versiones exactas (CoreWCF 1.9.1, Npgsql 10.0.3, System.ServiceModel.Http 8.1.2); los `.csproj` ya no llevan `Version` (issue #9).
+- ✅ Los Dockerfile copian `global.json`, `Directory.Build.props` y `Directory.Packages.props` antes del `restore`; verificado que las imágenes contienen esas versiones exactas (issue #9).
 
 ### 3.7 Criterio de salida
 
