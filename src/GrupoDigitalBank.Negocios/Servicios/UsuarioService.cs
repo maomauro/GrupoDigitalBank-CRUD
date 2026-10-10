@@ -1,6 +1,7 @@
 using CoreWCF;
 using GrupoDigitalBank.Negocios.Contratos;
 using GrupoDigitalBank.Negocios.Datos;
+using GrupoDigitalBank.Negocios.Tiempo;
 using GrupoDigitalBank.Negocios.Validacion;
 using Npgsql;
 
@@ -8,7 +9,7 @@ namespace GrupoDigitalBank.Negocios.Servicios;
 
 /// <summary>Capa de negocios: valida, delega en el repositorio y traduce errores a faults SOAP.</summary>
 [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerCall)]
-public sealed partial class UsuarioService(IUsuarioRepositorio repositorio, ILogger<UsuarioService> logger) : IUsuarioService
+public sealed partial class UsuarioService(IUsuarioRepositorio repositorio, ILogger<UsuarioService> logger, TimeProvider tiempo) : IUsuarioService
 {
     public Task<UsuarioDto> Agregar(UsuarioDto usuario) => Ejecutar(async () =>
     {
@@ -66,9 +67,12 @@ public sealed partial class UsuarioService(IUsuarioRepositorio repositorio, ILog
     [LoggerMessage(Level = LogLevel.Error, Message = "Error no controlado")]
     private static partial void LogErrorNoControlado(ILogger logger, Exception ex);
 
-    private static void ValidarOFallar(UsuarioDto usuario)
+    // "Hoy" es la fecha de la zona horaria de negocio (America/Bogota), no la del servidor (UTC): hallazgo B6.
+    private DateOnly Hoy => DateOnly.FromDateTime(tiempo.GetLocalNow().DateTime);
+
+    private void ValidarOFallar(UsuarioDto usuario)
     {
-        var errores = UsuarioValidador.Validar(usuario);
+        var errores = UsuarioValidador.Validar(usuario, Hoy);
         if (errores.Count > 0) throw Fault("VALIDACION", "Datos invalidos.", errores);
     }
 

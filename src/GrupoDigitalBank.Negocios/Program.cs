@@ -4,6 +4,7 @@ using CoreWCF.Description;
 using GrupoDigitalBank.Negocios.Contratos;
 using GrupoDigitalBank.Negocios.Datos;
 using GrupoDigitalBank.Negocios.Servicios;
+using GrupoDigitalBank.Negocios.Tiempo;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,11 @@ if (string.IsNullOrWhiteSpace(cadena))
         "Falta ConnectionStrings:Postgres. Definala por variable de entorno (ConnectionStrings__Postgres), " +
         "dotnet user-secrets o un appsettings.{Entorno}.json local; no se versiona.");
 }
+
+// Zona horaria de negocio (hallazgo B6): "hoy" para validar fechas es la fecha de esta zona, no la del servidor.
+// Falla al arrancar si el id no es valido, en vez de fallar mas tarde en cada validacion.
+var zonaDeNegocio = ZonaHorariaNegocio.Resolver(builder.Configuration[ZonaHorariaNegocio.ClaveDeConfiguracion]);
+builder.Services.AddSingleton<TimeProvider>(new ProveedorDeTiempoConZona(zonaDeNegocio));
 
 builder.Services.AddSingleton(NpgsqlDataSource.Create(cadena));
 builder.Services.AddSingleton<IUsuarioRepositorio, UsuarioRepositorio>();
