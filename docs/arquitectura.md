@@ -2,7 +2,7 @@
 
 Vista de conjunto de GrupoDigitalBank-CRUD, siguiendo el modelo C4 (contexto, contenedores, componentes) más los flujos que importan. Los porqués de cada decisión están en los [ADR](adr/README.md). Los diagramas son [Mermaid](https://mermaid.js.org/) y se verifican con un motor real antes de publicarse.
 
-> Estado: refleja `develop` al 2026-10-10. La **vista de despliegue en producción es provisional** (sección 8): depende de la infraestructura real del VPS, que se decide en la fase 6 del [plan de trabajo](plan-de-trabajo.md).
+> Estado: refleja `develop` al 2026-10-10. La **vista de despliegue en producción es una propuesta** (sección 8.2, ADR 0011) hasta implementarla en la fase 7: parte de la infraestructura real del VPS, verificada el 2026-10-10, según el [plan de trabajo](plan-de-trabajo.md).
 
 ## 1. Propósito y alcance
 
@@ -202,11 +202,30 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 | **B** | Solo `db`; Negocios (`:5081`) y Presentación (`:5080`) con `dotnet watch` o F5 | Programar y depurar a diario |
 | **con proxy** | Todo más `proxy` con HTTPS local (`--profile con-proxy`) | Probar autenticación, cabeceras y CSP |
 
-### 8.2 Producción (provisional)
+### 8.2 Producción (diseño propuesto, [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md))
 
-La intención es la misma topología de Compose en un VPS, con imágenes construidas por GitHub Actions, publicadas en GHCR y desplegadas por SSH con copia de seguridad previa, prueba de humo y *rollback* (fases 7 y 8 del plan).
+El VPS es **compartido** con PortalCV y Colfe: un único nginx (`portalcv-nginx-prod`) publica 80 y 443 y Cloudflare va delante. Este proyecto no publica ningún puerto: su `proxy` (Caddy) se une a la red compartida con un alias y el nginx le enruta el subdominio. Las secciones 2, 3 y 7 describen lo que **hoy** hace el `docker-compose.yml` (Caddy con HTTPS propio); los cambios (Caddy en HTTP, sin `ports`) llegan con la fase 7 del plan.
 
-**Pendiente de decidir (fase 6):** el plan asumió un servidor propio con Caddy escuchando directamente en 80 y 443. Si el VPS ya tiene un proxy compartido (nginx) o Cloudflare delante, hay que reconciliar quién termina TLS, quién emite los certificados y cómo se enruta, y por tanto qué parte del `Caddyfile` se conserva. Hasta entonces esta sección no debe leerse como diseño cerrado.
+```mermaid
+flowchart LR
+    nav["Navegador"] -->|HTTPS| cf["Cloudflare<br/>DNS y proxy"]
+    cf -->|"HTTPS (certificado de origen)"| ng["portalcv-nginx-prod<br/>único con 80/443"]
+    ng -->|"HTTP, red compartida<br/>alias gdb-web"| px["proxy · Caddy<br/>Basic Auth, cabeceras, CSP"]
+    subgraph gdb["Red interna del proyecto (sin puertos publicados)"]
+        px --> web["web"]
+        web -->|SOAP| neg["negocios"]
+        neg --> db[("PostgreSQL")]
+    end
+    ng -.->|"otros vhosts"| otros["PortalCV · Colfe"]
+```
+
+| Aspecto | Diseño |
+|---|---|
+| Quién termina TLS | Cloudflare (navegador) y nginx (certificado de origen en `/etc/nginx/ssl/`); Caddy escucha solo HTTP |
+| Enrutamiento | `docker/gdb.conf` en el repo de PortalCV, con `resolver` + `set $upstream` para que un contenedor ausente no tumbe el nginx compartido |
+| Despliegue | GitHub Actions → GHCR → SSH con una llave restringida a un script de entrada → `docker compose -p gdb up -d` en `/srv/sitiosapps/gdb` |
+| Copias de seguridad | `deploy/backup.sh` (patrón de Colfe) en `/srv/sitiosapps/_backups/gdb`, con cron y restauración probada |
+| Pendiente de verificar | Que el `X-Forwarded-Proto` y la IP del cliente atraviesen los dos proxies (nginx y Caddy) sin perderse |
 
 ## 9. Calidad y verificación
 

@@ -86,15 +86,15 @@ Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen
 
 ## Despliegue
 
-Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción: GitHub Actions construye imágenes a GHCR y despliega por SSH al VPS en `/opt/gdb`. El `.env` de producción vive solo en el servidor.
+Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción (diseño propuesto en [ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md), aún sin implementar): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el nginx `portalcv-nginx-prod` (único con 80/443) van delante y enrutan `gdb.sitiosapps.com` a nuestro Caddy por la red compartida. GitHub Actions construye imágenes a GHCR y despliega por SSH con una llave restringida a `/srv/sitiosapps/gdb`. El `.env` de producción vive solo en el servidor. No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación: afectan a los otros proyectos.
 
 ## Documentos de referencia
 
 - [docs/diagnostico/diagnostico-2026-10-09.md](docs/diagnostico/diagnostico-2026-10-09.md): hallazgos H1–H8 y B1–B8.
 - [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md): fases y prioridades.
 - [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md): uso de Git, ramas locales y remotas.
-- [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción es provisional hasta la fase 6).
-- [docs/adr/README.md](docs/adr/README.md): las 10 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
+- [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción es una propuesta hasta la fase 7).
+- [docs/adr/README.md](docs/adr/README.md): las 11 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
 - [README.md](README.md): ejecución y decisiones técnicas.
 
 ## Estado conocido
@@ -102,6 +102,6 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 - Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B3/B4/B5/B8 (#15) y B6 (zona horaria) y H8 (arquitectura y ADR) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
 - El proyecto compila sin advertencias, corre en modo A y B y tiene 192 pruebas (unitarias, vistas con `WebApplicationFactory` e integración con PostgreSQL real). Cobertura: Negocios 100 %, Presentación 87 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las 34 mutaciones manuales aplicadas al código fueron detectadas.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Siguiente: **B2 contrato SOAP real (#19)**, el CHECK de nombre vacío (#41) y B7 (#18); después CI (fase 5), VPS (6) y despliegue (7).
+- Siguiente: **B2 contrato SOAP real (#19)**, el CHECK de nombre vacío (#41) y B7 (#18); después CI (fase 5), VPS (6) y despliegue (7). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
 - No existe todavía CI/CD; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.
