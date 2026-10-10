@@ -528,11 +528,31 @@ timedatectl | grep -i 'time zone'; free -h
 
 `docker compose version` debe ser ≥ 2.24 (el override usa `!reset`).
 
+**Resultado (2026-10-11):**
+
+| Comprobación | Resultado | Conclusión |
+|---|---|---|
+| SSH | `permitrootlogin no`, `passwordauthentication no`; sin `AllowUsers` | Correcto. Sin `AllowUsers` entra cualquier usuario con llave; hoy solo existe `maomauro` |
+| Firewall (`ufw`) | Activo, entrada denegada por omisión; 22 abierto; **80 y 443 solo desde los rangos de Cloudflare** (IPv4 e IPv6) | Correcto: el origen no se puede alcanzar directamente desde internet |
+| `fail2ban`, `unattended-upgrades` | Ambos activos | Correcto |
+| `/etc/docker/daemon.json` | No existe | Sin rotación global de logs; este proyecto los limita por servicio (7.1). No se toca el daemon (reiniciarlo reinicia a todos) |
+| Docker Compose | v5.5.1 | Cumple el mínimo (2.24) para `!reset` |
+| Memoria | 11 GiB, 8,9 GiB libres, **sin swap** | Sobra para ~400 MB de este stack; la falta de swap es una observación para el servidor |
+| Zona horaria del servidor | `Europe/Berlin` | No afecta a la aplicación (el contenedor corre en UTC y «hoy» es `America/Bogota` por configuración, ADR 0006). **Sí afecta a las horas del `cron`**, que son hora de Berlín |
+| Contenedores | Los 6 arriba (Colfe 2 días, PortalCV 3 días) | Línea base para comprobar, después de cada paso, que nada se reinició |
+
+Observaciones para quien administra el servidor (no se corrigen dentro de este plan, ver el principio de la fase):
+
+1. **Los puertos publicados por Docker pueden saltarse `ufw`** (Docker agrega sus propias reglas de `iptables`). Si es así, la restricción de 80 y 443 a Cloudflare no se cumple para el contenedor del nginx. No está verificado: una comprobación de solo lectura es `sudo iptables -S DOCKER-USER` y, desde fuera de Cloudflare, `curl -k --resolve <dominio>:443:13.140.188.159 https://<dominio>/`.
+2. Sin rotación global de logs de Docker ni swap: el riesgo es llenar el disco o quedarse sin memoria por un proyecto ajeno.
+
 ### 6.2 DNS y certificado en Cloudflare
 
-1. Registro `A` (o `CNAME` al apex) `gdb-crud.sitiosapps.com` → `13.140.188.159`, **con proxy de Cloudflare activo**.
-2. Modo SSL/TLS **Full (strict)** (comprobar el actual: lo usan los demás proyectos).
-3. Certificado de Origen para `gdb-crud.sitiosapps.com`: guardar `/etc/nginx/ssl/gdb-crud.sitiosapps.com.pem` y `.key` (la llave con permisos `600`; la pega quien administra, nunca pasa por el repo ni por el chat). Anotar la fecha de vencimiento.
+El orden importa: **el certificado y el modo SSL se preparan primero, y el registro DNS se crea al final (paso del vhost, 6.6)**. Si el nombre ya apuntara al servidor antes de que el nginx tenga el vhost, Cloudflare enviaría las peticiones a un nginx que no conoce ese nombre.
+
+1. Comprobar el modo SSL/TLS de la zona; debe ser **Full (strict)** (lo usan los demás proyectos). **No cambiarlo** si es otro: afectaría a los demás; se anota y se decide aparte.
+2. Certificado de Origen para `gdb-crud.sitiosapps.com` (solo ese nombre, no un comodín: un par `.pem`/`.key` por subdominio, como el resto): guardar `/etc/nginx/ssl/gdb-crud.sitiosapps.com.pem` y `.key` (la llave con permisos `600`; la pega quien administra, nunca pasa por el repo ni por el chat). Anotar la fecha de vencimiento.
+3. **Al final, con el vhost ya activo (6.6):** registro `A` `gdb-crud.sitiosapps.com` → `13.140.188.159`, **con proxy de Cloudflare activo**.
 
 ### 6.3 Carpetas y configuración del proyecto
 
@@ -731,9 +751,9 @@ Disparo (D7): **el merge de `develop` a `main`**, es decir, `workflow_run` de `c
 
 ## Fase 8. Primera publicación ⏳
 
-1. Registro DNS en Cloudflare, SSL en Full (strict) y certificado de origen instalado (6.2).
+1. SSL en Full (strict) comprobado y certificado de origen instalado (6.2, puntos 1 y 2). El registro DNS **todavía no**: se crea en el punto 3.
 2. Auditoría del VPS registrada (6.1), `/srv/sitiosapps/gdb-crud/.env` completo y llave restringida probada (6.3, 6.4).
-3. PR de `docker/gdb-crud.conf` fusionado en `Curriculum-Vitae-Web` y nginx recreado en la ventana acordada (6.6); PortalCV y Colfe responden igual que antes.
+3. PR de `docker/gdb-crud.conf` fusionado en `Curriculum-Vitae-Web` y nginx recreado en la ventana acordada (6.6); PortalCV y Colfe responden igual que antes. **Solo entonces** se crea el registro DNS (6.2, punto 3): hasta el primer despliegue el nombre responde 502, sin afectar a los demás.
 4. Secretos y environment `production` creados (6.7).
 5. `develop` con las fases 3 a 5 y 7.1 fusionadas y CI verde; PR de release `develop` → `main` (título `release: v1.0.0`), fusionado con **merge commit**. Ese merge dispara el despliegue.
 6. En el VPS: `docker compose -p gdb-crud ps` todo `healthy`; `docker ps` confirma que los contenedores de PortalCV y Colfe no se reiniciaron (tiempo de actividad intacto).
