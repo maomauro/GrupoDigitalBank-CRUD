@@ -144,7 +144,8 @@ gh repo edit maomauro/GrupoDigitalBank-CRUD --default-branch develop --enable-sq
 - `develop` es la rama por defecto: los PR apuntan a ella por omisión y `Closes #n` cierra el issue al fusionar en ella.
 - Squash **y** merge commit habilitados (squash para feature → `develop`; merge commit para `develop` → `main`). Rebase deshabilitado.
 - **Borrado automático de ramas desactivado**: con él GitHub borraría `develop` al fusionarla a `main`. Las ramas de feature se borran con `gh pr merge --squash --delete-branch`.
-- ✅ `.github/dependabot.yml` (issue #30): `nuget` (con grupos `corewcf` y `pruebas`), `docker` (una entrada por carpeta con Dockerfile), `docker-compose` y `github-actions`; semanal los lunes, `target-branch: develop`, prefijo `build(deps)` y sin saltos de versión mayor de .NET ni de PostgreSQL.
+- ✅ `.github/dependabot.yml` (issue #30): `nuget` (con grupos `corewcf` y `pruebas`), `docker` (una entrada por carpeta con Dockerfile), `docker-compose` y `npm` (herramienta de navegador); semanal los lunes, `target-branch: develop`, prefijo `build(deps)` y sin saltos de versión mayor de .NET ni de PostgreSQL.
+  - **`github-actions` se quitó a propósito (2026-10-10):** Dependabot fallaba con `/action.yml or /.github/workflows/<anything>.yml not found` porque el repositorio aún no tiene workflows. **Volver a añadirlo en la fase 5**, junto con `ci.yml` (`package-ecosystem: "github-actions"`, `directory: "/"`, prefijo `ci`).
 - ✅ Seguridad (activado el 2026-10-09 por API): Dependabot alerts y actualizaciones automáticas de seguridad (0 alertas abiertas). Secret scanning y push protection no están disponibles en repos privados con plan Free.
 - *Actions → General*: `GITHUB_TOKEN` en solo lectura por defecto.
 
