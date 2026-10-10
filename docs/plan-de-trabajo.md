@@ -17,7 +17,7 @@ Leyenda de estado: ✅ hecho · 🔄 en curso · ⏳ pendiente.
 | Hook local | `pre-push` con `format` + `build`, y rechazo del push directo a `main` y `develop` (D6) |
 | VPS | **Compartido y ya en producción** (Contabo, 6 vCPU, 12 GB, 200 GB; usuario `maomauro`; IP `13.140.188.159`). Aloja PortalCV y Colfe: se audita, no se reinstala (fase 6) |
 | Dominio y DNS | `sitiosapps.com` en Cloudflare (proxy activo); cada proyecto recibe `<proyecto>.sitiosapps.com`. Este: `gdb-crud.sitiosapps.com` |
-| TLS y entrada | Cloudflare → `portalcv-nginx-prod` (único que publica 80/443, certificado de origen en `/etc/nginx/ssl/`) → Caddy interno por la red compartida con el alias `gdb-crud-web`. Detalle en [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) (propuesta) |
+| TLS y entrada | Cloudflare → `portalcv-nginx-prod` (único que publica 80/443, certificado de origen en `/etc/nginx/ssl/`) → Caddy interno por la red compartida con el alias `gdb-crud-web`. Detalle en [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) (aceptada) |
 | Carpetas en el VPS | `/srv/sitiosapps/gdb-crud/` y `/srv/sitiosapps/_backups/gdb-crud/` |
 | Registro de imágenes | GitHub Container Registry (`ghcr.io`) |
 | Despliegue | GitHub Actions → SSH con llave restringida a un script de entrada → `docker compose pull && up -d` |
@@ -522,7 +522,7 @@ Criterio: un PR con una prueba rota se ve en rojo y no se fusiona (por disciplin
 
 ## Fase 6. Preparar el VPS compartido ⏳
 
-El VPS **ya existe y aloja otros proyectos** (PortalCV y Colfe). Aquí no se instala ni se endurece desde cero: se **audita**, se añade un proyecto más y cada cambio a lo compartido (nginx, daemon de Docker, firewall, SSH) se trata aparte, con ventana y aprobación. Decisión y alternativas en [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) (propuesta).
+El VPS **ya existe y aloja otros proyectos** (PortalCV y Colfe). Aquí no se instala ni se endurece desde cero: se **audita**, se añade un proyecto más y cada cambio a lo compartido (nginx, daemon de Docker, firewall, SSH) se trata aparte, con ventana y aprobación. Decisión y alternativas en [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) (aceptada).
 
 Los comandos del servidor los ejecuta quien administra el VPS por SSH y pega la salida; el proyecto se llama `gdb-crud` en el servidor (subdominio, carpeta y backups) y su alias de red es `gdb-crud-web`, como `colfe-web` en Colfe.
 
@@ -872,7 +872,7 @@ Cómo desplegar, hacer rollback, restaurar backup, rotar secretos, y qué hacer 
 3. Si Basic Auth basta como autenticación inicial (4.2) o se quiere login propio ya.
 4. Barreras de rama (2.3): se mantiene la opción A (disciplina + hook) o se pasa a B (repo público) o C (GitHub Pro). La cuenta es Free.
 
-5. Aprobar el [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md): Caddy interno detrás del nginx compartido.
+5. ~~Aprobar el [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md)~~ — aprobado el 2026-10-10.
 6. Ventana para recrear `portalcv-nginx-prod` y fusionar el PR en `Curriculum-Vitae-Web` (6.6).
 7. Política de reinicio única para los tres proyectos (hoy Colfe `always`, PortalCV y este `unless-stopped`): fijar un estándar.
 

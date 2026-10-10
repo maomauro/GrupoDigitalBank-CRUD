@@ -86,14 +86,14 @@ Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen
 
 ## Despliegue
 
-Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción (diseño propuesto en [ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md), aún sin implementar): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el nginx `portalcv-nginx-prod` (único con 80/443) van delante y enrutan `gdb-crud.sitiosapps.com` a nuestro Caddy por la red compartida. GitHub Actions construye imágenes a GHCR y despliega por SSH con una llave restringida a `/srv/sitiosapps/gdb-crud`. El `.env` de producción vive solo en el servidor. No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación: afectan a los otros proyectos.
+Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción (diseño aprobado en [ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md), aún sin implementar): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el nginx `portalcv-nginx-prod` (único con 80/443) van delante y enrutan `gdb-crud.sitiosapps.com` a nuestro Caddy por la red compartida. GitHub Actions construye imágenes a GHCR y despliega por SSH con una llave restringida a `/srv/sitiosapps/gdb-crud`. El `.env` de producción vive solo en el servidor. No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación: afectan a los otros proyectos.
 
 ## Documentos de referencia
 
 - [docs/diagnostico/diagnostico-2026-10-09.md](docs/diagnostico/diagnostico-2026-10-09.md): hallazgos H1–H8 y B1–B8.
 - [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md): fases y prioridades.
 - [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md): uso de Git, ramas locales y remotas.
-- [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción es una propuesta hasta la fase 7).
+- [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción está aprobado, sin implementar hasta la fase 7).
 - [docs/adr/README.md](docs/adr/README.md): las 11 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
 - [README.md](README.md): ejecución y decisiones técnicas.
 
