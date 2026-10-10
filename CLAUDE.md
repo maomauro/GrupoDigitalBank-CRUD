@@ -47,7 +47,13 @@ Desarrollo sin Docker: PostgreSQL local con el script de `db/`, luego `dotnet ru
 
 ## Git
 
-Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen: `main` protegida = producción, ramas cortas `feat/`, `fix/`, `chore/`, `docs/`, `ci/`, `test/`, PR obligatorio, Conventional Commits en español, **nunca** force-push a `main`. No hacer commit ni push salvo que el usuario lo pida.
+Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen: **feature → develop → main → producción**.
+
+- `main` = producción (su push despliega); `develop` = integración y rama por defecto. Ninguna recibe commits directos: todo por PR (GitHub Free no permite protegerlas en el servidor, así que es regla propia, apoyada en el hook `pre-push`).
+- Ramas de trabajo `feat/`, `fix/`, `chore/`, `docs/`, `ci/`, `test/` salen de `develop` y vuelven a `develop` con **squash**. Release `develop` → `main` con **merge commit** (nunca squash). Hotfix sale de `main` y luego se sincroniza a `develop`.
+- No activar el borrado automático de ramas en GitHub (borraría `develop`); usar `gh pr merge --squash --delete-branch` en las features.
+- Conventional Commits en español. **Nunca** force-push a `main` ni a `develop`.
+- No hacer commit ni push salvo que el usuario lo pida.
 
 ## Seguridad: nunca
 
@@ -69,5 +75,7 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 
 ## Estado conocido
 
-- El proyecto aún no se ha compilado ni probado con `dotnet` (el diagnóstico fue estático; el SQL sí se probó en PostgreSQL).
-- No existen todavía `tests/`, CI/CD, autenticación ni migraciones automáticas; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
+- Fases 0 y 1 del plan hechas: herramientas verificadas, repositorio local con commit base `ce8dc86`. Fase 2 (remoto en GitHub) en curso.
+- El proyecto aún no se ha compilado ni probado con `dotnet` (el diagnóstico fue estático; el SQL sí se probó en PostgreSQL). Es el primer paso de la fase 3.
+- No existen todavía `tests/`, CI/CD, autenticación, migraciones automáticas ni `docker-compose.dev.yml`; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
+- Decisiones de proceso (D1–D6) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, CI obligatorio, modo B para programar y A antes del PR, hook `pre-push`.
