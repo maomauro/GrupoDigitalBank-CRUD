@@ -30,5 +30,5 @@ El proyecto no tenía pruebas. Se quiere sostener «código limpio» y poder cam
 - ➕ Los hallazgos de seguridad y de negocio quedaron cubiertos con una prueba de regresión que se vio fallar antes de corregirlos.
 - ➖ Las pruebas de integración necesitan Docker y arrancan un contenedor por clase (≈1 s).
 - ➖ La mutación manual no es automática ni escala con el tamaño del proyecto.
-- ➖ **El CI aún no existe** (fase 5, #20): hoy el contrato se aplica en local y con el hook; cuando exista debe ejecutar `verificar.ps1` y `cobertura.ps1`.
+- ➖ ~~El CI aún no existe~~ **Resuelto en la fase 5 (#20):** `.github/workflows/ci.yml` ejecuta `verificar.ps1` y `cobertura.ps1` en cada PR, además de lo que solo tiene sentido en un servidor limpio.
 - 🔁 Evaluar Stryker.NET en el CI y subir el mínimo de cobertura cuando crezca el código.

@@ -26,7 +26,7 @@ El contrato SOAP está duplicado a mano en `Presentacion/Servicios/ContratoServi
 ## Comandos
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1            # format + build + test (igual que CI)
+powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1            # format + build + test (es lo que ejecuta el trabajo ci)
 powershell -ExecutionPolicy Bypass -File scripts\verificar.ps1 -Rapido    # format whitespace + build (~10 s)
 powershell -ExecutionPolicy Bypass -File scripts\verificar-herramientas.ps1   # chequeo del entorno
 powershell -ExecutionPolicy Bypass -File scripts\probar-migrador.ps1         # prueba db/migrate.sh en una BD desechable (requiere Docker)
@@ -103,6 +103,6 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 - Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B2 (contrato SOAP), B3/B4/B5/B8 (#15), B7 (paginación), B6 (zona horaria), H8 (arquitectura y ADR) y #41 (CHECK de nombre) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
 - El proyecto compila sin advertencias, corre en modo A y B y tiene 302 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 95 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las mutaciones manuales aplicadas (34 al código, 7 al contrato de B2 y 25 a la paginación de B7) fueron todas detectadas.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Siguiente: CI (fase 5), VPS (6) y despliegue (7). La fase 4 está completa (B2, #41 y B7 hechos). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
-- No existe todavía CI/CD; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
+- Fases 4 y 5 completas (B2, #41 y B7 hechos; CI en verde). Siguiente: VPS (fase 6) y despliegue (7). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
+- CI: `.github/workflows/ci.yml` con tres trabajos independientes (`ci`, `migrador`, `docker`) en cada PR y push a `develop` y `main`. Ejecutan los mismos scripts que en local, con acciones fijadas por SHA. No bloquean el botón de fusionar (plan Free, ADR 0005): **no fusionar con un check en rojo**. El CD (despliegue) aún no existe: fases 6 a 8. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.
