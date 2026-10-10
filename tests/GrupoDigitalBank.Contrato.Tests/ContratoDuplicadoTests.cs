@@ -25,12 +25,12 @@ public sealed class ContratoDuplicadoTests
     }
 
     [Fact]
-    public void ElServicioTieneLasCuatroOperacionesEsperadas()
+    public void ElServicioTieneLasCincoOperacionesEsperadas()
     {
         // Evita que ambos lados se vacien a la vez y la comparacion pase en vano
         var lineas = DescribirServicio(typeof(NegociosContratos.IUsuarioService));
 
-        lineas.Count(l => l.StartsWith("operacion ", StringComparison.Ordinal)).ShouldBe(4);
+        lineas.Count(l => l.StartsWith("operacion ", StringComparison.Ordinal)).ShouldBe(5);
     }
 
     [Fact]
@@ -38,6 +38,16 @@ public sealed class ContratoDuplicadoTests
     {
         var negocios = DescribirDatos(typeof(NegociosContratos.UsuarioDto));
         var presentacion = DescribirDatos(typeof(PresentacionServicios.UsuarioDto));
+
+        presentacion.ShouldBe(negocios);
+        negocios.Count(l => l.StartsWith("campo ", StringComparison.Ordinal)).ShouldBe(4);
+    }
+
+    [Fact]
+    public void PaginaUsuariosCoincideEnNombreEspacioOrdenYTipoDeCadaCampo()
+    {
+        var negocios = DescribirDatos(typeof(NegociosContratos.PaginaUsuarios));
+        var presentacion = DescribirDatos(typeof(PresentacionServicios.PaginaUsuarios));
 
         presentacion.ShouldBe(negocios);
         negocios.Count(l => l.StartsWith("campo ", StringComparison.Ordinal)).ShouldBe(4);

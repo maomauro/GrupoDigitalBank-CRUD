@@ -37,5 +37,6 @@ public sealed class SaludTests(WebApplicationFactory<Program> fabrica) : IClassF
 
         respuesta.IsSuccessStatusCode.ShouldBeTrue();
         await cliente.DidNotReceiveWithAnyArgs().ConsultarAsync(default);
+        await cliente.DidNotReceiveWithAnyArgs().ConsultarPaginaAsync(default, default);
     }
 }

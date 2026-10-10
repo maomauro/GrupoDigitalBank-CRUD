@@ -148,6 +148,128 @@ public class UsuarioServiceTests
         error.Mensaje.ShouldContain("9");
     }
 
+    // ---------- ConsultarPagina (B7) ----------
+
+    private static List<UsuarioDto> Usuarios(int desde, int cantidad)
+        => Enumerable.Range(desde, cantidad).Select(i => Valido(i)).ToList();
+
+    [Fact]
+    public async Task ConsultarPaginaPideAlRepositorioElLimiteYElDesplazamientoDeLaPagina()
+    {
+        _repositorio.ConsultarPaginaAsync(10, 20, Arg.Any<CancellationToken>()).Returns(new ResultadoPagina(Usuarios(21, 10), 45));
+
+        var pagina = await _servicio.ConsultarPagina(3, 10);
+
+        pagina.Usuarios.Select(u => u.Id).ShouldBe(Enumerable.Range(21, 10));
+        pagina.Total.ShouldBe(45);
+        pagina.Pagina.ShouldBe(3);
+        pagina.Tamano.ShouldBe(10);
+        await _repositorio.Received(1).ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ConsultarPaginaFueraDeRangoDevuelveLaUltimaPagina()
+    {
+        // 25 usuarios de 10 en 10: hay 3 paginas; la 9 no existe y el repositorio la devuelve vacia pero con el total
+        _repositorio.ConsultarPaginaAsync(10, 80, Arg.Any<CancellationToken>()).Returns(new ResultadoPagina([], 25));
+        _repositorio.ConsultarPaginaAsync(10, 20, Arg.Any<CancellationToken>()).Returns(new ResultadoPagina(Usuarios(21, 5), 25));
+
+        var pagina = await _servicio.ConsultarPagina(9, 10);
+
+        pagina.Pagina.ShouldBe(3);
+        pagina.Usuarios.Count.ShouldBe(5);
+        pagina.Total.ShouldBe(25);
+    }
+
+    [Fact]
+    public async Task ConsultarPaginaSinUsuariosDevuelveLaPaginaUnoVaciaSinPedirOtra()
+    {
+        _repositorio.ConsultarPaginaAsync(10, 0, Arg.Any<CancellationToken>()).Returns(new ResultadoPagina([], 0));
+
+        var pagina = await _servicio.ConsultarPagina(1, 10);
+
+        pagina.Usuarios.ShouldBeEmpty();
+        pagina.Total.ShouldBe(0);
+        pagina.Pagina.ShouldBe(1);
+        await _repositorio.Received(1).ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ConsultarPaginaLejanaSinUsuariosVuelveALaPaginaUno()
+    {
+        _repositorio.ConsultarPaginaAsync(10, 40, Arg.Any<CancellationToken>()).Returns(new ResultadoPagina([], 0));
+        _repositorio.ConsultarPaginaAsync(10, 0, Arg.Any<CancellationToken>()).Returns(new ResultadoPagina([], 0));
+
+        var pagina = await _servicio.ConsultarPagina(5, 10);
+
+        pagina.Pagina.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ConsultarPaginaUltimaExactaNoPideOtraPagina()
+    {
+        // 20 usuarios de 10 en 10: la pagina 2 es la ultima y esta llena
+        _repositorio.ConsultarPaginaAsync(10, 10, Arg.Any<CancellationToken>()).Returns(new ResultadoPagina(Usuarios(11, 10), 20));
+
+        var pagina = await _servicio.ConsultarPagina(2, 10);
+
+        pagina.Pagina.ShouldBe(2);
+        await _repositorio.Received(1).ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(0, 10)]
+    [InlineData(-1, 10)]
+    [InlineData(100_001, 10)]
+    [InlineData(1, 0)]
+    [InlineData(1, -5)]
+    [InlineData(1, 101)]
+    public async Task ConsultarPaginaConParametrosFueraDeLimiteDevuelveValidacionYNoTocaLaBase(int numero, int tamano)
+    {
+        var error = await FaultDe(() => _servicio.ConsultarPagina(numero, tamano));
+
+        error.Codigo.ShouldBe("VALIDACION");
+        error.Detalles.ShouldNotBeEmpty();
+        await _repositorio.DidNotReceiveWithAnyArgs().ConsultarPaginaAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task ConsultarPaginaConAmbosParametrosInvalidosListaLosDosErrores()
+    {
+        var error = await FaultDe(() => _servicio.ConsultarPagina(0, 500));
+
+        error.Detalles.Count.ShouldBe(2);
+        error.Detalles.ShouldContain(d => d.Contains("pagina", StringComparison.OrdinalIgnoreCase));
+        error.Detalles.ShouldContain(d => d.Contains("tamano", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData(1, 1, 0)]
+    [InlineData(1, 100, 0)]
+    [InlineData(100_000, 100, 9_999_900)]
+    public async Task ConsultarPaginaAceptaLosLimitesExactos(int numero, int tamano, int desplazamiento)
+    {
+        _repositorio.ConsultarPaginaAsync(tamano, desplazamiento, Arg.Any<CancellationToken>())
+            .Returns(new ResultadoPagina(Usuarios(1, 1), tamano * numero));
+
+        var pagina = await _servicio.ConsultarPagina(numero, tamano);
+
+        pagina.Pagina.ShouldBe(numero);
+        pagina.Tamano.ShouldBe(tamano);
+    }
+
+    [Fact]
+    public async Task ConsultarPaginaTraduceUnErrorDeBaseDeDatosSinFiltrarDetalles()
+    {
+        _repositorio.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns<ResultadoPagina>(_ => throw new NpgsqlException("password authentication failed for user usuarios_app host=db"));
+
+        var error = await FaultDe(() => _servicio.ConsultarPagina(1, 10));
+
+        error.Codigo.ShouldBe("ERROR_DATOS");
+        error.Mensaje.ShouldNotContain("password");
+    }
+
     // ---------- Eliminar ----------
 
     [Theory]

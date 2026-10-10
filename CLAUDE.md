@@ -59,6 +59,7 @@ Modos de ejecución local (detalle en el plan, fase 3.3):
 - Sin handlers JavaScript inline en las vistas (ver H1 del diagnóstico); usar atributos `data-*` y `wwwroot/js`.
 - Versiones de paquetes fijas y centralizadas en `Directory.Packages.props`: los `.csproj` no llevan `Version`. Los Dockerfile copian `global.json` y los `Directory.*.props` antes del `restore`; si se añade otro archivo de ese tipo, copiarlo también.
 - Cambios de esquema: *expand/contract*, compatibles hacia atrás durante un despliegue.
+- La grilla se pagina en el servidor (`ConsultarPagina` y `fn_usuario_pagina`, [ADR 0012](docs/adr/0012-paginacion-en-el-servidor.md)): no volver a traer todos los usuarios para listarlos.
 
 ## Git
 
@@ -94,14 +95,14 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 - [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md): fases y prioridades.
 - [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md): uso de Git, ramas locales y remotas.
 - [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción está aprobado, sin implementar hasta la fase 7).
-- [docs/adr/README.md](docs/adr/README.md): las 11 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
+- [docs/adr/README.md](docs/adr/README.md): las 12 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
 - [README.md](README.md): ejecución y decisiones técnicas.
 
 ## Estado conocido
 
-- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B2 (contrato SOAP), B3/B4/B5/B8 (#15), B6 (zona horaria), H8 (arquitectura y ADR) y #41 (CHECK de nombre) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
-- El proyecto compila sin advertencias, corre en modo A y B y tiene 211 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 94 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las 34 mutaciones manuales aplicadas al código y las 7 al contrato (B2) que compilan fueron detectadas.
+- Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B2 (contrato SOAP), B3/B4/B5/B8 (#15), B7 (paginación), B6 (zona horaria), H8 (arquitectura y ADR) y #41 (CHECK de nombre) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
+- El proyecto compila sin advertencias, corre en modo A y B y tiene 302 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 95 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las mutaciones manuales aplicadas (34 al código, 7 al contrato de B2 y 25 a la paginación de B7) fueron todas detectadas.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Siguiente: B7 paginación (#18) (B2, contrato SOAP real, y #41, CHECK de nombre vacío, hechos); después CI (fase 5), VPS (6) y despliegue (7). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
+- Siguiente: CI (fase 5), VPS (6) y despliegue (7). La fase 4 está completa (B2, #41 y B7 hechos). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
 - No existe todavía CI/CD; están planificados en el plan de trabajo. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.

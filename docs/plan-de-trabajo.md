@@ -69,7 +69,7 @@ Orden: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. La fase 6
 | P2 | Monitoreo externo, runbook, rotación de secretos | 9 |
 | P2 | H8 arquitectura y ADRs, B6 zona horaria, B8 WSDL solo en desarrollo | 4.8 |
 | P2 | Cobertura ≥ 80 %, Trivy, CodeQL, hadolint | 5 |
-| P3 | B7 paginación, login propio (Identity/OIDC), métricas DORA | 4.8, 10 |
+| P3 | login propio (Identity/OIDC), métricas DORA | 4.8, 10 |
 
 Camino crítico: 2 → 3 → H1 → H5 → H4 → H2 → H6 → pruebas mínimas → CI → 6 → 7 → 8 → backup.
 
@@ -422,7 +422,7 @@ Resuelto después: el camino feliz y el fault reales del cliente SOAP y la compa
 | B4 cabeceras y CSP | ✅ Ver abajo |
 | B5 contraseña en `appsettings.json` | ✅ Ver abajo |
 | B6 zona horaria | ✅ Ver abajo |
-| B7 paginación | Diferido (#18) |
+| B7 paginación | ✅ (#18) [ADR 0012](adr/0012-paginacion-en-el-servidor.md). `db/005_paginacion_usuarios.sql` (`fn_usuario_pagina`: página + total en una sentencia, `SECURITY DEFINER`, solo el rol de aplicación); operación SOAP nueva `ConsultarPagina` (la anterior no cambia: *expand/contract*); Negocios valida (página 1–100 000, tamaño 1–100) y devuelve la última página si la pedida no existe; la grilla usa `?pagina=&tamano=` (10/25/50) con Anterior, Siguiente y «Página X de Y · N usuarios», y Eliminar vuelve a la misma página. **Verificado de punta a punta en Docker** con la base nueva (25 usuarios: páginas 1–3, fuera de rango → última, valores inválidos → por omisión; al borrar el último usuario de la página 3 se cae en «Página 2 de 2»). 302 pruebas; Presentación 95 %. 25 mutaciones (servicio, SQL, modelo, controlador, vista y contrato) detectadas. Dos trampas: la ruta por omisión hace que los enlaces salgan como `/?pagina=…`, y una prueba de integración que renombraba un usuario contaminaba a las demás (comparten base) |
 | B8 WSDL solo en desarrollo | ✅ Ver abajo |
 | Nuevo (#41) | ✅ `db/004_nombre_no_vacio.sql`: `CHECK (nombre ~ '\S')` (al menos un carácter que no sea blanco; más amplio que `btrim`, que no recorta tabuladores). Antes de crear la restricción comprueba si hay filas inválidas y, si las hay, aborta con un mensaje que da cuántas y sus ids, sin modificar nada. Es idempotente (el escenario 6 del migrador lo exigió: una base sin registro que ya tiene la restricción). 8 pruebas de integración nuevas llaman a la función sin pasar por el repositorio (que recorta el nombre) y `probar-migrador.ps1` suma el escenario 9. Mutación a `btrim(nombre) <> ''` detectada |
 

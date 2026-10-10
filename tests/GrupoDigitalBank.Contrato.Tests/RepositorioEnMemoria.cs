@@ -41,6 +41,15 @@ public sealed class RepositorioEnMemoria : IUsuarioRepositorio
         }
     }
 
+    public Task<ResultadoPagina> ConsultarPaginaAsync(int limite, int desplazamiento, CancellationToken ct = default)
+    {
+        lock (_candado)
+        {
+            var pagina = _usuarios.OrderBy(u => u.Id).Skip(desplazamiento).Take(limite).Select(u => Copiar(u, u.Id)).ToList();
+            return Task.FromResult(new ResultadoPagina(pagina, _usuarios.Count));
+        }
+    }
+
     public Task<bool> EliminarAsync(int id, CancellationToken ct = default)
     {
         lock (_candado)

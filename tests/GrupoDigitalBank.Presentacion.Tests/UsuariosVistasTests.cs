@@ -30,10 +30,8 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     private HttpClient ClienteConUsuario(string nombre)
     {
         var cliente = Substitute.For<IUsuarioClient>();
-        cliente.ConsultarAsync(Arg.Any<int?>()).Returns(
-        [
-            new UsuarioDto { Id = 7, Nombre = nombre, FechaNacimiento = new DateTime(1990, 5, 20), Sexo = "M" }
-        ]);
+        cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(
+            PaginaCon(new UsuarioDto { Id = 7, Nombre = nombre, FechaNacimiento = new DateTime(1990, 5, 20), Sexo = "M" }));
 
         return _fabrica.WithWebHostBuilder(b => b.ConfigureServices(servicios =>
         {
@@ -41,6 +39,9 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
             servicios.AddSingleton(cliente);
         })).CreateClient();
     }
+
+    private static PaginaUsuarios PaginaCon(params UsuarioDto[] usuarios)
+        => new() { Usuarios = [.. usuarios], Total = usuarios.Length, Pagina = 1, Tamano = 10 };
 
     public static TheoryData<string> NombresMaliciosos => new()
     {
@@ -105,7 +106,7 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     private HttpClient ClienteQueFalla()
     {
         var cliente = Substitute.For<IUsuarioClient>();
-        cliente.ConsultarAsync(Arg.Any<int?>()).Returns<List<UsuarioDto>>(_ => throw new ServicioException("No fue posible comunicarse con el servicio de negocios."));
+        cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns<PaginaUsuarios>(_ => throw new ServicioException("No fue posible comunicarse con el servicio de negocios."));
         return _fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
         {
             s.RemoveAll<IUsuarioClient>();
@@ -116,7 +117,7 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     private HttpClient ClienteVacio()
     {
         var cliente = Substitute.For<IUsuarioClient>();
-        cliente.ConsultarAsync(Arg.Any<int?>()).Returns([]);
+        cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(PaginaCon());
         return _fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
         {
             s.RemoveAll<IUsuarioClient>();
@@ -139,10 +140,10 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     public async Task NingunaVistaEmiteNadaEnLineaNiApuntaAOtroOrigen(string escenario, string ruta)
     {
         var cliente = Substitute.For<IUsuarioClient>();
-        cliente.ConsultarAsync(Arg.Any<int?>()).Returns(
-        [
-            new UsuarioDto { Id = 7, Nombre = "Ana Perez", FechaNacimiento = new DateTime(1990, 5, 20), Sexo = "F" }
-        ]);
+        var ana = new UsuarioDto { Id = 7, Nombre = "Ana Perez", FechaNacimiento = new DateTime(1990, 5, 20), Sexo = "F" };
+        cliente.ConsultarAsync(Arg.Any<int?>()).Returns([ana]);
+        cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(
+            new PaginaUsuarios { Usuarios = [ana], Total = 45, Pagina = 2, Tamano = 10 });   // pagina intermedia: con Anterior y Siguiente
         using var http = escenario switch
         {
             "vacia" => ClienteVacio(),

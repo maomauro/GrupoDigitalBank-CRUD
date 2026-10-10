@@ -11,5 +11,6 @@ public interface IUsuarioClient
     Task<UsuarioDto> AgregarAsync(UsuarioDto usuario);
     Task<UsuarioDto> ModificarAsync(UsuarioDto usuario);
     Task<List<UsuarioDto>> ConsultarAsync(int? id = null);
+    Task<PaginaUsuarios> ConsultarPaginaAsync(int pagina, int tamano);
     Task EliminarAsync(int id);
 }

@@ -10,6 +10,9 @@ public sealed class UsuarioRepositorio(NpgsqlDataSource dataSource) : IUsuarioRe
     private const string Sql =
         "SELECT id, nombre, fecha_nacimiento, sexo FROM fn_usuario_crud(@op, @id, @nombre, @fecha, @sexo)";
 
+    private const string SqlPagina =
+        "SELECT id, nombre, fecha_nacimiento, sexo, total FROM fn_usuario_pagina(@limite, @desplazamiento)";
+
     public async Task<UsuarioDto> CrearAsync(UsuarioDto usuario, CancellationToken ct = default)
         => (await EjecutarAsync("C", null, usuario, ct)).Single();
 
@@ -18,6 +21,25 @@ public sealed class UsuarioRepositorio(NpgsqlDataSource dataSource) : IUsuarioRe
 
     public Task<List<UsuarioDto>> ConsultarAsync(int? id, CancellationToken ct = default)
         => EjecutarAsync("R", id, null, ct);
+
+    public async Task<ResultadoPagina> ConsultarPaginaAsync(int limite, int desplazamiento, CancellationToken ct = default)
+    {
+        await using var cmd = dataSource.CreateCommand(SqlPagina);
+        cmd.Parameters.Add(new NpgsqlParameter("limite", NpgsqlDbType.Integer) { Value = limite });
+        cmd.Parameters.Add(new NpgsqlParameter("desplazamiento", NpgsqlDbType.Integer) { Value = desplazamiento });
+
+        var usuarios = new List<UsuarioDto>();
+        var total = 0L;
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            total = reader.GetInt64(4);
+            // Pagina fuera de rango o tabla vacia: una sola fila con id nulo que solo trae el total
+            if (reader.IsDBNull(0)) continue;
+            usuarios.Add(Mapear(reader));
+        }
+        return new ResultadoPagina(usuarios, checked((int)total));
+    }
 
     public async Task<bool> EliminarAsync(int id, CancellationToken ct = default)
         => (await EjecutarAsync("D", id, null, ct)).Count > 0;
@@ -36,14 +58,17 @@ public sealed class UsuarioRepositorio(NpgsqlDataSource dataSource) : IUsuarioRe
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            resultado.Add(new UsuarioDto
-            {
-                Id = reader.GetInt32(0),
-                Nombre = reader.GetString(1),
-                FechaNacimiento = reader.GetFieldValue<DateOnly>(2).ToDateTime(TimeOnly.MinValue),
-                Sexo = reader.GetString(3).Trim()
-            });
+            resultado.Add(Mapear(reader));
         }
         return resultado;
     }
+
+    // Las columnas 0 a 3 son id, nombre, fecha_nacimiento y sexo en ambas consultas
+    private static UsuarioDto Mapear(NpgsqlDataReader reader) => new()
+    {
+        Id = reader.GetInt32(0),
+        Nombre = reader.GetString(1),
+        FechaNacimiento = reader.GetFieldValue<DateOnly>(2).ToDateTime(TimeOnly.MinValue),
+        Sexo = reader.GetString(3).Trim()
+    };
 }

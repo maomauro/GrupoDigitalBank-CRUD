@@ -85,4 +85,38 @@ public class RolAplicacionTests(PostgresFixture bd) : IClassFixture<PostgresFixt
         lector.GetBoolean(0).ShouldBeTrue("SECURITY DEFINER");
         lector.GetFieldValue<string[]>(1).ShouldContain(c => c.StartsWith("search_path=", StringComparison.Ordinal));
     }
+
+    // B7: la funcion de paginacion se protege igual que fn_usuario_crud
+    private const string FirmaPagina = "fn_usuario_pagina(integer,integer)";
+
+    [Fact]
+    public async Task LaFuncionDePaginacionSoloLaEjecutaElRolDeAplicacion()
+    {
+        await using var crear = bd.AdminDataSource.CreateCommand("CREATE ROLE intruso_pagina LOGIN PASSWORD 'x'");
+        await crear.ExecuteNonQueryAsync();
+
+        async Task<bool> PuedeEjecutar(string rol)
+        {
+            await using var c = bd.AdminDataSource.CreateCommand(
+                $"SELECT has_function_privilege(@rol, '{FirmaPagina}', 'EXECUTE')");
+            c.Parameters.AddWithValue("rol", rol);
+            return (bool)(await c.ExecuteScalarAsync())!;
+        }
+
+        (await PuedeEjecutar(PostgresFixture.UsuarioApp)).ShouldBeTrue();
+        (await PuedeEjecutar("intruso_pagina")).ShouldBeFalse();
+        (await PuedeEjecutar("public")).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task LaFuncionDePaginacionEsSecurityDefinerConSearchPathFijo()
+    {
+        await using var comando = bd.AdminDataSource.CreateCommand(
+            "SELECT prosecdef, proconfig FROM pg_proc WHERE proname = 'fn_usuario_pagina'");
+        await using var lector = await comando.ExecuteReaderAsync();
+
+        (await lector.ReadAsync()).ShouldBeTrue();
+        lector.GetBoolean(0).ShouldBeTrue("SECURITY DEFINER");
+        lector.GetFieldValue<string[]>(1).ShouldContain(c => c.StartsWith("search_path=", StringComparison.Ordinal));
+    }
 }
