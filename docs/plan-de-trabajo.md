@@ -79,7 +79,7 @@ Camino crítico: 2 → 3 → H1 → H5 → H4 → H2 → H6 → pruebas mínimas
 | [ciclo-de-vida-desarrollo.md](ciclo-de-vida-desarrollo.md) | Ciclo local → GitHub, brechas, DoR/DoD, decisiones | ✅ |
 | [git-guia-tecnica.md](git-guia-tecnica.md) | Ramas locales y remotas, flujo, protecciones | ✅ |
 | [diagnostico-2026-10-09.md](diagnostico/diagnostico-2026-10-09.md) | Hallazgos de partida | ✅ |
-| `arquitectura.md`, `adr/` | Decisiones y diagramas C4 | Fase 4.8 |
+| [arquitectura.md](arquitectura.md), [adr/](adr/README.md) | Vista de conjunto (C4) y registro de decisiones | ✅ (H8) |
 | `runbook.md` | Operación y recuperación | Fase 9.4 |
 
 ---
@@ -413,7 +413,7 @@ Pendiente para otros issues: camino feliz y fault reales del cliente SOAP contra
 
 | Ítem | Estado |
 |---|---|
-| H8 `docs/` vacío | Pendiente (#16): `docs/arquitectura.md` (C4 en Mermaid), `docs/adr/0001-corewcf.md`, `0002-sin-orm.md`, `0003-contrato-soap-duplicado.md` (B2), `0004-autenticacion.md`, `0005-proteccion-de-rama.md` (si aplica 2.3). `.dockerignore` sigue excluyendo `docs/` |
+| H8 `docs/` vacío | ✅ `docs/arquitectura.md` (C4 contexto, contenedores y componentes en Mermaid, flujos, seguridad, calidad y despliegue) y `docs/adr/` con 10 ADR (0001 CoreWCF, 0002 sin ORM, 0003 contrato duplicado, 0004 Basic Auth, 0005 flujo de ramas y GitHub Free, 0006 zona horaria, 0007 migraciones, 0008 rol de mínimo privilegio, 0009 cabeceras y CSP, 0010 verificación). Los 6 diagramas se validan con Mermaid 11 en Chrome (analizar y dibujar) y los 72 enlaces relativos apuntan a archivos existentes, con `scripts/verificar-docs.ps1 [-Diagramas]` (con control negativo: falla ante un enlace o un diagrama rotos); el CI de la fase 5 puede ejecutarlo. La vista de despliegue en producción queda **provisional** hasta la fase 6 (infraestructura real del VPS) |
 | B1 versiones flotantes | ✅ Hecho en 3.6 |
 | B2 contrato duplicado | Pendiente (#19): ADR; prueba con un servidor CoreWCF real (camino feliz y fault del cliente SOAP) y comparación del WSDL de Negocios con `ContratoServicio.cs` |
 | B3 healthchecks | ✅ Ver abajo |

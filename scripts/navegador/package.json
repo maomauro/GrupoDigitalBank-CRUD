@@ -1,8 +1,9 @@
 {
   "name": "gdb-navegador",
   "private": true,
-  "description": "Comprobaciones en un Chrome real (CSP y regresion H1). Herramienta opcional: ver scripts/probar-navegador.ps1",
+  "description": "Herramientas opcionales con un navegador real: CSP y regresion H1 (scripts/probar-navegador.ps1) y validacion de diagramas Mermaid (scripts/verificar-docs.ps1 -Diagramas)",
   "dependencies": {
+    "mermaid": "11.17.2",
     "puppeteer-core": "25.13.0"
   }
 }
