@@ -288,7 +288,7 @@ Hecho (issue #2):
 - Comprobación del navegador con jsdom (fuera del repo): `confirm` recibe el nombre literal, cancelar detiene el envío, aceptar lo permite, otros formularios no se afectan y la carga nunca se ejecuta.
 - Soporte: `public partial class Program;` en `Presentacion/Program.cs` y `Microsoft.AspNetCore.Mvc.Testing` 10.0.0 (cota inferior segura para cualquier runtime ≥ 10.0.0).
 - Pendiente (defensa en profundidad, B4): CSP en Caddy sin `'unsafe-inline'` para scripts; ya es posible porque no hay scripts en línea. Los estilos en línea tampoco existen en las vistas.
-- Falta una comprobación manual en un navegador real con la carga `x');alert(1);//`; no se pudo automatizar un clic real en este entorno.
+- ✅ Comprobación con **clic real en Chrome y Edge** (`scripts/probar-navegador.ps1`, con `puppeteer-core`): un usuario llamado `x');alert(1);//` se muestra como texto, el clic en Eliminar abre **un solo** diálogo y es un `confirm` con el nombre literal (ningún `alert`), cancelar no elimina nada y aceptar elimina solo ese usuario de prueba. Cierra lo que había quedado pendiente en el PR de H1.
 
 ### 4.2 H2 · Autenticación mínima (alta, P1) ✅
 
@@ -410,17 +410,39 @@ Pendiente para otros issues: camino feliz y fault reales del cliente SOAP contra
 
 ### 4.8 H8 y baja prioridad
 
-| Ítem | Acción |
+| Ítem | Estado |
 |---|---|
-| H8 `docs/` vacío | `docs/arquitectura.md` (C4 en Mermaid), `docs/adr/0001-corewcf.md`, `0002-sin-orm.md`, `0003-contrato-soap-duplicado.md` (B2), `0004-autenticacion.md`, `0005-proteccion-de-rama.md` (si aplica 2.3). `.dockerignore` sigue excluyendo `docs/` |
-| B1 versiones flotantes | Hecho en 3.6 |
-| B2 contrato duplicado | ADR; prueba opcional que compare el WSDL de Negocios con `ContratoServicio.cs` |
-| B3 healthchecks | `healthcheck` en `negocios` y `web` sobre `/health` (el de `web` se creó en H2) (instalar `wget` o `curl` en la imagen si no existe); `depends_on` con `service_healthy` |
-| B4 cabeceras | Caddy: `Strict-Transport-Security "max-age=31536000"`, `X-Content-Type-Options nosniff`, `X-Frame-Options DENY`, `Referrer-Policy no-referrer`, `Content-Security-Policy "default-src 'self'; object-src 'none'; frame-ancestors 'none'"`, `-Server` |
-| B5 contraseña en `appsettings.json` | Cadena vacía; fallar al arrancar si falta la cadena de conexión |
-| B6 zona horaria | `TimeProvider` inyectable con `America/Bogota`; en la BD, `(now() AT TIME ZONE 'America/Bogota')::date`; pruebas con `FakeTimeProvider` |
-| B7 paginación | Diferir; anotar en backlog |
-| B8 WSDL | Metadata (`HttpGetEnabled`) solo en `IsDevelopment()` |
+| H8 `docs/` vacío | Pendiente (#16): `docs/arquitectura.md` (C4 en Mermaid), `docs/adr/0001-corewcf.md`, `0002-sin-orm.md`, `0003-contrato-soap-duplicado.md` (B2), `0004-autenticacion.md`, `0005-proteccion-de-rama.md` (si aplica 2.3). `.dockerignore` sigue excluyendo `docs/` |
+| B1 versiones flotantes | ✅ Hecho en 3.6 |
+| B2 contrato duplicado | Pendiente (#19): ADR; prueba con un servidor CoreWCF real (camino feliz y fault del cliente SOAP) y comparación del WSDL de Negocios con `ContratoServicio.cs` |
+| B3 healthchecks | ✅ Ver abajo |
+| B4 cabeceras y CSP | ✅ Ver abajo |
+| B5 contraseña en `appsettings.json` | ✅ Ver abajo |
+| B6 zona horaria | Pendiente (#17): `TimeProvider` inyectable con `America/Bogota`; en la BD, `(now() AT TIME ZONE 'America/Bogota')::date`; pruebas con `FakeTimeProvider` |
+| B7 paginación | Diferido (#18) |
+| B8 WSDL solo en desarrollo | ✅ Ver abajo |
+| Nuevo (#41) | La BD acepta nombres vacíos; falta un `CHECK` en un script `003` |
+
+**Hardening hecho (issue #15):**
+
+- **B5 — sin secretos en el repositorio.** `Negocios/appsettings.json` ya no trae la cadena de conexión con contraseña. El host **no arranca** si falta `ConnectionStrings:Postgres` (nula, vacía o de solo espacios) y el mensaje indica cómo definirla (variable de entorno, `user-secrets` o un `appsettings.{Entorno}.json` local). Pruebas: el archivo no contiene `Password`, y el arranque con cadena ausente o vacía falla con ese mensaje.
+- **B8 — WSDL solo en desarrollo.** `HttpGetEnabled = app.Environment.IsDevelopment()`. En producción `?wsdl`, `?singleWsdl` y `?xsd=xsd0` devuelven la **misma página de ayuda genérica de CoreWCF** (HTTP 200 sin contrato: no hay WSDL ni nombres del contrato); en desarrollo sí entregan el contrato. La prueba verifica que el contrato **no salga**, no un código HTTP de error. Se verificó además con el servicio real en ambos entornos.
+- **B3 — healthchecks.** `negocios` y `web` ejecutan `bash` con `/dev/tcp` contra su propio `/health` y exigen una primera línea con ` 200 ` (la imagen base `aspnet:10.0`, Ubuntu 24.04, trae `bash`, `grep` y `head` pero **no** `curl`, `wget` ni `nc`, así que no hace falta instalar nada). El proxy usa `wget` contra la API local de Caddy (`127.0.0.1:2019`). `web` espera a `negocios` sano y el proxy a `web` sano; `docker compose up --wait` ya espera de verdad (todo sano en ≈25 s). Verificado con el **comando real** extraído de Compose: sano → 0; puerto cerrado, 404 y un servicio que responde 500 → distinto de 0. Límite: Docker **no reinicia** un contenedor `unhealthy` por sí solo; los healthchecks sirven para el orden de arranque, `--wait` y la visibilidad (el despliegue de la fase 7 falla y hace rollback si algo no queda sano).
+- **B4 — cabeceras de seguridad.** En el `Caddyfile`, mediante un snippet `cabeceras_seguridad`: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`/`Resource-Policy: same-origin`, `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` (sin `unsafe-inline`, sin `data:`, sin comodines) y se elimina `Server`.
+
+**Trampas encontradas con B4 (por si se vuelve a tocar el Caddyfile):**
+
+1. **El 401 salía sin ninguna cabecera.** Caddy descarta las cabeceras ya fijadas cuando un manejador devuelve un error (el 401 de `basic_auth` lo es), así que justo lo que ve un visitante sin credenciales no estaba protegido. Se probaron tres variantes con un Caddy mínimo: `header` en el sitio (falla), `header` diferido con `>` (falla y además deja `Server`) y **`handle_errors { import cabeceras_seguridad }` (correcta)**. También cubre un 502 con `web` caído (verificado). `WWW-Authenticate: Basic` se conserva.
+2. **HSTS y `localhost`.** HSTS se aplica al *nombre de host sin importar el puerto*: enviarlo desde `https://localhost` haría que el navegador forzara HTTPS en `http://localhost:8080` y `:5080` (modos A y B). Por eso `HSTS_MAX_AGE` vale `31536000` (1 año) por omisión y `docker-compose.dev.yml` lo fija en `0` para el proxy. Para un primer despliegue prudente se puede bajar (p. ej. 300) en el `.env` del servidor.
+3. **`asp-validation-summary` emite `<li style="display:none">`**, que una CSP estricta bloquea. Como no se usa validación en el cliente, se reemplazó por el parcial `Views/Shared/_ResumenErrores.cshtml`, que solo dibuja avisos cuando hay errores (y elimina un recuadro de error vacío que antes se emitía siempre).
+4. **El `TestServer` no publica dirección base** y CoreWCF falla con «Could not find a base address»: las pruebas del host de negocios usan `UseUrls("http://localhost")` y el entorno `Production` explícito (en `Development` se cargan los `user-secrets` del equipo y falsearían la prueba).
+
+**Verificación de B4:**
+
+- `scripts/probar-acceso.ps1` revisa las cabeceras en **401, 401 de POST, `/health`, página, CSS, JS y 404**, y el máximo `max-age` de HSTS según el entorno (`-HstsEsperado`).
+- Pruebas de vistas (`NingunaVistaEmiteNadaEnLineaNiApuntaAOtroOrigen`): sin `style=`, `<style>`, `<script>` en línea, manejadores de evento ni destinos de otro origen en `Consultar` (con usuario, vacía y con error), `Registrar`, `Editar` y `Error`.
+- **`scripts/probar-navegador.ps1` (opcional: Node, Chrome o Edge y Docker; `puppeteer-core` 25.13.0 fijado con `package-lock.json` y vigilado por Dependabot):** en un navegador real, **ninguna violación de CSP** en `/`, `/Usuarios/Registrar` y `/Usuarios/Editar/12`; el CSS externo se aplica y `site.js` funciona; y un **control positivo** (una página servida con la misma política que viola a propósito) en la que el detector sí registra `style-src-elem`, `style-src-attr` y `script-src-elem`, para demostrar que el detector detecta. Pasa en Chrome 154 y en Edge.
+- **Pruebas de mutación** de este PR (6): cadena vacía aceptada, WSDL también en producción, `/health` con comillas, parcial siempre dibujado, `style` en línea reintroducido y vuelta al resumen de ASP.NET → **las 6 detectadas** (con las 21 anteriores, 27 de 27).
 
 ### 4.9 Criterio de salida
 

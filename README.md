@@ -43,6 +43,7 @@ docker compose up -d --build
 - Producción: `https://<DOMINIO>` (Caddy emite y renueva el certificado).
 - Solo el proxy publica puertos; `web`, `negocios` y `db` quedan en la red interna.
 - Local sin dominio: usar `DOMINIO=localhost` (Caddy usa su CA interna).
+- **Salud y seguridad HTTP:** `web` y `negocios` exponen `/health` y Docker los vigila (`docker compose up --wait` espera a que estén sanos; `web` arranca tras `negocios` y el proxy tras `web`). Caddy envía HSTS (`HSTS_MAX_AGE`, 1 año por omisión y 0 en desarrollo), CSP estricta sin nada en línea ni de otro origen y el resto de cabeceras de seguridad, también en los errores 401 y 502. Verificar: `scripts/probar-acceso.ps1` y, en un navegador real, `scripts/probar-navegador.ps1`. El WSDL de Negocios solo se publica en `Development`; su cadena de conexión no se versiona (entorno, `user-secrets` o archivo local).
 - **Volúmenes persistentes:** `pgdata` (base de datos), `caddy_data` (certificados HTTPS) y `dpkeys` (claves de Data Protection de la web: sin ellas, un formulario abierto antes de un redespliegue falla con 400). `docker compose down -v` los borra todos.
 - Los cambios de esquema se aplican con el servicio `migrador` en cada `docker compose up`: ejecuta solo los scripts `db/NNN_*.sql` que falten, en orden y en una transacción cada uno. **Un script ya aplicado no se edita** (el migrador aborta si cambia su checksum): todo cambio es un script nuevo. Ya no hace falta `docker compose down -v` ni se pierden datos al cambiar el esquema. Probar el migrador: `scripts/probar-migrador.ps1`.
 
