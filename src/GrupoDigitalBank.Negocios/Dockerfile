@@ -10,7 +10,6 @@ RUN dotnet publish -c Release -o /app --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
-RUN apt-get update && apt-get install -y curl
 # APP_UID lo define la imagen base de Microsoft (numerico, 1654): hadolint no puede verlo
 # hadolint ignore=DL3066
 USER $APP_UID

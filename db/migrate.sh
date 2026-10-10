@@ -12,7 +12,6 @@
 #    APP_DB_USER y APP_DB_PASSWORD. Son obligatorias: sin ellas no se crearia un rol utilizable.
 
 set -eu
-echo $0
 
 DIR="${MIGRACIONES_DIR:-/migraciones}"
 
