@@ -14,3 +14,6 @@ Dockerfile text eol=lf
 *.jpg binary
 *.ico binary
 *.woff2 binary
+
+# Hooks de Git: siempre LF, tambien en Windows
+.githooks/* text eol=lf
