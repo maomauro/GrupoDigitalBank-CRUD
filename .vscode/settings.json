@@ -1,0 +1,25 @@
+{
+  "dotnet.defaultSolution": "GrupoDigitalBank.slnx",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "editor.formatOnSave": true,
+  "[markdown]": {
+    "files.trimTrailingWhitespace": false,
+    "editor.formatOnSave": false
+  },
+  "[powershell]": {
+    "files.eol": "\r\n"
+  },
+  "sqltools.connections": [
+    {
+      "name": "GrupoDigitalBank (docker local)",
+      "driver": "PostgreSQL",
+      "server": "localhost",
+      "port": 5432,
+      "database": "usuarios_db",
+      "username": "usuarios_app",
+      "askForPassword": true
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.csharp",
+    "ms-azuretools.vscode-docker",
+    "editorconfig.editorconfig",
+    "redhat.vscode-yaml",
+    "github.vscode-github-actions",
+    "github.vscode-pull-request-github",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-pg"
+  ]
+}

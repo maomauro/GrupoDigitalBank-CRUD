@@ -1,0 +1,99 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/GrupoDigitalBank.slnx", "--nologo", "-v", "q"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: unitarias (sin Docker)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "${workspaceFolder}/GrupoDigitalBank.slnx", "--nologo", "--filter", "Categoria!=Integracion"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: todas (requiere Docker)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "${workspaceFolder}/GrupoDigitalBank.slnx", "--nologo"],
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "verificar: rapida (hook pre-push)",
+      "type": "process",
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/verificar.ps1", "-Rapido"],
+      "problemMatcher": []
+    },
+    {
+      "label": "verificar: completa (como CI)",
+      "type": "process",
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/verificar.ps1"],
+      "problemMatcher": []
+    },
+    {
+      "label": "verificar: herramientas del entorno",
+      "type": "process",
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/verificar-herramientas.ps1"],
+      "problemMatcher": []
+    },
+    {
+      "label": "watch: negocios",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["watch", "run", "--project", "${workspaceFolder}/src/GrupoDigitalBank.Negocios", "--launch-profile", "Negocios"],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "watch: presentacion",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["watch", "run", "--project", "${workspaceFolder}/src/GrupoDigitalBank.Presentacion", "--launch-profile", "Presentacion"],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "bd: iniciar (modo B)",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker-compose.yml", "-f", "docker-compose.dev.yml", "up", "-d", "--wait", "db"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "stack: iniciar (modo A)",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker-compose.yml", "-f", "docker-compose.dev.yml", "up", "-d", "--build"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "stack: detener (conserva datos)",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker-compose.yml", "-f", "docker-compose.dev.yml", "down"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "stack: logs",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker-compose.yml", "-f", "docker-compose.dev.yml", "logs", "-f", "--tail", "50"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

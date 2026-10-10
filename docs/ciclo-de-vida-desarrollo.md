@@ -81,14 +81,14 @@ Principio: **Docker es el entorno de ejecución; el SDK de .NET es la herramient
 | L1 | Rama inicial de Git sin configurar | `git config --global init.defaultBranch main` y el resto de la sección 3 de la guía de Git | P0 · ✅ |
 | L2 | Identidad y protocolo Git | Decisión D1 (abajo) | P0 · ✅ |
 | L3 | La carpeta no es repositorio | `git init` + commit base (fase 1 del plan) | P0 · ✅ `ce8dc86` |
-| L4 | Faltan archivos de convenciones | `global.json`, `.editorconfig`, `.gitattributes`, `Directory.Build.props`, plantillas de PR e issues, `CODEOWNERS` hechos. `Directory.Packages.props` se crea en la fase 3.6, con las versiones que resuelva el primer build | P0 · ✅ (parcial) |
+| L4 | Faltan archivos de convenciones | `global.json`, `.editorconfig`, `.gitattributes`, `Directory.Build.props`, plantillas de PR e issues, `CODEOWNERS` hechos. `Directory.Packages.props` se crea en la fase 3.6, con las versiones que resuelva el primer build | P0 · ✅ |
 | L5 | `.gitignore` por revisar y `obj/` generado en el árbol | Revisado; `obj/` queda ignorado | P0 · ✅ |
-| L6 | Compose solo tiene modo producción | `docker-compose.dev.yml` (BD en `127.0.0.1:5432`, sin Caddy, web en `http://localhost:8080`), fase 3.3 | P0 |
-| L7 | Sin configuración de VS Code | `.vscode/launch.json`, `tasks.json`, `extensions.json`, fase 3.4 | P1 |
-| L8 | Secretos de desarrollo | `.env` desde `.env.example` + `dotnet user-secrets` para el modo B, fase 3.1 | P0 |
-| L9 | El proyecto nunca se ha compilado | Primer `dotnet build` y `docker compose up --build` y corregir, fase 3.2 | P0 |
-| L10 | No hay proyectos de prueba | Esqueleto en `tests/` (xUnit + Testcontainers), fase 3.6 | P1 |
-| L11 | Sin automatización de la verificación local | `scripts/verificar.ps1` (format + build + test) y hook `pre-push` (D6), fase 3.5 | P1 |
+| L6 | Compose solo tiene modo producción | `docker-compose.dev.yml` (BD en `127.0.0.1:5432`, sin Caddy, web en `http://localhost:8080`), fase 3.3 | P0 · ✅ |
+| L7 | Sin configuración de VS Code | `.vscode/launch.json`, `tasks.json`, `extensions.json`, fase 3.4 | P1 · ✅ |
+| L8 | Secretos de desarrollo | `.env` desde `.env.example` + `dotnet user-secrets` para el modo B, fase 3.1 | P0 · ✅ |
+| L9 | El proyecto nunca se ha compilado | Primer `dotnet build` y `docker compose up --build` y corregir, fase 3.2 | P0 · ✅ |
+| L10 | No hay proyectos de prueba | Esqueleto en `tests/` (xUnit + Testcontainers), fase 3.6 | P1 · ✅ |
+| L11 | Sin automatización de la verificación local | `scripts/verificar.ps1` (format + build + test) y hook `pre-push` (D6), fase 3.5 | P1 · ✅ |
 | L12 | Repositorio remoto | `gh repo create` ✅, etiquetas ✅, rama `develop` por defecto, ajustes de merge, Dependabot (fase 2). La protección de ramas no existe en plan Free; se sustituye por el hook (L11) | P0 · 🔄 |
 | L13 | CI | Workflow `ci.yml` que repite lo de la etapa 4 (fase 5) | P1 |
 
