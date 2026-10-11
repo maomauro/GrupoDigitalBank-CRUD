@@ -8,12 +8,29 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db:/docker-entrypoint-initdb.d:ro   # scripts SQL se ejecutan al crear el volumen por primera vez
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Aplica los scripts db/NNN_*.sql pendientes y termina (ver db/migrate.sh). Si falla, negocios no arranca.
+  migrador:
+    image: postgres:17-alpine
+    restart: "no"
+    entrypoint: ["sh", "/migraciones/migrate.sh"]
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER:?Define APP_DB_USER en .env (rol de la aplicacion)}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Define APP_DB_PASSWORD en .env}
+    volumes:
+      - ./db:/migraciones:ro
+    depends_on:
+      db:
+        condition: service_healthy
 
   negocios:
     build:
@@ -21,10 +38,17 @@ services:
       dockerfile: src/GrupoDigitalBank.Negocios/Dockerfile
     restart: unless-stopped
     environment:
-      ConnectionStrings__Postgres: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Postgres: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER:?Define APP_DB_USER en .env};Password=${APP_DB_PASSWORD:?Define APP_DB_PASSWORD en .env}
     depends_on:
-      db:
-        condition: service_healthy
+      migrador:
+        condition: service_completed_successfully
+    # La imagen base no trae curl ni wget: se usa bash con /dev/tcp contra el propio /health y se exige HTTP 200
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     expose:
       - "8080"
 
@@ -35,8 +59,19 @@ services:
     restart: unless-stopped
     environment:
       Negocios__Url: http://negocios:8080/UsuarioService.svc
+      DataProtection__RutaClaves: /keys   # claves de antiforgery/cookies: deben sobrevivir a un redespliegue (H6)
+    volumes:
+      - dpkeys:/keys
     depends_on:
-      - negocios
+      negocios:
+        condition: service_healthy
+    # La imagen base no trae curl ni wget: se usa bash con /dev/tcp contra el propio /health y se exige HTTP 200
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     expose:
       - "8080"
 
@@ -45,18 +80,31 @@ services:
     restart: unless-stopped
     environment:
       DOMINIO: ${DOMINIO}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      AUTH_USUARIO: ${AUTH_USUARIO:?Define AUTH_USUARIO en .env (usuario de acceso a la web)}
+      AUTH_HASH: ${AUTH_HASH:?Define AUTH_HASH en .env (generalo con scripts/generar-hash-auth.ps1)}
+      HSTS_MAX_AGE: ${HSTS_MAX_AGE:-31536000}   # segundos; 0 en desarrollo (ver Caddyfile)
+    # Sin "ports": nadie publica nada desde este compose (CLAUDE.md, "Seguridad: nunca"). En produccion el proxy se une
+    # a la red compartida del VPS y lo alcanza el nginx de ahi (docker-compose.prod.yml); en desarrollo lo alcanza el
+    # servicio "borde" (docker-compose.dev.yml, perfil con-proxy).
+    expose:
+      - "80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    # Caddy expone su API de administracion solo dentro del contenedor (localhost:2019)
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 volumes:
   pgdata:
   caddy_data:
   caddy_config:
+  dpkeys:   # claves de Data Protection de web

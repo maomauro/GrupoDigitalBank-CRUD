@@ -1,10 +1,10 @@
-@model List<UsuarioViewModel>
+@model PaginaViewModel
 @{ ViewData["Title"] = "Usuarios"; }
 
 <h1>Usuarios</h1>
-<div asp-validation-summary="All" class="alerta error"></div>
+<partial name="_ResumenErrores" />
 
-@if (Model.Count == 0)
+@if (Model.Usuarios.Count == 0)
 {
     <p>No hay usuarios registrados. <a asp-action="Registrar">Registrar el primero</a>.</p>
 }
@@ -15,7 +15,7 @@ else
             <tr><th>Id</th><th>Nombre</th><th>Fecha de nacimiento</th><th>Sexo</th><th>Acciones</th></tr>
         </thead>
         <tbody>
-        @foreach (var u in Model)
+        @foreach (var u in Model.Usuarios)
         {
             <tr>
                 <td>@u.Id</td>
@@ -24,8 +24,9 @@ else
                 <td>@u.SexoTexto</td>
                 <td class="acciones">
                     <a asp-action="Editar" asp-route-id="@u.Id">Modificar</a>
-                    <form asp-action="Eliminar" asp-route-id="@u.Id" method="post"
-                          onsubmit="return confirm('¿Eliminar a @u.Nombre?');">
+                    @* Eliminar vuelve a esta misma pagina y tamano *@
+                    <form asp-action="Eliminar" asp-route-id="@u.Id" asp-route-pagina="@Model.Pagina" asp-route-tamano="@Model.Tamano" method="post"
+                          data-confirmar="¿Eliminar a @u.Nombre?">
                         <button type="submit" class="peligro">Eliminar</button>
                     </form>
                 </td>
@@ -33,4 +34,37 @@ else
         }
         </tbody>
     </table>
+
+    <nav class="paginacion" aria-label="Paginación">
+        <span>Página @Model.Pagina de @Model.TotalPaginas · @Model.TextoTotal</span>
+        @if (Model.HayAnterior)
+        {
+            <a asp-action="Consultar" asp-route-pagina="@(Model.Pagina - 1)" asp-route-tamano="@Model.Tamano" rel="prev">Anterior</a>
+        }
+        else
+        {
+            <span class="deshabilitado">Anterior</span>
+        }
+        @if (Model.HaySiguiente)
+        {
+            <a asp-action="Consultar" asp-route-pagina="@(Model.Pagina + 1)" asp-route-tamano="@Model.Tamano" rel="next">Siguiente</a>
+        }
+        else
+        {
+            <span class="deshabilitado">Siguiente</span>
+        }
+        <span class="tamanos">Por página:
+            @foreach (var t in PaginaViewModel.Tamanos)
+            {
+                if (t == Model.Tamano)
+                {
+                    <strong>@t</strong>
+                }
+                else
+                {
+                    <a asp-action="Consultar" asp-route-pagina="1" asp-route-tamano="@t">@t</a>
+                }
+            }
+        </span>
+    </nav>
 }

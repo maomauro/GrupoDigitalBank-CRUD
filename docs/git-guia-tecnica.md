@@ -1,6 +1,6 @@
 # Guía técnica de Git: ramas locales y remotas
 
-Aplica a GrupoDigitalBank-CRUD. Remoto: GitHub (`origin`). Producción: rama `main`.
+Aplica a GrupoDigitalBank-CRUD. Remoto: GitHub (`origin`), cuenta gratuita. Flujo: **feature → develop → main → producción**.
 
 ## 1. Conceptos clave
 
@@ -15,50 +15,67 @@ Aplica a GrupoDigitalBank-CRUD. Remoto: GitHub (`origin`). Producción: rama `ma
 Regla mental: **`origin/xxx` es la última foto que tu equipo tomó de GitHub**; no cambia hasta que hagas `fetch`, `pull` o `push`.
 
 ```
-  GitHub (origin)            Tu equipo
-  ┌──────────────┐  fetch   ┌────────────────┐  merge/rebase  ┌──────────────┐
-  │ main         │ ───────▶ │ origin/main    │ ─────────────▶ │ main (local) │
-  │ feat/x       │ ◀─────── │ origin/feat/x  │ ◀───────────── │ feat/x       │
-  └──────────────┘   push   └────────────────┘     commit     └──────────────┘
+  GitHub (origin)              Tu equipo
+  ┌────────────────┐  fetch   ┌──────────────────┐  merge/rebase  ┌────────────────┐
+  │ develop        │ ───────▶ │ origin/develop   │ ─────────────▶ │ develop (local)│
+  │ feat/x         │ ◀─────── │ origin/feat/x    │ ◀───────────── │ feat/x         │
+  └────────────────┘   push   └──────────────────┘     commit     └────────────────┘
 ```
 
 ## 2. Modelo de ramas del proyecto
 
-Flujo basado en tronco (*trunk-based*) con ramas cortas. No hay `develop`: un solo despliegue, un solo VPS.
+```
+ feat/x ──PR (squash)──▶ develop ──PR (merge commit)──▶ main ──CD──▶ Producción (VPS)
+ fix/y  ──PR (squash)──▶    ▲                            │
+                            └──── hotfix/z ──PR──▶ main ─┘   (luego main → develop)
+```
 
-| Rama | Local | Remota | Vida | Protegida | Propósito |
-|---|---|---|---|---|---|
-| `main` | Sí | `origin/main` | Permanente | Sí | Producción. Todo lo que entra se despliega |
-| `feat/<tema>` | Sí | Sí (al hacer push) | Horas o días | No | Funcionalidad nueva |
-| `fix/<tema>` | Sí | Sí | Horas o días | No | Corrección de errores y hallazgos |
-| `chore/<tema>` | Sí | Sí | Corta | No | Mantenimiento, herramientas, dependencias |
-| `docs/<tema>` | Sí | Sí | Corta | No | Solo documentación |
-| `ci/<tema>` | Sí | Sí | Corta | No | Workflows y despliegue |
-| `test/<tema>` | Sí | Sí | Corta | No | Solo pruebas |
-| `hotfix/<tema>` | Sí | Sí | Muy corta | No | Corrección urgente desde `main` |
+| Rama | Se crea desde | Va a (PR) | Vida | Propósito |
+|---|---|---|---|---|
+| `main` | — | — | Permanente | **Producción.** Todo lo que entra se despliega |
+| `develop` | `main` | `main` (release) | Permanente | Integración. Aquí se juntan y prueban los cambios antes de liberar |
+| `feat/<tema>` | `develop` | `develop` | Horas o días | Funcionalidad nueva |
+| `fix/<tema>` | `develop` | `develop` | Horas o días | Corrección de errores y hallazgos |
+| `chore/<tema>` | `develop` | `develop` | Corta | Mantenimiento, herramientas, dependencias |
+| `docs/<tema>` | `develop` | `develop` | Corta | Solo documentación |
+| `ci/<tema>` | `develop` | `develop` | Corta | Workflows y despliegue |
+| `test/<tema>` | `develop` | `develop` | Corta | Solo pruebas |
+| `hotfix/<tema>` | `main` | `main`, y después `main` → `develop` | Muy corta | Corrección urgente en producción |
+
+Los prefijos `feat/`, `fix/`, `chore/`, `docs/`, `ci/` y `test/` son todos "ramas de feature": indican el tipo de cambio y salen y vuelven a `develop`.
 
 Reglas:
 
-1. `main` nunca recibe commits directos: solo por Pull Request con checks verdes.
+1. **Nadie hace commit directo en `main` ni en `develop`.** Todo entra por Pull Request.
 2. Una rama = un propósito = un PR. Vida máxima recomendada: 3 días.
-3. Al fusionar, **se borran la rama remota y la local**.
-4. Los nombres van en minúscula, con guiones: `fix/h1-xss-eliminar`, `chore/base-repositorio`.
-5. Versiones: tags anotados `vMAJOR.MINOR.PATCH` sobre `main`.
+3. **Feature → `develop`: Squash and merge** (un commit por cambio, historial limpio; el título del PR sigue Conventional Commits).
+4. **`develop` → `main`: Create a merge commit** (nunca squash). Con squash, `develop` y `main` divergen y cada release arrastra conflictos fantasma.
+5. **`develop` nunca se borra.** Por eso la opción de GitHub *Automatically delete head branches* queda **desactivada** (borraría `develop` al fusionarla a `main`). Las ramas de feature se borran con `gh pr merge --squash --delete-branch` o a mano.
+6. Los nombres van en minúscula, con guiones: `fix/h1-xss-eliminar`, `chore/ambiente-desarrollo`.
+7. Un despliegue = un merge a `main`. Cada release lleva tag anotado `vMAJOR.MINOR.PATCH` sobre `main`.
+8. `main` siempre debe ser desplegable; `develop` siempre debe compilar y pasar el CI.
+
+Rama por defecto en GitHub: **`develop`**. Así los PR apuntan a `develop` por omisión, `Closes #n` cierra el issue al fusionar en `develop` y Dependabot abre sus PR contra `develop`.
 
 ### Ramas previstas por el plan de trabajo
 
+Todas salen de `develop` y vuelven a `develop`.
+
 | Rama | Cierra | Fase del plan |
 |---|---|---|
-| `chore/base-repositorio` | H3, B1 | 1 |
-| `fix/h1-xss-eliminar` | H1 | 3.1 |
-| `feat/autenticacion-basica` | H2 | 3.2 |
-| `feat/rol-aplicacion-bd` | H4 | 3.4 |
-| `feat/migraciones` | H5 | 3.5 |
-| `fix/data-protection-claves` | H6 | 3.6 |
-| `test/base-pruebas` | H7 | 3.7 |
-| `docs/arquitectura-adr` | H8 | 3.8 |
-| `chore/hardening-compose-caddy` | B3, B4, B5, B8 | 3.8 |
-| `fix/zona-horaria` | B6 | 3.8 |
+| `main` (commit base `ce8dc86`) | H3 | 1 ✅ |
+| `develop` | Rama de integración (creada desde `main`) | 2 |
+| `docs/ajuste-plan-trabajo` | Plan y guías coherentes con la implementación y con este flujo | 2.4 |
+| `chore/ambiente-desarrollo` | L6–L11, B1 (compose de desarrollo, primer build, hook, versiones fijas) | 3 |
+| `fix/h1-xss-eliminar` | H1 | 4.1 |
+| `feat/migraciones` | H5 (antes que H4) | 4.4 |
+| `feat/rol-aplicacion-bd` | H4 | 4.5 |
+| `feat/autenticacion-basica` | H2 | 4.2 |
+| `fix/data-protection-claves` | H6 | 4.6 |
+| `test/base-pruebas` | H7 | 4.7 |
+| `docs/arquitectura-adr` | H8 | 4.8 |
+| `chore/hardening-compose-caddy` | B3, B4, B5, B8 | 4.8 |
+| `fix/zona-horaria` | B6 | 4.8 |
 | `ci/integracion-continua` | CI | 5 |
 | `ci/despliegue-vps` | CD | 7 |
 
@@ -76,7 +93,7 @@ git config --global rebase.autoStash true
 git config --global rerere.enabled true       # recuerda resoluciones de conflictos
 ```
 
-Conectar con GitHub:
+Conectar con GitHub (ya hecho por `gh repo create`):
 
 ```powershell
 git remote add origin https://github.com/maomauro/GrupoDigitalBank-CRUD.git
@@ -84,7 +101,14 @@ git remote -v
 gh auth status                                # verifica la sesión (HTTPS, decisión D1)
 ```
 
-`gh repo create ... --source . --remote origin` (fase 4 del plan) ya añade el remoto por sí mismo. SSH queda reservado para el VPS.
+Crear `develop` (una sola vez) y dejarla como rama por defecto:
+
+```powershell
+git switch main; git pull
+git switch -c develop
+git push -u origin develop
+gh repo edit maomauro/GrupoDigitalBank-CRUD --default-branch develop
+```
 
 ## 4. Ver el estado de ramas locales y remotas
 
@@ -92,28 +116,30 @@ gh auth status                                # verifica la sesión (HTTPS, deci
 git branch                      # solo locales
 git branch -r                   # solo remotas (origin/*)
 git branch -a                   # todas
-git branch -vv                  # locales con su upstream y adelanto/atraso: [origin/main: ahead 1, behind 2]
+git branch -vv                  # locales con su upstream y adelanto/atraso: [origin/develop: ahead 1, behind 2]
 git remote show origin          # qué ramas hay en GitHub, cuáles están rastreadas y cuáles obsoletas
 git log --oneline --graph --decorate --all -20
 git status -sb                  # estado corto con el upstream
+git log origin/main..origin/develop --oneline   # lo que está en develop y aún no se liberó
 ```
 
 Cómo leer `git branch -vv`:
 
 ```
 * feat/x   a1b2c3d [origin/feat/x: ahead 2] feat: agrega validador
-  main     9f8e7d6 [origin/main] chore: base
+  develop  9f8e7d6 [origin/develop] chore: base
+  main     ce8dc86 [origin/main] chore: estado inicial
   vieja    1234567 [origin/vieja: gone] fix: ...      ← la remota ya se borró: borrar la local
 ```
 
-## 5. Flujo diario de trabajo
+## 5. Flujo diario de trabajo (feature → develop)
 
 ### 5.1 Empezar una tarea
 
 ```powershell
-git switch main
-git pull                                   # actualiza main local desde origin/main
-git switch -c fix/h1-xss-eliminar          # rama local nueva desde main
+git switch develop
+git pull                                   # actualiza develop local desde origin/develop
+git switch -c fix/h1-xss-eliminar          # rama local nueva desde develop
 ```
 
 ### 5.2 Trabajar y confirmar
@@ -137,38 +163,60 @@ Refs: H1
 
 Tipos: `feat`, `fix`, `docs`, `test`, `chore`, `ci`, `refactor`, `perf`, `build`. Cambio incompatible: `feat!:` o pie `BREAKING CHANGE:`.
 
-### 5.3 Publicar la rama (local → remoto)
+### 5.3 Publicar la rama y abrir el PR (local → remoto)
 
 ```powershell
 git push                                   # primera vez: crea origin/fix/h1-xss-eliminar y fija el upstream
-# si push.autoSetupRemote no está activo:
-git push -u origin fix/h1-xss-eliminar
-gh pr create --fill --base main            # abre el Pull Request
+gh pr create --fill --base develop         # abre el Pull Request hacia develop
 ```
 
-### 5.4 Mantener la rama al día con `main`
+### 5.4 Mantener la rama al día con `develop`
 
 ```powershell
 git fetch origin
-git rebase origin/main                     # reaplica tus commits sobre main actualizado
+git rebase origin/develop                  # reaplica tus commits sobre develop actualizado
 git push --force-with-lease                # SOLO en tu rama de trabajo, tras un rebase
 ```
 
-`--force-with-lease` falla si alguien más empujó a esa rama; nunca usar `--force` a secas, y **nunca** forzar `main`.
+`--force-with-lease` falla si alguien más empujó a esa rama; nunca usar `--force` a secas, y **nunca** forzar `develop` ni `main`.
 
 ### 5.5 Fusionar y limpiar
 
-El PR se fusiona en GitHub con **Squash and merge** (un commit por PR en `main`, historial lineal; el título del PR sigue Conventional Commits). Luego:
+Con el CI en verde y el checklist del PR completo:
 
 ```powershell
-git switch main
+gh pr merge --squash --delete-branch       # feature → develop: un commit, y borra la rama remota
+git switch develop
 git pull
 git branch -d fix/h1-xss-eliminar          # borra la local
-git push origin --delete fix/h1-xss-eliminar   # solo si GitHub no la borró (activar "Automatically delete head branches")
 git fetch --prune                          # limpia origin/* obsoletas
 ```
 
-## 6. Recetas por situación
+## 6. Liberar a producción (develop → main)
+
+Cuando `develop` tiene un conjunto de cambios probado (modo A en Docker, CI verde) y listo para publicar:
+
+```powershell
+git fetch origin
+git log origin/main..origin/develop --oneline        # revisar qué se libera
+gh pr create --base main --head develop --title "release: v1.1.0" --body "Cambios: ..."
+```
+
+1. Revisar el PR: CI verde y checklist de despliegue (backup al día, migraciones revisadas).
+2. Fusionar con **Create a merge commit** (no squash, no rebase): `gh pr merge --merge` **sin** `--delete-branch`.
+3. El push a `main` dispara el despliegue (fase 7). Verificar el smoke test.
+4. Etiquetar el release:
+
+```powershell
+git switch main; git pull
+git tag -a v1.1.0 -m "Release 1.1.0"
+git push origin v1.1.0
+gh release create v1.1.0 --generate-notes
+```
+
+5. `develop` ya contiene todo lo de `main` (se fusionó desde ella). Si `main` recibió el merge commit, traerlo a `develop`: `git switch develop; git pull; git merge --ff-only origin/main` (si no es posible fast-forward, abrir un PR `main` → `develop`).
+
+## 7. Recetas por situación
 
 | Necesidad | Comando |
 |---|---|
@@ -176,22 +224,21 @@ git fetch --prune                          # limpia origin/* obsoletas
 | Crear local desde una remota con otro nombre | `git switch -c mi-rama origin/feat/x` |
 | Vincular una local existente a su remota | `git branch --set-upstream-to=origin/feat/x` |
 | Renombrar rama local y remota | `git branch -m viejo nuevo` → `git push -u origin nuevo` → `git push origin --delete viejo` |
-| Borrar locales ya fusionadas | `git branch --merged main` y `git branch -d <rama>` |
-| Ver qué hay en remoto que no tengo | `git fetch` → `git log HEAD..origin/main --oneline` |
-| Ver qué tengo que no está en remoto | `git log origin/main..HEAD --oneline` |
+| Borrar locales ya fusionadas | `git branch --merged develop` y `git branch -d <rama>` (excluir `main` y `develop`) |
+| Ver qué hay en remoto que no tengo | `git fetch` → `git log HEAD..origin/develop --oneline` |
+| Ver qué tengo que no está en remoto | `git log origin/develop..HEAD --oneline` |
 | Guardar trabajo a medias | `git stash push -m "wip"` / `git stash pop` |
 | Deshacer el último commit sin perder cambios | `git reset --soft HEAD~1` |
 | Deshacer un commit ya publicado | `git revert <sha>` (crea un commit nuevo; no reescribe historia) |
 | Descartar cambios de un archivo | `git restore <archivo>` |
 | Recuperar algo "perdido" | `git reflog` → `git switch -c rescate <sha>` |
-| Etiquetar una versión | `git tag -a v1.0.0 -m "Primera versión" ; git push origin v1.0.0` |
-| Comparar rama con main | `git diff origin/main...HEAD` |
+| Comparar rama con develop | `git diff origin/develop...HEAD` |
 
-## 7. Conflictos
+## 8. Conflictos
 
 ```powershell
 git fetch origin
-git rebase origin/main
+git rebase origin/develop
 # Git se detiene en el archivo en conflicto:
 #   editar, eliminar marcadores <<<<<<< ======= >>>>>>>
 git add <archivo>
@@ -200,42 +247,56 @@ git rebase --continue                      # o: git rebase --abort para volver a
 
 Para scripts SQL numerados: si dos ramas crean el mismo `00N_…sql`, la segunda en fusionarse **renumera** su archivo. Nunca editar un script ya fusionado.
 
-## 8. Hotfix en producción
+## 9. Hotfix en producción
+
+Sale de `main` (lo que está en producción), no de `develop`, que puede tener cambios sin liberar.
 
 ```powershell
-git switch main && git pull
+git switch main; git pull
 git switch -c hotfix/caida-negocios
 # corregir, probar, commit
 git push
 gh pr create --base main --fill --label urgente
-# tras el merge, el CD despliega; luego crear tag de parche
-git tag -a v1.0.1 -m "hotfix: ..." ; git push origin v1.0.1
+gh pr merge --squash --delete-branch        # el CD despliega
+git switch main; git pull
+git tag -a v1.0.1 -m "hotfix: ..."; git push origin v1.0.1
 ```
 
-Para volver a una versión anterior en producción: ver "Rollback" en la fase 7 del plan (re-despliegue de un tag/SHA previo). Evitar `git reset --hard` sobre `main` compartida; usar `git revert`.
+**Sincronizar siempre con `develop`** para no perder la corrección:
 
-## 9. Protección de `main` en GitHub (configuración)
+```powershell
+gh pr create --base develop --head main --title "chore: sincroniza hotfix v1.0.1 en develop"
+# fusionar con "Create a merge commit"; no borrar main
+```
 
-- Requiere Pull Request antes de fusionar.
-- Checks obligatorios: `ci` y `docker`.
-- Rama actualizada antes de fusionar.
-- Historial lineal (solo squash o rebase).
-- Sin force-push ni borrado.
-- Aplicar también a administradores.
-- *Automatically delete head branches* activado.
-- Etiquetas `v*` protegidas contra borrado.
+Volver a una versión anterior en producción: ver "Rollback" en la fase 7 del plan (re-despliegue de un tag/SHA previo). Evitar `git reset --hard` sobre ramas compartidas; usar `git revert`.
 
-## 10. Qué nunca va al repositorio
+## 10. Reglas de protección (cuenta gratuita)
+
+GitHub Free **no permite proteger ramas ni crear rulesets en repos privados** (verificado: `403 Upgrade to GitHub Pro or make this repository public`). Las reglas no las impone el servidor y se sostienen así:
+
+| Mecanismo | Qué hace | Límite |
+|---|---|---|
+| Hook `.githooks/pre-push` (activo, fase 3.5) | Rechaza `git push` directo a `main` y `develop` (también borrarlas) y, al publicar una rama de trabajo, corre `scripts/verificar.ps1 -Rapido` (format whitespace + build, ~10 s). Se activa una vez por clon con `git config core.hooksPath .githooks` | Se salta con `--no-verify` o desde otro equipo |
+| CI en cada PR (fase 5) | Falla visible en el PR si hay error de build, formato, pruebas o vulnerabilidades | No bloquea el botón de fusionar: hay que respetarlo |
+| Ajustes de merge del repo | Squash y merge commit habilitados; rebase deshabilitado; borrado automático de ramas **desactivado** | La elección squash/merge por PR es manual |
+| Checklist del PR | Recuerda tipo de fusión, pruebas y secretos | Es disciplina |
+| Rama por defecto `develop` | PR hacia `develop` por omisión | — |
+
+Si se pasa a GitHub Pro o a repositorio público (decisión en el plan, 2.3), activar además en `main` y `develop`: PR obligatorio, checks `ci` y `docker` obligatorios, sin force-push ni borrado, historial lineal solo en `develop`, y proteger las etiquetas `v*`. El environment `production` con revisor requerido también depende de ese plan.
+
+## 11. Qué nunca va al repositorio
 
 `.env`, `*.pem`, `*.key`, llaves SSH, contraseñas, `bin/`, `obj/`, `TestResults/`, volcados de BD con datos reales. Si un secreto se sube por error: **rotarlo de inmediato** (borrar el commit no basta, GitHub y los clones ya lo tienen) y luego limpiar el historial.
 
-## 11. Referencia rápida
+## 12. Referencia rápida
 
 ```powershell
-git switch main; git pull                         # empezar el día
-git switch -c feat/tema                           # nueva rama
-git add <archivos>; git commit -m "tipo: mensaje" # confirmar
-git push; gh pr create --fill                     # publicar y abrir PR
-git fetch --prune; git branch -vv                 # estado de local vs remoto
-git switch main; git pull; git branch -d feat/tema  # limpiar tras el merge
+git switch develop; git pull                         # empezar el día
+git switch -c feat/tema                              # nueva rama desde develop
+git add <archivos>; git commit -m "tipo: mensaje"    # confirmar
+git push; gh pr create --fill --base develop         # publicar y abrir PR
+gh pr merge --squash --delete-branch                 # fusionar la feature en develop
+git fetch --prune; git branch -vv                    # estado de local vs remoto
+gh pr create --base main --head develop              # liberar: PR de release (fusionar con merge commit)
 ```

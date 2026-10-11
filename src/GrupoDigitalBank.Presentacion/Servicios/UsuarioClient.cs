@@ -3,7 +3,7 @@ using System.ServiceModel;
 namespace GrupoDigitalBank.Presentacion.Servicios;
 
 /// <summary>Cliente SOAP (BasicHttpBinding) hacia el servicio CoreWCF de la capa de negocios.</summary>
-public sealed class UsuarioClient : IUsuarioClient
+public sealed class UsuarioClient : IUsuarioClient, IDisposable
 {
     private readonly ChannelFactory<IUsuarioServicio> _fabrica;
 
@@ -17,9 +17,23 @@ public sealed class UsuarioClient : IUsuarioClient
         _fabrica = new ChannelFactory<IUsuarioServicio>(new BasicHttpBinding(modo), new EndpointAddress(url));
     }
 
+    public void Dispose()
+    {
+        try
+        {
+            _fabrica.Close();
+        }
+        catch (Exception ex) when (ex is CommunicationException or TimeoutException)
+        {
+            _fabrica.Abort();
+        }
+    }
+
     public Task<UsuarioDto> AgregarAsync(UsuarioDto usuario) => Invocar(c => c.Agregar(usuario));
     public Task<UsuarioDto> ModificarAsync(UsuarioDto usuario) => Invocar(c => c.Modificar(usuario));
     public Task<List<UsuarioDto>> ConsultarAsync(int? id = null) => Invocar(c => c.Consultar(id));
+
+    public Task<PaginaUsuarios> ConsultarPaginaAsync(int pagina, int tamano) => Invocar(c => c.ConsultarPagina(pagina, tamano));
 
     public Task EliminarAsync(int id) => Invocar(async c =>
     {

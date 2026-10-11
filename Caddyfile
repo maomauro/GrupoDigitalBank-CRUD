@@ -1,4 +1,68 @@
-{$DOMINIO} {
+# Este Caddy NO termina TLS ni publica puertos: va detras de otro proxy que si lo hace (en produccion, el nginx
+# compartido del VPS tras Cloudflare; en desarrollo, el servicio "borde" del compose de desarrollo con el MISMO
+# vhost). Escucha solo HTTP dentro de la red de Docker. Ver ADR 0011.
+{
+	servers {
+		# Se confia en los rangos privados (la red de Docker) para conservar las cabeceras X-Forwarded-For y
+		# X-Forwarded-Proto que envia el proxy de delante. Sin esto Caddy las sobrescribe, la aplicacion veria
+		# "http" aunque el visitante use HTTPS (cookies sin Secure) y la IP del proxy en vez de la del cliente.
+		trusted_proxies static private_ranges
+	}
+}
+
+# Cabeceras de seguridad (hallazgo B4). La CSP no admite nada en linea ni de otro origen: las vistas solo
+# cargan /css y /js propios (lo comprueba UsuariosVistasTests). HSTS_MAX_AGE vale 31536000 (1 ano) por omision;
+# el compose de desarrollo lo pone en 0 porque HSTS se aplica al nombre de host sin importar el puerto y
+# forzaria HTTPS en http://localhost:8080 y :5080.
+(cabeceras_seguridad) {
+	header {
+		Strict-Transport-Security "max-age={$HSTS_MAX_AGE:31536000}"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		-Server
+	}
+}
+
+# Solo HTTP (el esquema http:// desactiva la emision automatica de certificados)
+http://{$DOMINIO} {
 	encode gzip
-	reverse_proxy web:8080
+
+	# En todas las respuestas...
+	import cabeceras_seguridad
+
+	# ...incluidas las de error generadas por Caddy, como el 401 de basic_auth o un 502 si web esta caido:
+	# Caddy descarta las cabeceras ya fijadas cuando un manejador devuelve un error, y sin esto el 401 (justo lo
+	# que ve un visitante sin credenciales) salia sin ninguna. WWW-Authenticate se conserva.
+	handle_errors {
+		import cabeceras_seguridad
+	}
+
+	# Salud del proceso web: sin autenticacion, para monitores externos y la prueba de humo del despliegue.
+	@salud path /health
+	handle @salud {
+		reverse_proxy web:8080
+	}
+
+	# Todo lo demas exige usuario y clave (hallazgo H2). AUTH_HASH es un hash bcrypt generado con
+	# scripts/generar-hash-auth.ps1 (caddy hash-password); la clave en claro nunca se guarda.
+	handle {
+		basic_auth {
+			{$AUTH_USUARIO} {$AUTH_HASH}
+		}
+		reverse_proxy web:8080 {
+			# La aplicacion no necesita las credenciales
+			header_up -Authorization
+		}
+	}
+}
+
+# Cualquier otro nombre de host (otro contenedor de la red compartida que llame por IP o con un Host cualquiera)
+# no recibe la aplicacion, ni siquiera pidiendo credenciales.
+:80 {
+	respond "No encontrado" 404
 }

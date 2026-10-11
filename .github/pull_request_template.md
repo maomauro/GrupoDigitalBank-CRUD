@@ -1,3 +1,9 @@
+## Destino y tipo de fusión
+
+- [ ] Feature / fix / chore / docs / ci / test → base **`develop`**, fusionar con **Squash and merge**
+- [ ] Release (`develop` → `main`) → fusionar con **Create a merge commit** (nunca squash); no borrar `develop`
+- [ ] Hotfix → base `main`; después sincronizar `main` → `develop`
+
 ## Qué cambia y por qué
 
 <!-- Una o dos frases. Enlaza el issue. -->

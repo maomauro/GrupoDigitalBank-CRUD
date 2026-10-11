@@ -28,17 +28,19 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Consultar()
+    public async Task<IActionResult> Consultar(int pagina = 1, int tamano = PaginaViewModel.TamanoPorOmision)
     {
+        // Lo que llega por la URL no es de fiar: se acota a lo que el servicio acepta en vez de mostrar un error
+        pagina = PaginaViewModel.NormalizarPagina(pagina);
+        tamano = PaginaViewModel.NormalizarTamano(tamano);
         try
         {
-            var usuarios = await cliente.ConsultarAsync();
-            return View(usuarios.Select(UsuarioViewModel.DesdeDto).ToList());
+            return View(PaginaViewModel.Desde(await cliente.ConsultarPaginaAsync(pagina, tamano)));
         }
         catch (ServicioException ex)
         {
             AgregarErrores(ex);
-            return View(new List<UsuarioViewModel>());
+            return View(new PaginaViewModel { Pagina = pagina, Tamano = tamano });
         }
     }
 
@@ -75,7 +77,7 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Eliminar(int id)
+    public async Task<IActionResult> Eliminar(int id, int pagina = 1, int tamano = PaginaViewModel.TamanoPorOmision)
     {
         try
         {
@@ -86,7 +88,8 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
         {
             TempData["Error"] = ex.Message;
         }
-        return RedirectToAction(nameof(Consultar));
+        // Vuelve a la pagina desde la que se elimino; si ya no existe, el servicio devuelve la ultima
+        return RedirectToAction(nameof(Consultar), new { pagina, tamano });
     }
 
     [ResponseCache(Duration = 0, NoStore = true)]

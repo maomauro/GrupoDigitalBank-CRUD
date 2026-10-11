@@ -4,12 +4,25 @@ using CoreWCF.Description;
 using GrupoDigitalBank.Negocios.Contratos;
 using GrupoDigitalBank.Negocios.Datos;
 using GrupoDigitalBank.Negocios.Servicios;
+using GrupoDigitalBank.Negocios.Tiempo;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var cadena = builder.Configuration.GetConnectionString("Postgres")
-             ?? throw new InvalidOperationException("Falta ConnectionStrings:Postgres.");
+// Sin valor por omision: la cadena de conexion (con su contrasena) llega por entorno, user-secrets o
+// appsettings.{Entorno}.json local, nunca desde un archivo versionado (hallazgo B5).
+var cadena = builder.Configuration.GetConnectionString("Postgres");
+if (string.IsNullOrWhiteSpace(cadena))
+{
+    throw new InvalidOperationException(
+        "Falta ConnectionStrings:Postgres. Definala por variable de entorno (ConnectionStrings__Postgres), " +
+        "dotnet user-secrets o un appsettings.{Entorno}.json local; no se versiona.");
+}
+
+// Zona horaria de negocio (hallazgo B6): "hoy" para validar fechas es la fecha de esta zona, no la del servidor.
+// Falla al arrancar si el id no es valido, en vez de fallar mas tarde en cada validacion.
+var zonaDeNegocio = ZonaHorariaNegocio.Resolver(builder.Configuration[ZonaHorariaNegocio.ClaveDeConfiguracion]);
+builder.Services.AddSingleton<TimeProvider>(new ProveedorDeTiempoConZona(zonaDeNegocio));
 
 builder.Services.AddSingleton(NpgsqlDataSource.Create(cadena));
 builder.Services.AddSingleton<IUsuarioRepositorio, UsuarioRepositorio>();
@@ -24,10 +37,14 @@ app.UseServiceModel(serviceBuilder =>
     serviceBuilder.AddService<UsuarioService>(o => o.DebugBehavior.IncludeExceptionDetailInFaults = false);
     serviceBuilder.AddServiceEndpoint<UsuarioService, IUsuarioService>(new BasicHttpBinding(), "/UsuarioService.svc");
 
-    // WSDL en /UsuarioService.svc?wsdl (solo red interna: este servicio no se expone al exterior).
-    app.Services.GetRequiredService<ServiceMetadataBehavior>().HttpGetEnabled = true;
+    // WSDL en /UsuarioService.svc?wsdl solo en desarrollo: expone el contrato completo del servicio y el
+    // cliente de Presentacion no lo necesita (usa un contrato propio). Hallazgo B8.
+    app.Services.GetRequiredService<ServiceMetadataBehavior>().HttpGetEnabled = app.Environment.IsDevelopment();
 });
 
-app.MapGet("/health", () => Results.Ok("ok"));
+app.MapGet("/health", () => Results.Text("ok"));
 
 app.Run();
+
+// Necesario para WebApplicationFactory<Program> en las pruebas del host de negocios.
+public partial class Program;
