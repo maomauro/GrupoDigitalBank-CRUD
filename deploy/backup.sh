@@ -17,6 +17,9 @@ DIR=${GDB_DIR:-/srv/sitiosapps/gdb-crud}
 PROYECTO=${GDB_PROYECTO:-gdb-crud}
 DESTINO=${BACKUP_DIR:-/srv/sitiosapps/_backups/gdb-crud}
 RETENCION=${RETENTION_DAYS:-14}
+# En un runner de GitHub Actions GITHUB_REPOSITORY ya existe (con mayusculas) y, en Compose, el entorno gana al .env:
+# las imagenes saldrian con otro nombre que el que valida la politica. El .env es la unica fuente.
+unset GITHUB_REPOSITORY
 export REGISTRO=${REGISTRO:-ghcr.io}
 export RED_COMPARTIDA=${RED_COMPARTIDA:-curriculum-vitae-web_portalcv-net-prod}
 

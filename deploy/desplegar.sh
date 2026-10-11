@@ -25,6 +25,9 @@ PROYECTO=${GDB_PROYECTO:-gdb-crud}
 REGISTRO=${REGISTRO:-ghcr.io}
 RED_COMPARTIDA=${RED_COMPARTIDA:-curriculum-vitae-web_portalcv-net-prod}
 export REGISTRO RED_COMPARTIDA
+# En un runner de GitHub Actions GITHUB_REPOSITORY ya existe (con mayusculas) y, en Compose, el entorno gana al .env:
+# las imagenes saldrian con otro nombre que el que valida la politica. El .env es la unica fuente.
+unset GITHUB_REPOSITORY
 CONSERVAR=5
 
 if [ $# -ne 2 ]; then

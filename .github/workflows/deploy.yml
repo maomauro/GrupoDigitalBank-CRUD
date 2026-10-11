@@ -1,11 +1,10 @@
 # Entrega continua (ADR 0011): publica las imagenes en GHCR y las despliega en el VPS compartido.
 #
-# Disparo (D7): el merge de develop a main. Este flujo arranca cuando el CI termina EN VERDE sobre main
-# (workflow_run), nunca antes. Tambien se puede lanzar a mano (workflow_dispatch) con el tag de una version ya
-# publicada para volver a ella (rollback) o redesplegarla. Los merges a develop ejecutan el CI pero no despliegan.
-#
-# IMPORTANTE: un workflow_run ejecuta el archivo que haya en la rama POR DEFECTO del repositorio (develop), no el de
-# main; por eso este archivo debe estar en develop. La condicion de rama (head_branch == main) esta en cada trabajo.
+# Disparo (D7): el merge de develop a main. Lo llama el trabajo "entrega" de ci.yml (workflow_call), que solo corre
+# en un push a main y DESPUES de que ci, migrador, docker y despliegue terminen en verde: es un solo flujo, sin
+# workflow_run (que ejecutaria el archivo de la rama por defecto y obligaria a hacer checkout de un SHA ajeno).
+# Tambien se puede lanzar a mano (workflow_dispatch) con el tag de una version ya publicada para volver a ella
+# (rollback) o redesplegarla. Los merges a develop ejecutan el CI pero no despliegan.
 #
 # La llave SSH solo puede ejecutar el script de entrada del servidor (restrict,command=), que solo entiende
 # "desplegar <tag>"; el servidor valida el paquete con una politica de seguridad antes de levantar nada.
@@ -14,10 +13,7 @@
 name: deploy
 
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
     inputs:
       tag:
@@ -28,22 +24,14 @@ on:
 permissions:
   contents: read
 
-# Un solo despliegue a la vez y sin cancelar el que esta en curso
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
 env:
   URL_PUBLICA: https://gdb-crud.sitiosapps.com
 
 jobs:
   imagenes:
     name: imagenes
-    # Solo tras un CI verde en main; el despliegue manual reutiliza imagenes ya publicadas
-    if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
+    # Llamado desde ci.yml (push a main); el despliegue manual reutiliza imagenes ya publicadas
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -54,15 +42,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
       - name: Version y nombre de imagen (GHCR exige minusculas)
         id: version
-        env:
-          SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          echo "tag=sha-${SHA:0:12}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
           echo "repo=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -111,6 +96,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
+    # Un solo despliegue a la vez y sin cancelar el que esta en curso
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: read
