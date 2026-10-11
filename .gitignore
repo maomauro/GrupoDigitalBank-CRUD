@@ -37,3 +37,7 @@ Thumbs.db
 
 # Herramienta opcional de navegador (npm)
 scripts/navegador/node_modules/
+
+# Python (deploy/politica.py)
+__pycache__/
+*.pyc
