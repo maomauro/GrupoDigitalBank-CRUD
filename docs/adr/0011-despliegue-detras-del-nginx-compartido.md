@@ -1,6 +1,6 @@
 # ADR 0011: Despliegue detrás del nginx compartido del VPS
 
-- **Estado:** Aceptada (aprobada el 2026-10-10; se implementa en la fase 7)
+- **Estado:** Reemplazada por [0014](0014-despliegue-detras-del-gateway-de-plataforma.md) (aprobada el 2026-10-10; implementada en la fase 7)
 - **Fecha:** 2026-10-10
 - **Referencias:** issues [#21](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/21) y [#22](https://github.com/maomauro/GrupoDigitalBank-CRUD/issues/22), [plan de trabajo](../plan-de-trabajo.md) fases 6 a 8, [ADR 0004](0004-autenticacion-minima-basic-auth.md), [ADR 0009](0009-cabeceras-http-csp-y-hsts.md)
 

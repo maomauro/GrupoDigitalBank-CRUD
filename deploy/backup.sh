@@ -21,7 +21,7 @@ RETENCION=${RETENTION_DAYS:-14}
 # las imagenes saldrian con otro nombre que el que valida la politica. El .env es la unica fuente.
 unset GITHUB_REPOSITORY
 export REGISTRO=${REGISTRO:-ghcr.io}
-export RED_COMPARTIDA=${RED_COMPARTIDA:-curriculum-vitae-web_portalcv-net-prod}
+export RED_COMPARTIDA=${RED_COMPARTIDA:-sitiosapps-edge}
 
 version=$(cat "$DIR/releases/ACTUAL" 2>/dev/null || true)
 [[ -n "$version" ]] || { echo "No hay una version desplegada: no hay nada que respaldar." >&2; exit 1; }

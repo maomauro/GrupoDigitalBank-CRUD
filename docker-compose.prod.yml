@@ -1,10 +1,10 @@
 # Override de PRODUCCION. Se usa junto al compose base:
 #   docker compose -p gdb-crud -f docker-compose.yml -f docker-compose.prod.yml ...
-# (lo hace deploy/desplegar.sh en el VPS; ver docs/plan-de-trabajo.md, fases 6 y 7, y el ADR 0011).
+# (lo hace deploy/desplegar.sh en el VPS; ver docs/plan-de-trabajo.md, fases 6 y 7, y los ADR 0011 y 0014).
 #
 # - Imagenes versionadas de GHCR en lugar de construirlas en el servidor.
-# - El proxy se une a la red COMPARTIDA del VPS con el alias gdb-crud-web: asi lo alcanza el nginx de PortalCV, que
-#   termina TLS. NADA se publica en el host (el compose base no declara "ports" y deploy/desplegar.sh lo comprueba).
+# - El proxy se une a la red COMPARTIDA del VPS (sitiosapps-edge) con el alias gdb-crud-web: asi lo alcanza el gateway
+#   de plataforma (repo sitiosapps-gateway), que termina TLS. NADA se publica en el host (el compose base no declara "ports" y deploy/desplegar.sh lo comprueba).
 # - Limite de logs y no-new-privileges en todos los servicios (no se toca /etc/docker/daemon.json: reiniciar el
 #   daemon reiniciaria tambien PortalCV y Colfe).
 #
@@ -46,7 +46,7 @@ services:
         aliases: [gdb-crud-web]
 
 networks:
-  # Creada por el compose de PortalCV (subred fija 172.28.0.0/24); aqui solo se une
+  # Creada por el compose del gateway de plataforma (subred fija 172.29.0.0/24); aqui solo se une
   compartida:
     external: true
-    name: ${RED_COMPARTIDA:-curriculum-vitae-web_portalcv-net-prod}
+    name: ${RED_COMPARTIDA:-sitiosapps-edge}

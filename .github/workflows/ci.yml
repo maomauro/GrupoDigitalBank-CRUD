@@ -120,7 +120,7 @@ jobs:
           docker compose config -q
 
       # El compose de produccion no debe publicar NINGUN puerto: el servidor comparte nginx con otros proyectos y Docker
-      # salta el firewall (ufw) al publicar. Entra por la red compartida (ADR 0011)
+      # salta el firewall (ufw) al publicar. Entra por la red compartida (ADR 0011 y 0014)
       - name: Compose de produccion valido y sin puertos publicados
         run: |
           { echo "IMAGE_TAG=ci"; echo "GITHUB_REPOSITORY=maomauro/grupodigitalbank-crud"; } >> .env
