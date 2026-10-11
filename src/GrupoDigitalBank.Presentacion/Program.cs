@@ -46,7 +46,8 @@ if (!app.Environment.IsDevelopment())
 app.UseStaticFiles();
 app.UseRouting();
 // Liveness del proceso web: no consulta el servicio de negocios. El proxy lo deja fuera del Basic Auth.
-app.MapGet("/health", () => Results.Text("ok"));
+// GET y HEAD: los monitores externos (UptimeRobot) comprueban con HEAD y recibian 405
+app.MapMethods("/health", ["GET", "HEAD"], () => Results.Text("ok"));
 app.MapControllerRoute("default", "{controller=Usuarios}/{action=Consultar}/{id?}");
 
 app.Run();
