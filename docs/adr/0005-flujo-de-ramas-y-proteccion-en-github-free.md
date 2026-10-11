@@ -26,6 +26,6 @@ Quien mantiene el proyecto trabaja con el flujo **feature → develop → main**
 
 - ➕ Historial lineal en `develop` y liberaciones explícitas; el hook atrapa el error más probable (empujar a la rama equivocada).
 - ➖ **La protección no la impone el servidor:** un `--no-verify`, un push desde otro equipo o un clic en «Merge» con el CI en rojo la evitan. Es disciplina, no un control.
-- ➖ Es probable que el *environment* `production` no pueda exigir revisor ni restringirse a `main` (según la documentación del plan; sin probar): el workflow de despliegue debe comprobar `github.ref` por sí mismo.
+- ➖ ~~Es probable que el *environment* `production` no pueda exigir revisor ni restringirse a `main` (según la documentación del plan; sin probar)~~ **Corrección (2026-10-11):** la restricción a `main` (*Deployment branches and tags*) **sí está disponible** en repos privados Free y quedó aplicada; lo de los revisores requeridos sigue sin comprobarse. El workflow igualmente solo despliega desde un push a `main`.
 - ➖ Fusionar un PR con el método equivocado (merge commit en vez de squash) alarga el historial sin dañarlo; ha ocurrido.
 - 🔁 Pasar a GitHub Pro (o a un repositorio público) si se suma otra persona al equipo o si el despliegue empieza a manejar datos reales, y registrarlo en un ADR nuevo.
