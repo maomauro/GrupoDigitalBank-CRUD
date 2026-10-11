@@ -89,7 +89,7 @@ Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen
 
 ## Despliegue
 
-Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción ([ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md) y [ADR 0013](docs/adr/0013-politica-de-seguridad-del-despliegue.md)): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el nginx `portalcv-nginx-prod` (único con 80/443) van delante y enrutan `gdb-crud.sitiosapps.com` a nuestro Caddy por la red compartida. Al fusionar `develop` en `main`, y con los cuatro trabajos del CI en verde, el trabajo `entrega` de `ci.yml` (que llama a `deploy.yml`) publica las imágenes en GHCR y las despliega por SSH con una llave restringida a `/usr/local/sbin/gdb-crud-entrada.sh`; el servidor valida cada entrega con una política de seguridad, hace copia de la base, levanta el stack y vuelve a la versión anterior si falla (código en `deploy/`, probado con `scripts/probar-despliegue.sh`). El proyecto vive en `/srv/sitiosapps/gdb-crud` y su `.env` solo en el servidor. **No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación**: afectan a los otros proyectos.
+Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción ([ADR 0014](docs/adr/0014-despliegue-detras-del-gateway-de-plataforma.md), que reemplaza al 0011, y [ADR 0013](docs/adr/0013-politica-de-seguridad-del-despliegue.md)): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el **gateway de plataforma** (`/srv/sitiosapps/gateway`, repo `sitiosapps-gateway`, único con el 443, exige mTLS de Cloudflare) van delante y enrutan `gdb-crud.sitiosapps.com` a nuestro Caddy por la red compartida `sitiosapps-edge`. Al fusionar `develop` en `main`, y con los cuatro trabajos del CI en verde, el trabajo `entrega` de `ci.yml` (que llama a `deploy.yml`) publica las imágenes en GHCR y las despliega por SSH con una llave restringida a `/usr/local/sbin/gdb-crud-entrada.sh`; el servidor valida cada entrega con una política de seguridad, hace copia de la base, levanta el stack y vuelve a la versión anterior si falla (código en `deploy/`, probado con `scripts/probar-despliegue.sh`). El proyecto vive en `/srv/sitiosapps/gdb-crud` y su `.env` solo en el servidor. **No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación**: afectan a los otros proyectos.
 
 ## Documentos de referencia
 
@@ -97,7 +97,7 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 - [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md): fases y prioridades.
 - [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md): uso de Git, ramas locales y remotas.
 - [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción, implementado en el repositorio; falta su primera publicación).
-- [docs/adr/README.md](docs/adr/README.md): las 13 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
+- [docs/adr/README.md](docs/adr/README.md): las 14 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
 - [README.md](README.md): ejecución y decisiones técnicas.
 
 ## Estado conocido

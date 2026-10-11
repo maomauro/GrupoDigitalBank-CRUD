@@ -18,9 +18,10 @@ La vista de conjunto está en [../arquitectura.md](../arquitectura.md).
 | [0008](0008-rol-de-minimo-privilegio.md) | La aplicación se conecta con un rol de mínimo privilegio | Aceptada |
 | [0009](0009-cabeceras-http-csp-y-hsts.md) | Cabeceras de seguridad, CSP estricta y HSTS configurable en el proxy | Aceptada |
 | [0010](0010-estrategia-de-verificacion.md) | Estrategia de verificación: pruebas, cobertura mínima y mutación | Aceptada |
-| [0011](0011-despliegue-detras-del-nginx-compartido.md) | Despliegue detrás del nginx compartido del VPS, con Caddy interno | Aceptada |
+| [0011](0011-despliegue-detras-del-nginx-compartido.md) | Despliegue detrás del nginx compartido del VPS, con Caddy interno | Reemplazada por 0014 |
 | [0012](0012-paginacion-en-el-servidor.md) | Paginación de la grilla en el servidor, con una función nueva | Aceptada |
 | [0013](0013-politica-de-seguridad-del-despliegue.md) | Política de seguridad para el paquete de despliegue | Propuesta |
+| [0014](0014-despliegue-detras-del-gateway-de-plataforma.md) | Despliegue detrás del gateway de plataforma (reemplaza al 0011) | Aceptada |
 
 ## Plantilla
 

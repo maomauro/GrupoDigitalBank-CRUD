@@ -202,14 +202,14 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 | **B** | Solo `db`; Negocios (`:5081`) y Presentación (`:5080`) con `dotnet watch` o F5 | Programar y depurar a diario |
 | **con proxy** | Todo más la cadena de producción: un nginx `borde` con HTTPS autofirmado y **el mismo vhost** que irá a producción, delante de `proxy` (`--profile con-proxy`) | Probar autenticación, cabeceras, CSP y la cadena de proxies |
 
-### 8.2 Producción ([ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) y [ADR 0013](adr/0013-politica-de-seguridad-del-despliegue.md))
+### 8.2 Producción ([ADR 0014](adr/0014-despliegue-detras-del-gateway-de-plataforma.md), que reemplaza al 0011, y [ADR 0013](adr/0013-politica-de-seguridad-del-despliegue.md))
 
-El VPS es **compartido** con PortalCV y Colfe: un único nginx (`portalcv-nginx-prod`) publica 80 y 443 y Cloudflare va delante. Este proyecto no publica ningún puerto: su `proxy` (Caddy) se une a la red compartida con un alias y el nginx le enruta el subdominio. Esta es también la topología del entorno local con `--profile con-proxy`, con un nginx de prueba delante.
+El VPS es **compartido** con PortalCV y Colfe: un **gateway de plataforma** independiente (nginx, repo `sitiosapps-gateway`) es el único que publica el 443, solo acepta a Cloudflare (mTLS) y enruta por nombre. Este proyecto no publica ningún puerto: su `proxy` (Caddy) se une a la red compartida `sitiosapps-edge` con un alias y el gateway le enruta el subdominio. Esta es también la topología del entorno local con `--profile con-proxy`, con un nginx de prueba delante.
 
 ```mermaid
 flowchart LR
     nav["Navegador"] -->|HTTPS| cf["Cloudflare<br/>DNS y proxy"]
-    cf -->|"HTTPS (certificado de origen)"| ng["portalcv-nginx-prod<br/>único con 80/443"]
+    cf -->|"HTTPS + mTLS (certificado de origen)"| ng["gateway de plataforma<br/>único con el 443"]
     ng -->|"HTTP, red compartida<br/>alias gdb-crud-web"| px["proxy · Caddy<br/>Basic Auth, cabeceras, CSP"]
     subgraph gdb["Red interna del proyecto (sin puertos publicados)"]
         px --> web["web"]
@@ -221,8 +221,8 @@ flowchart LR
 
 | Aspecto | Diseño |
 |---|---|
-| Quién termina TLS | Cloudflare (navegador) y nginx (certificado de origen en `/etc/nginx/ssl/`); Caddy escucha solo HTTP |
-| Enrutamiento | `docker/gdb-crud.conf` en el repo de PortalCV, con `resolver` + `set $upstream` para que un contenedor ausente no tumbe el nginx compartido |
+| Quién termina TLS | Cloudflare (navegador) y el gateway (certificado de origen en `/etc/nginx/ssl/`); Caddy escucha solo HTTP |
+| Enrutamiento | `nginx/conf.d/gdb-crud.conf` en el repo `sitiosapps-gateway`, con `resolver` + `set $upstream` para que un contenedor ausente no tumbe el gateway, y límite de tasa por IP |
 | Despliegue | GitHub Actions → GHCR → SSH con una llave restringida a un script de entrada que valida el paquete con una política de seguridad, hace copia de la base, levanta el stack con `docker compose -p gdb-crud up --wait` en `/srv/sitiosapps/gdb-crud` y vuelve a la versión anterior si falla |
 | Copias de seguridad | `deploy/backup.sh` (patrón de Colfe) en `/srv/sitiosapps/_backups/gdb-crud`, con cron y `deploy/probar-restauracion.sh` |
 | Verificado en local | Que el `X-Forwarded-Proto` atraviese nginx y Caddy (`trusted_proxies`): sin él las cookies salían sin `Secure`; quitarlo hace fallar `probar-acceso.ps1`. HSTS aparece una sola vez |

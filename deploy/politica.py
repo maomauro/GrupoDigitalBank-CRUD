@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Politica de seguridad que debe cumplir el compose que llega en cada despliegue.
 
-Contexto (ADR 0011 y 0013): la llave SSH de GitHub Actions solo puede ejecutar el script de entrada, pero el paquete que
+Contexto (ADR 0011, 0013 y 0014): la llave SSH de GitHub Actions solo puede ejecutar el script de entrada, pero el paquete que
 entrega incluye los archivos de Compose, y un compose arbitrario equivale a root sobre un servidor que comparte
 Docker con PortalCV y Colfe (contenedor privilegiado, montar "/" o el socket de Docker, unirse a la red de otro
 proyecto...). Este script lee el compose YA RESUELTO por Docker (`docker compose config --format json`, con las
@@ -131,7 +131,7 @@ def main(argumentos):
         print(__doc__, file=sys.stderr)
         return 2
     directorio, registro, repositorio = argumentos[1:4]
-    red_esperada = os.environ.get("RED_COMPARTIDA", "curriculum-vitae-web_portalcv-net-prod")
+    red_esperada = os.environ.get("RED_COMPARTIDA", "sitiosapps-edge")
     try:
         config = json.load(sys.stdin)
     except json.JSONDecodeError as error:
