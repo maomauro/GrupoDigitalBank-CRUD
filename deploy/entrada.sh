@@ -22,7 +22,7 @@ USUARIO_REGISTRO=maomauro
 
 # ---- 1. La unica orden permitida ----
 read -r -a orden <<< "${SSH_ORIGINAL_COMMAND:-}"
-if [ "${#orden[@]}" -ne 2 ] || [ "${orden[0]}" != "desplegar" ]; then
+if [[ "${#orden[@]}" -ne 2 ]] || [[ "${orden[0]}" != "desplegar" ]]; then
     echo "Orden no permitida. Solo: desplegar <tag>" >&2
     exit 2
 fi
@@ -34,7 +34,7 @@ fi
 
 # ---- 2. Token y paquete ----
 read -r token || { echo "Falta el token en la primera linea." >&2; exit 2; }
-[ -n "$token" ] || { echo "Token vacio." >&2; exit 2; }
+[[ -n "$token" ]] || { echo "Token vacio." >&2; exit 2; }
 
 mkdir -p "$DIR/releases"
 trabajo=$(mktemp -d)
@@ -44,7 +44,7 @@ export DOCKER_CONFIG=$trabajo/docker
 mkdir -p "$DOCKER_CONFIG"
 # Una carpeta de configuracion propia oculta los plugins instalados por usuario (por ejemplo `docker compose` en
 # ~/.docker/cli-plugins); si existen, se copian para que sigan disponibles
-if [ -d "${HOME:-/nonexistent}/.docker/cli-plugins" ]; then
+if [[ -d "${HOME:-/nonexistent}/.docker/cli-plugins" ]]; then
     cp -r "$HOME/.docker/cli-plugins" "$DOCKER_CONFIG/cli-plugins"
 fi
 
@@ -52,7 +52,7 @@ cat > "$trabajo/paquete.tgz"
 
 # ---- 3. Revisar el paquete ANTES de extraerlo: solo archivos regulares y carpetas con nombres esperados ----
 tipos=$(tar -tvzf "$trabajo/paquete.tgz" | cut -c1 | sort -u | tr -d '\n')
-if [ -n "$tipos" ] && ! [[ $tipos =~ ^(-d|d-|-|d)$ ]]; then
+if [[ -n "$tipos" ]] && ! [[ $tipos =~ ^(-d|d-|-|d)$ ]]; then
     echo "El paquete contiene enlaces u otros tipos de archivo no permitidos." >&2
     exit 3
 fi
@@ -68,11 +68,11 @@ mkdir -p "$entrega"
 umask 022
 tar -xzf "$trabajo/paquete.tgz" -C "$entrega" --no-same-owner --no-same-permissions
 for obligatorio in docker-compose.yml docker-compose.prod.yml Caddyfile db/migrate.sh; do
-    [ -f "$entrega/$obligatorio" ] || { echo "Falta $obligatorio en el paquete." >&2; exit 3; }
+    [[ -f "$entrega/$obligatorio" ]] || { echo "Falta $obligatorio en el paquete." >&2; exit 3; }
 done
 
 # ---- 4. Iniciar sesion en el registro (si corresponde) y desplegar ----
-if [ "$token" != "-" ]; then
+if [[ "$token" != "-" ]]; then
     printf '%s' "$token" | docker login "$REGISTRO" -u "$USUARIO_REGISTRO" --password-stdin > /dev/null
 fi
 unset token

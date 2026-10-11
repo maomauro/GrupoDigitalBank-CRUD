@@ -24,7 +24,7 @@ export REGISTRO=${REGISTRO:-ghcr.io}
 export RED_COMPARTIDA=${RED_COMPARTIDA:-curriculum-vitae-web_portalcv-net-prod}
 
 version=$(cat "$DIR/releases/ACTUAL" 2>/dev/null || true)
-[ -n "$version" ] || { echo "No hay una version desplegada: no hay nada que respaldar." >&2; exit 1; }
+[[ -n "$version" ]] || { echo "No hay una version desplegada: no hay nada que respaldar." >&2; exit 1; }
 release=$DIR/releases/$version
 
 compose() {
@@ -57,7 +57,7 @@ echo "Copia creada: $archivo ($(du -h "$archivo" | cut -f1))"
 find "$DESTINO" -maxdepth 1 -type f \( -name 'usuarios_*.sql.gz' -o -name 'usuarios_*.sql.gz.sha256' \) -mtime +"$RETENCION" -delete
 
 # Copia fuera del servidor (3-2-1), opcional
-if [ -n "${RCLONE_REMOTE:-}" ]; then
+if [[ -n "${RCLONE_REMOTE:-}" ]]; then
     if command -v rclone > /dev/null; then
         rclone copy "$archivo" "$RCLONE_REMOTE" && rclone copy "$archivo.sha256" "$RCLONE_REMOTE"
         echo "Copia externa enviada a $RCLONE_REMOTE"

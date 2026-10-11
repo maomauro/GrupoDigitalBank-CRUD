@@ -12,7 +12,7 @@ set -euo pipefail
 aqui=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 destino=/usr/local/sbin
 prueba=0
-if [ "${1:-}" = "--destino" ]; then
+if [[ "${1:-}" = "--destino" ]]; then
     destino=${2:?Falta la carpeta de destino}
     prueba=1
 fi
@@ -23,12 +23,13 @@ command -v docker > /dev/null || { echo "Hace falta docker." >&2; exit 1; }
 mkdir -p "$destino"
 # origen -> nombre instalado
 instalar() {
-    if [ "$prueba" = 1 ]; then
-        install -m 755 "$aqui/$1" "$destino/$2"
+    local origen=$1 nombre=$2
+    if [[ "$prueba" = 1 ]]; then
+        install -m 755 "$aqui/$origen" "$destino/$nombre"
     else
-        install -m 755 -o root -g root "$aqui/$1" "$destino/$2"
+        install -m 755 -o root -g root "$aqui/$origen" "$destino/$nombre"
     fi
-    printf '%s  %s\n' "$(sha256sum "$destino/$2" | cut -d' ' -f1)" "$destino/$2"
+    printf '%s  %s\n' "$(sha256sum "$destino/$nombre" | cut -d' ' -f1)" "$destino/$nombre"
 }
 instalar entrada.sh gdb-crud-entrada.sh
 instalar desplegar.sh gdb-crud-desplegar.sh

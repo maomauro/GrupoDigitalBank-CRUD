@@ -104,7 +104,8 @@ cd "$RAIZ" || exit 2
 tar -czf "$PRUEBA/paquete-bueno.tgz" docker-compose.yml docker-compose.prod.yml Caddyfile db
 
 entrada() { # entrada "<orden>" <paquete> [token]
-    { printf '%s\n' "${3:--}"; cat "$2"; } | SSH_ORIGINAL_COMMAND="$1" bash "$GDB_SBIN/gdb-crud-entrada.sh"
+    local orden=$1 paquete=$2 token=${3:--}
+    { printf '%s\n' "$token"; cat "$paquete"; } | SSH_ORIGINAL_COMMAND="$orden" bash "$GDB_SBIN/gdb-crud-entrada.sh"
 }
 sin_release() { [ ! -f "$GDB_DIR/releases/ACTUAL" ]; }
 contenedores_del_proyecto() { docker ps -aq --filter "label=com.docker.compose.project=$PROYECTO" | wc -l | tr -d ' '; }

@@ -9,14 +9,14 @@ set -euo pipefail
 
 DESTINO=${BACKUP_DIR:-/srv/sitiosapps/_backups/gdb-crud}
 archivo=${1:-$(find "$DESTINO" -maxdepth 1 -type f -name 'usuarios_*.sql.gz' -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)}
-if [ -z "$archivo" ] || [ ! -f "$archivo" ]; then
+if [[ -z "$archivo" ]] || [[ ! -f "$archivo" ]]; then
     echo "No hay copias de seguridad en $DESTINO" >&2
     exit 1
 fi
 echo "Restaurando $archivo"
 
 # 1) La suma de verificacion, si existe, y la integridad del gzip
-if [ -f "$archivo.sha256" ]; then
+if [[ -f "$archivo.sha256" ]]; then
     ( cd "$(dirname "$archivo")" && sha256sum -c "$(basename "$archivo").sha256" )
 fi
 gzip -t "$archivo"
@@ -36,7 +36,10 @@ sleep 1   # la imagen reinicia el servidor una vez tras inicializar
 gzip -dc "$archivo" | docker exec -i "$contenedor" psql -U postgres -d restauracion -v ON_ERROR_STOP=0 -q > /dev/null 2> "${TMPDIR:-/tmp}/$contenedor.err" || true
 
 # 3) Comprobaciones: la tabla, las dos funciones y las filas
-consulta() { docker exec "$contenedor" psql -U postgres -d restauracion -At -c "$1"; }
+consulta() {
+    local sentencia=$1
+    docker exec "$contenedor" psql -U postgres -d restauracion -At -c "$sentencia"
+}
 tabla=$(consulta "select count(*) from pg_class where relname='usuario' and relkind='r'")
 funciones=$(consulta "select count(*) from pg_proc where proname in ('fn_usuario_crud','fn_usuario_pagina')")
 migraciones=$(consulta "select count(*) from schema_migrations")
@@ -44,7 +47,7 @@ filas=$(consulta "select count(*) from usuario")
 rm -f "${TMPDIR:-/tmp}/$contenedor.err"
 
 echo "tabla usuario: $tabla | funciones: $funciones/2 | migraciones: $migraciones | usuarios: $filas"
-if [ "$tabla" = 1 ] && [ "$funciones" = 2 ] && [ "$migraciones" -ge 1 ]; then
+if [[ "$tabla" = 1 ]] && [[ "$funciones" = 2 ]] && [[ "$migraciones" -ge 1 ]]; then
     echo "RESTAURACION CORRECTA"
 else
     echo "LA RESTAURACION NO ES VALIDA" >&2

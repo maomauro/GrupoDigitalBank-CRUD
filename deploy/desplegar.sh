@@ -30,7 +30,7 @@ export REGISTRO RED_COMPARTIDA
 unset GITHUB_REPOSITORY
 CONSERVAR=5
 
-if [ $# -ne 2 ]; then
+if [[ $# -ne 2 ]]; then
     echo "Uso: $0 <tag> <carpeta-de-la-entrega>" >&2
     exit 2
 fi
@@ -40,9 +40,9 @@ if ! [[ $tag =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
     echo "Tag no valido: $tag" >&2
     exit 2
 fi
-[ -f "$DIR/.env" ] || { echo "Falta $DIR/.env (ver docs/plan-de-trabajo.md, 6.3)" >&2; exit 2; }
+[[ -f "$DIR/.env" ]] || { echo "Falta $DIR/.env (ver docs/plan-de-trabajo.md, 6.3)" >&2; exit 2; }
 repositorio=$(grep -E '^GITHUB_REPOSITORY=' "$DIR/.env" | tail -n1 | cut -d= -f2-)
-[ -n "$repositorio" ] || { echo "Falta GITHUB_REPOSITORY en $DIR/.env" >&2; exit 2; }
+[[ -n "$repositorio" ]] || { echo "Falta GITHUB_REPOSITORY en $DIR/.env" >&2; exit 2; }
 
 # Bloqueo: un solo despliegue a la vez. Si un proceso muerto a la fuerza lo dejara colgado, se borra a mano.
 mkdir -p "$DIR/releases"
@@ -56,7 +56,7 @@ nueva=$DIR/releases/$tag
 limpiar() {
     rm -rf "$trabajo" "$BLOQUEO"
     # La entrega que no llego a instalarse no se deja a medias
-    [ -d "$entrega" ] && rm -rf "$entrega"
+    [[ -d "$entrega" ]] && rm -rf "$entrega"
     return 0
 }
 trap limpiar EXIT
@@ -70,11 +70,11 @@ compose() {
 }
 
 previa=""
-[ -f "$DIR/releases/ACTUAL" ] && previa=$(cat "$DIR/releases/ACTUAL")
+[[ -f "$DIR/releases/ACTUAL" ]] && previa=$(cat "$DIR/releases/ACTUAL")
 
 # ---- 1. Instalar la entrega como release y validarla ----
-if [ -e "$nueva" ] && [ "$tag" != "$previa" ]; then rm -rf "$nueva"; fi   # un tag que no esta en marcha se reemplaza
-if [ "$tag" = "$previa" ]; then
+if [[ -e "$nueva" ]] && [[ "$tag" != "$previa" ]]; then rm -rf "$nueva"; fi   # un tag que no esta en marcha se reemplaza
+if [[ "$tag" = "$previa" ]]; then
     # Redespliegue de la version en marcha: no se pisa su carpeta hasta saber que la nueva entrega es valida
     destino=$trabajo/release
 else
@@ -86,22 +86,23 @@ chmod -R go+rX,go-w "$destino"
 
 validar_politica() {
     local dir=$1
+    # El compose resuelto viaja por una tuberia: la politica no abre ninguna ruta (y con pipefail, si compose falla, se rechaza)
     IMAGE_TAG=$tag docker compose -p "$PROYECTO" --project-directory "$dir" --env-file "$DIR/.env" \
-        -f "$dir/docker-compose.yml" -f "$dir/docker-compose.prod.yml" config --format json > "$trabajo/config.json"
-    python3 "$SBIN/gdb-crud-politica.py" "$trabajo/config.json" "$dir" "$REGISTRO" "$repositorio"
+        -f "$dir/docker-compose.yml" -f "$dir/docker-compose.prod.yml" config --format json \
+        | python3 "$SBIN/gdb-crud-politica.py" "$dir" "$REGISTRO" "$repositorio"
 }
 if ! validar_politica "$destino"; then
     echo "La entrega no cumple la politica de seguridad: no se despliega nada." >&2
-    [ "$destino" = "$nueva" ] && rm -rf "$nueva"
+    [[ "$destino" = "$nueva" ]] && rm -rf "$nueva"
     exit 3
 fi
-if [ "$destino" != "$nueva" ]; then
+if [[ "$destino" != "$nueva" ]]; then
     rm -rf "$nueva"
     mv "$destino" "$nueva"
 fi
 
 # ---- 2. Copia de seguridad previa (el migrador puede cambiar el esquema) ----
-if [ -n "$previa" ] && compose "$previa" ps --status running --services 2>/dev/null | grep -qx db; then
+if [[ -n "$previa" ]] && compose "$previa" ps --status running --services 2>/dev/null | grep -qx db; then
     echo "== Copia de seguridad previa =="
     bash "$SBIN/gdb-crud-backup.sh"
 fi
@@ -110,7 +111,7 @@ fi
 echo "== Descargando imagenes ($tag) =="
 if ! compose "$tag" pull --quiet; then
     echo "No se pudieron descargar las imagenes: no se toco nada de lo que esta en marcha." >&2
-    [ "$tag" != "$previa" ] && rm -rf "$nueva"
+    [[ "$tag" != "$previa" ]] && rm -rf "$nueva"
     exit 1
 fi
 
@@ -118,14 +119,14 @@ echo "== Levantando $tag =="
 if ! compose "$tag" up -d --remove-orphans --wait --wait-timeout 180; then
     echo "FALLO el despliegue de $tag." >&2
     compose "$tag" ps >&2 || true
-    if [ -n "$previa" ] && [ "$previa" != "$tag" ]; then
+    if [[ -n "$previa" ]] && [[ "$previa" != "$tag" ]]; then
         echo "== Volviendo a $previa ==" >&2
         if compose "$previa" up -d --remove-orphans --wait --wait-timeout 180; then
             echo "Rollback correcto: sigue en marcha $previa." >&2
         else
             echo "EL ROLLBACK TAMBIEN FALLO: hay que intervenir a mano." >&2
         fi
-    elif [ -z "$previa" ]; then
+    elif [[ -z "$previa" ]]; then
         echo "Primer despliegue: se detiene el stack (los volumenes se conservan)." >&2
         compose "$tag" down || true
     fi
@@ -139,7 +140,7 @@ mv "$DIR/releases/ACTUAL.tmp" "$DIR/releases/ACTUAL"
 mapfile -t viejas < <(find "$DIR/releases" -mindepth 1 -maxdepth 1 -type d -not -name '.*' -printf '%T@ %f\n' 2>/dev/null \
     | sort -rn | awk -v n="$CONSERVAR" 'NR>n {print $2}')
 for v in "${viejas[@]}"; do
-    [ "$v" = "$tag" ] || [ "$v" = "$previa" ] || rm -rf "${DIR:?}/releases/$v"
+    [[ "$v" = "$tag" ]] || [[ "$v" = "$previa" ]] || rm -rf "${DIR:?}/releases/$v"
 done
 echo "== Listo: $tag en marcha =="
 compose "$tag" ps

@@ -179,7 +179,7 @@ jobs:
       - name: Prueba del despliegue
         run: bash scripts/probar-despliegue.sh
 
-  # Entrega continua (D7): solo en un push a main (el merge de develop) y con TODO lo anterior en verde. Publica las
+  # Entrega continua (D7): solo en un push a main (el merge de develop) y con todo lo anterior en verde. Publica las
   # imagenes y despliega por SSH en el VPS (deploy.yml, ADR 0011). Los merges a develop no despliegan.
   entrega:
     name: entrega
