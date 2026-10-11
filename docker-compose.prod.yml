@@ -1,0 +1,52 @@
+# Override de PRODUCCION. Se usa junto al compose base:
+#   docker compose -p gdb-crud -f docker-compose.yml -f docker-compose.prod.yml ...
+# (lo hace deploy/desplegar.sh en el VPS; ver docs/plan-de-trabajo.md, fases 6 y 7, y el ADR 0011).
+#
+# - Imagenes versionadas de GHCR en lugar de construirlas en el servidor.
+# - El proxy se une a la red COMPARTIDA del VPS con el alias gdb-crud-web: asi lo alcanza el nginx de PortalCV, que
+#   termina TLS. NADA se publica en el host (el compose base no declara "ports" y deploy/desplegar.sh lo comprueba).
+# - Limite de logs y no-new-privileges en todos los servicios (no se toca /etc/docker/daemon.json: reiniciar el
+#   daemon reiniciaria tambien PortalCV y Colfe).
+#
+# REGISTRO y RED_COMPARTIDA solo se cambian en las pruebas locales de scripts/probar-despliegue.sh.
+
+x-registro: &registro
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    logging: *registro
+    security_opt: ["no-new-privileges:true"]
+
+  migrador:
+    logging: *registro
+    security_opt: ["no-new-privileges:true"]
+
+  negocios:
+    image: ${REGISTRO:-ghcr.io}/${GITHUB_REPOSITORY:?Define GITHUB_REPOSITORY en .env}/negocios:${IMAGE_TAG:?Define IMAGE_TAG}
+    build: !reset null
+    logging: *registro
+    security_opt: ["no-new-privileges:true"]
+
+  web:
+    image: ${REGISTRO:-ghcr.io}/${GITHUB_REPOSITORY:?Define GITHUB_REPOSITORY en .env}/web:${IMAGE_TAG:?Define IMAGE_TAG}
+    build: !reset null
+    logging: *registro
+    security_opt: ["no-new-privileges:true"]
+
+  proxy:
+    logging: *registro
+    security_opt: ["no-new-privileges:true"]
+    networks:
+      default: {}
+      compartida:
+        aliases: [gdb-crud-web]
+
+networks:
+  # Creada por el compose de PortalCV (subred fija 172.28.0.0/24); aqui solo se une
+  compartida:
+    external: true
+    name: ${RED_COMPARTIDA:-curriculum-vitae-web_portalcv-net-prod}

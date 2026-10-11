@@ -1,0 +1,179 @@
+# Entrega continua (ADR 0011): publica las imagenes en GHCR y las despliega en el VPS compartido.
+#
+# Disparo (D7): el merge de develop a main. Este flujo arranca cuando el CI termina EN VERDE sobre main
+# (workflow_run), nunca antes. Tambien se puede lanzar a mano (workflow_dispatch) con el tag de una version ya
+# publicada para volver a ella (rollback) o redesplegarla. Los merges a develop ejecutan el CI pero no despliegan.
+#
+# IMPORTANTE: un workflow_run ejecuta el archivo que haya en la rama POR DEFECTO del repositorio (develop), no el de
+# main; por eso este archivo debe estar en develop. La condicion de rama (head_branch == main) esta en cada trabajo.
+#
+# La llave SSH solo puede ejecutar el script de entrada del servidor (restrict,command=), que solo entiende
+# "desplegar <tag>"; el servidor valida el paquete con una politica de seguridad antes de levantar nada.
+# Las acciones van fijadas por SHA completo (Dependabot las actualiza).
+
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version a (re)desplegar, p. ej. sha-0123456789ab (debe estar ya publicada en GHCR)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Un solo despliegue a la vez y sin cancelar el que esta en curso
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  URL_PUBLICA: https://gdb-crud.sitiosapps.com
+
+jobs:
+  imagenes:
+    name: imagenes
+    # Solo tras un CI verde en main; el despliegue manual reutiliza imagenes ya publicadas
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Version y nombre de imagen (GHCR exige minusculas)
+        id: version
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          echo "tag=sha-${SHA:0:12}" >> "$GITHUB_OUTPUT"
+          echo "repo=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # La etiqueta org.opencontainers.image.source vincula el paquete a este repositorio: asi el GITHUB_TOKEN de este
+      # repositorio puede leerlo despues, sin un token personal en el servidor
+      - name: Negocios
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: src/GrupoDigitalBank.Negocios/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.version.outputs.repo }}/negocios:${{ steps.version.outputs.tag }}
+            ghcr.io/${{ steps.version.outputs.repo }}/negocios:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=negocios
+          cache-to: type=gha,scope=negocios,mode=max
+
+      - name: Presentacion
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: src/GrupoDigitalBank.Presentacion/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.version.outputs.repo }}/web:${{ steps.version.outputs.tag }}
+            ghcr.io/${{ steps.version.outputs.repo }}/web:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+  desplegar:
+    name: desplegar
+    needs: imagenes
+    # always(): si 'imagenes' se omitio (despliegue manual) este trabajo igual debe correr; si FALLO, no
+    if: >-
+      always() &&
+      (needs.imagenes.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.imagenes.result == 'skipped'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Version a desplegar
+        id: version
+        env:
+          DESDE_CI: ${{ needs.imagenes.outputs.tag }}
+          MANUAL: ${{ inputs.tag }}
+        run: |
+          tag=${DESDE_CI:-$MANUAL}
+          if ! [[ $tag =~ ^sha-[0-9a-f]{12}$ ]]; then
+            echo "::error::Tag no valido: '$tag' (se espera sha-<12 hex>)"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=${tag#sha-}" >> "$GITHUB_OUTPUT"
+
+      # El paquete (compose, Caddyfile y migraciones) tiene que corresponder EXACTAMENTE a la version que se despliega,
+      # tambien al volver a una anterior: por eso se toma el codigo de ese commit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Codigo de esa version
+        env:
+          SHA: ${{ steps.version.outputs.sha }}
+        run: git checkout --detach "$SHA"
+
+      - name: Paquete de despliegue
+        run: tar -czf "$RUNNER_TEMP/paquete.tgz" docker-compose.yml docker-compose.prod.yml Caddyfile db
+
+      - name: Clave SSH y servidor conocido (nunca se desactiva la verificacion del host)
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/despliegue
+          chmod 600 ~/.ssh/despliegue
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # El token de GitHub viaja por la entrada estandar (primera linea), no por la linea de comandos; el servidor lo usa
+      # solo para descargar las imagenes y lo descarta al terminar
+      - name: Desplegar en el VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          { printf '%s\n' "$TOKEN"; cat "$RUNNER_TEMP/paquete.tgz"; } | ssh \
+            -i ~/.ssh/despliegue -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "desplegar $TAG"
+
+      # Como lo veria un usuario: por Cloudflare y el nginx compartido. Un fallo aqui deja el despliegue en rojo; la
+      # vuelta a la version anterior es manual (workflow_dispatch con el tag anterior), ver docs/plan-de-trabajo.md 7.3
+      - name: Prueba de humo
+        run: |
+          curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "$URL_PUBLICA/health" | grep -qx ok
+          curl -fsSI "$URL_PUBLICA/health" | grep -iq '^strict-transport-security:'
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' "$URL_PUBLICA/")
+          [ "$codigo" = 401 ] || { echo "::error::La raiz debe pedir credenciales (401) y respondio $codigo"; exit 1; }
+          echo "Desplegado ${{ steps.version.outputs.tag }}: /health responde, HSTS presente y la raiz exige credenciales."

@@ -78,7 +78,7 @@ Check 'responde 401 con desafio Basic' ($cab -match '401' -and $cab -match 'WWW-
 if ($Base -like 'https://*') {
     $http = $Base -replace '^https', 'http'
     $r = (& curl.exe -s -o NUL -w "%{http_code} %{redirect_url}" --max-time 20 "$http/")
-    Check 'HTTP redirige a HTTPS antes de pedir credenciales' ($r -match '^30[78] https://') "-> $r"
+    Check 'HTTP redirige a HTTPS antes de pedir credenciales' ($r -match '^30[1278] https://') "-> $r"
 }
 
 Write-Host "`n== Cabeceras de seguridad (en todo tipo de respuesta) ==" -ForegroundColor Cyan
@@ -112,9 +112,20 @@ foreach ($nombre in $respuestas.Keys) {
     foreach ($d in "default-src 'self'", "script-src 'self'", "style-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'") { if (-not $csp -or -not $csp.Contains($d)) { $problemas += "CSP:$d" } }
     if ($csp -and ($csp -match 'unsafe-inline|unsafe-eval|\*|data:|http:')) { $problemas += 'CSP demasiado permisiva' }
     if ($Base -like 'https://*' -and $h['strict-transport-security'] -ne "max-age=$HstsEsperado") { $problemas += "HSTS=[$($h['strict-transport-security'])] esperado max-age=$HstsEsperado" }
-    if ($h.ContainsKey('server')) { $problemas += "Server=[$($h['server'])]" }
+    # Server lo pone el proxy de DELANTE (nginx compartido o Cloudflare), no Caddy: se admite el nombre a secas, no una version
+    if ($h.ContainsKey('server') -and $h['server'] -match '[0-9]|caddy|kestrel') { $problemas += "Server=[$($h['server'])]" }
     if ($h.ContainsKey('x-powered-by')) { $problemas += 'X-Powered-By' }
     Check $nombre ($problemas.Count -eq 0) $(if ($problemas.Count) { '-> ' + ($problemas -join '; ') } else { '' })
+}
+
+Write-Host "`n== Cadena de proxies (nginx -> Caddy -> aplicacion, ADR 0011) ==" -ForegroundColor Cyan
+$crudo = (& curl.exe -s $curlInseguro -D - -o NUL --max-time 20 @auth "$Base/Usuarios/Registrar") -join "`n"
+$hsts = @([regex]::Matches($crudo, '(?im)^strict-transport-security:'))
+Check 'Strict-Transport-Security aparece UNA sola vez (no la duplican nginx y Caddy)' ($hsts.Count -eq 1) "veces=$($hsts.Count)"
+if ($Base -like 'https://*') {
+    # La cookie antiforgery solo lleva "secure" si la aplicacion cree que la peticion es HTTPS, es decir, si el
+    # X-Forwarded-Proto del nginx atraviesa Caddy intacto (trusted_proxies); sin eso Caddy lo reescribiria a "http"
+    Check 'La aplicacion ve HTTPS: la cookie antiforgery sale con Secure' ($crudo -match '(?im)^set-cookie:[^\r\n]*antiforgery[^\r\n]*;\s*secure') 'X-Forwarded-Proto llega a la aplicacion'
 }
 
 Write-Host "`n== Aplicacion de punta a punta a traves del proxy ==" -ForegroundColor Cyan
