@@ -25,27 +25,30 @@ Navegador ──HTTPS──▶ Caddy ──▶ Presentación (ASP.NET Core MVC)
 ├── src/
 │   ├── GrupoDigitalBank.Negocios/  # Contratos · Servicios · Validacion · Datos
 │   └── GrupoDigitalBank.Presentacion/  # Controllers · Models · Servicios (cliente SOAP) · Views
-├── docker-compose.yml              # db + negocios + web + proxy (Caddy)
-├── Caddyfile                       # HTTPS automático (Let's Encrypt)
+├── docker-compose.yml              # db + negocios + web + proxy (Caddy); no publica ningún puerto
+├── docker-compose.prod.yml         # override de producción: imágenes de GHCR, red compartida del VPS
+├── Caddyfile                       # proxy interno: Basic Auth, cabeceras y CSP (sin TLS; ver ADR 0011)
+├── deploy/                         # scripts del servidor (llave restringida, política, backup) y vhost de nginx
 └── .env.example
 ```
 
 ## Ejecución
 
-Requisitos: Docker + Docker Compose (en el VPS, el dominio debe apuntar a su IP y los puertos 80/443 estar abiertos).
+Requisitos: Docker + Docker Compose. Este compose **no publica ningún puerto**: en producción el stack va detrás del nginx compartido del VPS ([ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md)) y en desarrollo se usa el override `docker-compose.dev.yml`.
 
 ```bash
 cp .env.example .env      # ajustar DOMINIO, POSTGRES_PASSWORD (administrador/migrador) y APP_DB_PASSWORD (rol de la aplicación)
 powershell -ExecutionPolicy Bypass -File scripts/generar-hash-auth.ps1 -ActualizarEnv   # crea AUTH_USUARIO y AUTH_HASH (acceso a la web)
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
-- Producción: `https://<DOMINIO>` (Caddy emite y renueva el certificado).
-- Solo el proxy publica puertos; `web`, `negocios` y `db` quedan en la red interna.
-- Local sin dominio: usar `DOMINIO=localhost` (Caddy usa su CA interna).
+- Desarrollo: `http://localhost:8080` (sin autenticación; solo accesible desde el equipo).
+- Cadena completa de producción en local (nginx con HTTPS autofirmado → Caddy → aplicación, con Basic Auth, cabeceras y CSP): añadir `--profile con-proxy` y abrir `https://localhost` (`DOMINIO=localhost`).
+- Producción: `https://gdb-crud.sitiosapps.com` (Cloudflare → nginx compartido del VPS → Caddy). El despliegue es automático al fusionar `develop` en `main` (ver el plan, fase 7).
+- Ningún servicio publica puertos en el compose base ni en el de producción; en desarrollo solo se publican en `127.0.0.1`.
 - **Salud y seguridad HTTP:** `web` y `negocios` exponen `/health` y Docker los vigila (`docker compose up --wait` espera a que estén sanos; `web` arranca tras `negocios` y el proxy tras `web`). Caddy envía HSTS (`HSTS_MAX_AGE`, 1 año por omisión y 0 en desarrollo), CSP estricta sin nada en línea ni de otro origen y el resto de cabeceras de seguridad, también en los errores 401 y 502. Verificar: `scripts/probar-acceso.ps1` y, en un navegador real, `scripts/probar-navegador.ps1`. El WSDL de Negocios solo se publica en `Development`; su cadena de conexión no se versiona (entorno, `user-secrets` o archivo local).
 - **Zona horaria de negocio:** «hoy» (p. ej. para que la fecha de nacimiento no sea futura) es la fecha de `America/Bogota` (UTC-5), no la del servidor, que está en UTC. Se configura con `Negocios__ZonaHoraria` (por omisión `America/Bogota`; el servicio no arranca si el id no es válido) y la base la fija en su `CHECK` (`db/003`).
-- **Volúmenes persistentes:** `pgdata` (base de datos), `caddy_data` (certificados HTTPS) y `dpkeys` (claves de Data Protection de la web: sin ellas, un formulario abierto antes de un redespliegue falla con 400). `docker compose down -v` los borra todos.
+- **Volúmenes persistentes:** `pgdata` (base de datos), `caddy_data` (estado de Caddy; ya no guarda certificados: el TLS lo termina el nginx) y `dpkeys` (claves de Data Protection de la web: sin ellas, un formulario abierto antes de un redespliegue falla con 400). `docker compose down -v` los borra todos.
 - Los cambios de esquema se aplican con el servicio `migrador` en cada `docker compose up`: ejecuta solo los scripts `db/NNN_*.sql` que falten, en orden y en una transacción cada uno. **Un script ya aplicado no se edita** (el migrador aborta si cambia su checksum): todo cambio es un script nuevo. Ya no hace falta `docker compose down -v` ni se pierden datos al cambiar el esquema. Probar el migrador: `scripts/probar-migrador.ps1`.
 
 - **Acceso a la web:** Caddy exige usuario y clave (Basic Auth) en todas las rutas salvo `/health`. Es un solo usuario compartido; la clave nunca se guarda en claro, solo su hash (`AUTH_HASH`) en el `.env`. Generarlo o rotarlo: `scripts/generar-hash-auth.ps1 -ActualizarEnv`. Verificarlo: `scripts/probar-acceso.ps1`. Sin bloqueo por intentos fallidos (ver plan, 4.2): usar claves largas.
@@ -65,5 +68,5 @@ Desarrollo local (modos A y B, con `docker-compose.dev.yml`) y pruebas: ver `CLA
 - **ASP.NET Core MVC:** separación clara vista/controlador/modelo, validación con DataAnnotations en servidor y plantillas Razor simples para dos pantallas.
 - **PostgreSQL + Npgsql (sin ORM):** control total del SQL y de los tipos; el CRUD se concentra en una función almacenada con parámetro de operación, lo que reduce superficie de SQL en la aplicación y evita inyección (parámetros tipados).
 - **Validación en tres niveles:** DataAnnotations en presentación (retroalimentación inmediata), `UsuarioValidador` en negocios (fuente de verdad) y `CHECK` en la BD (sexo, fecha y nombre no vacío).
-- **Docker Compose + Caddy:** despliegue reproducible; HTTPS automático sin gestionar certificados a mano.
+- **Docker Compose + Caddy interno:** despliegue reproducible; Caddy aplica Basic Auth, cabeceras de seguridad y CSP, y el TLS lo termina el nginx compartido del VPS tras Cloudflare ([ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md)).
 - **.NET 10 (LTS):** soporte hasta noviembre de 2028.

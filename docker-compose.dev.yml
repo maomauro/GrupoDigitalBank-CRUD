@@ -30,3 +30,22 @@ services:
     profiles: ["con-proxy"]     # no arranca salvo que se pida el perfil
     environment:
       HSTS_MAX_AGE: "0"         # HSTS se aplica al host sin importar el puerto: forzaria HTTPS en http://localhost:8080
+    networks:
+      default:
+        aliases: [gdb-crud-web] # el mismo alias que tiene en produccion en la red compartida
+
+  # Simula lo que hay delante del proxy en produccion (nginx compartido + Cloudflare): termina TLS con un certificado
+  # autofirmado y usa el MISMO vhost, deploy/nginx/gdb-crud.conf. Asi la cadena nginx -> Caddy -> aplicacion se prueba
+  # aqui, con scripts/probar-acceso.ps1 y scripts/probar-navegador.ps1, y no por primera vez en produccion.
+  borde:
+    profiles: ["con-proxy"]
+    build:
+      context: docker/dev/borde
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+    volumes:
+      - ./deploy/nginx/gdb-crud.conf:/vhost/gdb-crud.conf:ro
+    depends_on:
+      proxy:
+        condition: service_healthy

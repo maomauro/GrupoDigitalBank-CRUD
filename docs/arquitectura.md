@@ -2,7 +2,7 @@
 
 Vista de conjunto de GrupoDigitalBank-CRUD, siguiendo el modelo C4 (contexto, contenedores, componentes) más los flujos que importan. Los porqués de cada decisión están en los [ADR](adr/README.md). Los diagramas son [Mermaid](https://mermaid.js.org/) y se verifican con un motor real antes de publicarse.
 
-> Estado: refleja `develop` al 2026-10-10. La **vista de despliegue en producción está decidida pero aún sin implementar** (sección 8.2, ADR 0011) hasta implementarla en la fase 7: parte de la infraestructura real del VPS, verificada el 2026-10-10, según el [plan de trabajo](plan-de-trabajo.md).
+> Estado: refleja `develop` al 2026-10-10. La **vista de despliegue en producción está implementada en el repositorio** (sección 8.2) y falta su primera publicación real (fase 8): parte de la infraestructura real del VPS, verificada el 2026-10-10, según el [plan de trabajo](plan-de-trabajo.md).
 
 ## 1. Propósito y alcance
 
@@ -16,13 +16,13 @@ Fuera de alcance: cuentas por persona y roles (ver [ADR 0004](adr/0004-autentica
 flowchart LR
     operador(["Operador<br/>(persona con usuario y clave)"])
     sistema["Sistema de gestión de usuarios<br/>(web)"]
-    acme["Let's Encrypt<br/>(certificados HTTPS)"]
+    cloudflare["Cloudflare<br/>(DNS, proxy y certificado de origen)"]
     github["GitHub<br/>(código, CI/CD, GHCR)"]
     sonar["SonarCloud<br/>(calidad de código)"]
     dependabot["Dependabot<br/>(dependencias)"]
 
     operador -->|"HTTPS + Basic Auth"| sistema
-    sistema -->|"emite y renueva el certificado"| acme
+    operador -.->|"el tráfico pasa por"| cloudflare
     github -->|"imagenes y despliegue por SSH"| sistema
     github -->|"analiza cada PR"| sonar
     dependabot -->|"abre PR de actualizacion"| github
@@ -38,14 +38,14 @@ flowchart TB
 
     subgraph servidor["Servidor (Docker Compose)"]
         direction TB
-        proxy["<b>proxy</b> · Caddy<br/>HTTPS, Basic Auth,<br/>cabeceras de seguridad y CSP<br/><i>unico con puertos publicados: 80 y 443</i>"]
+        proxy["<b>proxy</b> · Caddy<br/>Basic Auth,<br/>cabeceras de seguridad y CSP<br/><i>sin puertos publicados; solo HTTP</i>"]
         web["<b>web</b> · ASP.NET Core MVC<br/>Presentacion<br/>solo habla SOAP con negocios"]
         negocios["<b>negocios</b> · CoreWCF<br/>validacion y reglas<br/>unica capa con acceso a la BD"]
         db[("<b>db</b> · PostgreSQL 17<br/>tabla usuario + fn_usuario_crud")]
         migrador["<b>migrador</b> · one-shot<br/>aplica db/NNN_*.sql"]
     end
 
-    navegador -->|"HTTPS"| proxy
+    navegador -->|"HTTPS (lo termina el nginx compartido)"| proxy
     proxy -->|"HTTP interno :8080"| web
     web -->|"SOAP / BasicHttpBinding :8080"| negocios
     negocios -->|"Npgsql · rol usuarios_app<br/>(solo EXECUTE de la funcion)"| db
@@ -53,12 +53,12 @@ flowchart TB
 
     pgdata[/"volumen pgdata"/] --- db
     dpkeys[/"volumen dpkeys<br/>claves de Data Protection"/] --- web
-    caddydata[/"volumen caddy_data<br/>certificados"/] --- proxy
+    caddydata[/"volumen caddy_data<br/>estado de Caddy"/] --- proxy
 ```
 
 | Contenedor | Tecnología | Responsabilidad | Expuesto |
 |---|---|---|---|
-| `proxy` | Caddy 2 | Termina TLS, exige usuario y clave (salvo `/health`), añade cabeceras y CSP, reenvía a `web` | 80 y 443 (único) |
+| `proxy` | Caddy 2 | Exige usuario y clave (salvo `/health`), añade cabeceras y CSP, reenvía a `web`; escucha solo HTTP y solo atiende el nombre de `DOMINIO` | Ninguno en el host; en producción, solo por la red compartida con el alias `gdb-crud-web` |
 | `web` | ASP.NET Core MVC, .NET 10 | Vistas Razor, formularios con antiforgery, cliente SOAP hacia `negocios` | Solo red interna |
 | `negocios` | CoreWCF 1.9.1, .NET 10 | Servicio `UsuarioService` (Agregar, Modificar, Consultar, ConsultarPagina, Eliminar), validación y traducción de errores a faults SOAP | Solo red interna |
 | `db` | PostgreSQL 17 | Datos y la función `fn_usuario_crud(operación, …)` | Solo red interna (en desarrollo, `127.0.0.1:5432`) |
@@ -184,7 +184,7 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 | Capa | Mecanismo | Dónde |
 |---|---|---|
 | Red | Solo `proxy` publica puertos; `web`, `negocios` y `db` quedan en la red interna | `docker-compose.yml` |
-| Transporte | HTTPS con certificado automático; HTTP redirige a HTTPS; HSTS configurable | Caddy ([ADR 0009](adr/0009-cabeceras-http-csp-y-hsts.md)) |
+| Transporte | HTTPS hasta el nginx compartido (Cloudflare y certificado de origen); HTTP redirige a HTTPS; HSTS configurable; las cookies llevan `Secure` cuando la petición llegó por HTTPS | Cloudflare, nginx y Caddy ([ADR 0009](adr/0009-cabeceras-http-csp-y-hsts.md), [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md)) |
 | Acceso | Basic Auth con hash bcrypt; `/health` abierto, nada más ([ADR 0004](adr/0004-autenticacion-minima-basic-auth.md)) | Caddy |
 | Navegador | CSP sin nada en línea ni de otro origen, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, COOP/CORP; también en los errores 401 y 502 | Caddy |
 | Aplicación | Antiforgery con claves persistentes, sin JavaScript en línea, errores sin detalles internos | `web`, `negocios` |
@@ -200,11 +200,11 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 |---|---|---|
 | **A** | Todo el stack (`docker-compose.dev.yml`; la web en `http://localhost:8080`) | Validar de punta a punta antes de un PR |
 | **B** | Solo `db`; Negocios (`:5081`) y Presentación (`:5080`) con `dotnet watch` o F5 | Programar y depurar a diario |
-| **con proxy** | Todo más `proxy` con HTTPS local (`--profile con-proxy`) | Probar autenticación, cabeceras y CSP |
+| **con proxy** | Todo más la cadena de producción: un nginx `borde` con HTTPS autofirmado y **el mismo vhost** que irá a producción, delante de `proxy` (`--profile con-proxy`) | Probar autenticación, cabeceras, CSP y la cadena de proxies |
 
-### 8.2 Producción (diseño aprobado, [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md))
+### 8.2 Producción ([ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) y [ADR 0013](adr/0013-politica-de-seguridad-del-despliegue.md))
 
-El VPS es **compartido** con PortalCV y Colfe: un único nginx (`portalcv-nginx-prod`) publica 80 y 443 y Cloudflare va delante. Este proyecto no publica ningún puerto: su `proxy` (Caddy) se une a la red compartida con un alias y el nginx le enruta el subdominio. Las secciones 2, 3 y 7 describen lo que **hoy** hace el `docker-compose.yml` (Caddy con HTTPS propio); los cambios (Caddy en HTTP, sin `ports`) llegan con la fase 7 del plan.
+El VPS es **compartido** con PortalCV y Colfe: un único nginx (`portalcv-nginx-prod`) publica 80 y 443 y Cloudflare va delante. Este proyecto no publica ningún puerto: su `proxy` (Caddy) se une a la red compartida con un alias y el nginx le enruta el subdominio. Esta es también la topología del entorno local con `--profile con-proxy`, con un nginx de prueba delante.
 
 ```mermaid
 flowchart LR
@@ -223,16 +223,16 @@ flowchart LR
 |---|---|
 | Quién termina TLS | Cloudflare (navegador) y nginx (certificado de origen en `/etc/nginx/ssl/`); Caddy escucha solo HTTP |
 | Enrutamiento | `docker/gdb-crud.conf` en el repo de PortalCV, con `resolver` + `set $upstream` para que un contenedor ausente no tumbe el nginx compartido |
-| Despliegue | GitHub Actions → GHCR → SSH con una llave restringida a un script de entrada → `docker compose -p gdb-crud up -d` en `/srv/sitiosapps/gdb-crud` |
-| Copias de seguridad | `deploy/backup.sh` (patrón de Colfe) en `/srv/sitiosapps/_backups/gdb-crud`, con cron y restauración probada |
-| Pendiente de verificar | Que el `X-Forwarded-Proto` y la IP del cliente atraviesen los dos proxies (nginx y Caddy) sin perderse |
+| Despliegue | GitHub Actions → GHCR → SSH con una llave restringida a un script de entrada que valida el paquete con una política de seguridad, hace copia de la base, levanta el stack con `docker compose -p gdb-crud up --wait` en `/srv/sitiosapps/gdb-crud` y vuelve a la versión anterior si falla |
+| Copias de seguridad | `deploy/backup.sh` (patrón de Colfe) en `/srv/sitiosapps/_backups/gdb-crud`, con cron y `deploy/probar-restauracion.sh` |
+| Verificado en local | Que el `X-Forwarded-Proto` atraviese nginx y Caddy (`trusted_proxies`): sin él las cookies salían sin `Secure`; quitarlo hace fallar `probar-acceso.ps1`. HSTS aparece una sola vez |
 
 ## 9. Calidad y verificación
 
-- **302 pruebas** (106 unitarias de Negocios, 54 de integración con PostgreSQL real en Testcontainers, 127 de Presentación con `WebApplicationFactory` y 15 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
+- **307 pruebas** (106 unitarias de Negocios, 54 de integración con PostgreSQL real en Testcontainers, 132 de Presentación con `WebApplicationFactory` y 15 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
 - Mutaciones manuales, todas detectadas: 34 al código de producción, 7 al contrato SOAP (más 3 que ni compilan) y 25 a la paginación.
 - Herramientas en `scripts/`: `verificar.ps1` (el contrato del CI), `cobertura.ps1`, `probar-migrador.ps1`, `probar-acceso.ps1` y, en navegador real, `probar-navegador.ps1`.
-- Integración continua con GitHub Actions (`.github/workflows/ci.yml`, tres trabajos independientes en cada PR y push a `develop` y `main`): `ci` (format, build, 302 pruebas en Linux, cobertura y paquetes vulnerables), `migrador` (shellcheck y los 9 escenarios del migrador) y `docker` (Compose, hadolint, construcción de imágenes y Trivy). Además SonarCloud (análisis por PR) y Dependabot, que ahora también cubre las acciones.
+- Integración continua con GitHub Actions (`.github/workflows/ci.yml`, cuatro trabajos independientes en cada PR y push a `develop` y `main`): `ci` (format, build, 307 pruebas en Linux, cobertura y paquetes vulnerables), `migrador` (shellcheck y los 9 escenarios del migrador), `docker` (Compose de desarrollo y de producción sin puertos, hadolint, construcción de imágenes y Trivy) y `despliegue` (el mecanismo de despliegue de punta a punta contra un servidor simulado). Además SonarCloud (análisis por PR) y Dependabot, que ahora también cubre las acciones.
 
 ## 10. Decisiones y deuda conocida
 

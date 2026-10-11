@@ -34,6 +34,7 @@ powershell -ExecutionPolicy Bypass -File scripts\cobertura.ps1                  
 powershell -ExecutionPolicy Bypass -File scripts\generar-hash-auth.ps1 -ActualizarEnv   # hash de la clave de acceso (AUTH_USUARIO/AUTH_HASH en .env)
 powershell -ExecutionPolicy Bypass -File scripts\probar-acceso.ps1 -Usuario admin       # batería de acceso y cabeceras del proxy (stack con --profile con-proxy)
 powershell -ExecutionPolicy Bypass -File scripts\probar-navegador.ps1 -Usuario admin    # CSP y clic real de H1 en Chrome/Edge (opcional: Node + Chrome + Docker)
+powershell -ExecutionPolicy Bypass -File scripts\probar-despliegue.ps1               # el mecanismo de despliegue de punta a punta contra un servidor simulado (≈ 7 min; en Linux: bash scripts/probar-despliegue.sh)
 powershell -ExecutionPolicy Bypass -File scripts\verificar-docs.ps1 [-Diagramas]       # enlaces relativos de los .md; con -Diagramas también analiza y dibuja los Mermaid (Node + Chrome)
 git config core.hooksPath .githooks          # una vez por clon: activa el hook pre-push
 docker compose logs -f negocios
@@ -74,7 +75,8 @@ Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen
 ## Seguridad: nunca
 
 - Versionar `.env`, contraseñas, llaves o hashes reales.
-- Publicar puertos de `db`, `negocios` o `web` en Compose (solo `proxy` publica 80/443; el `docker-compose.dev.yml` publica la BD solo en `127.0.0.1` y nunca se despliega).
+- Publicar puertos de **ningún** servicio en el compose base ni en el de producción (el servidor comparte nginx con otros proyectos y Docker salta el firewall; el `proxy` entra por la red compartida y el CI lo comprueba). El `docker-compose.dev.yml` publica la web y la BD solo en `127.0.0.1` y el servicio `borde` el 80/443 de desarrollo; nunca se despliega.
+- Aflojar la política del paquete de despliegue (`deploy/politica.py`), ampliar los archivos que acepta `deploy/entrada.sh` o dar permisos de escritura sobre los scripts de `/usr/local/sbin`: un compose arbitrario equivale a root en un servidor compartido ([ADR 0013](docs/adr/0013-politica-de-seguridad-del-despliegue.md)).
 - Conectar la aplicación con `POSTGRES_USER` (administrador): usa siempre `APP_DB_USER`, el rol de mínimo privilegio.
 - Guardar la clave de acceso a la web en claro (solo va su hash `AUTH_HASH`, entre comillas simples en el `.env`) ni dejar rutas fuera del Basic Auth salvo `/health`. Al editar el `Caddyfile`, reejecutar `scripts/probar-acceso.ps1`. Las cabeceras de seguridad se importan también desde `handle_errors`: sin eso el 401 sale sin ninguna.
 - Poner `style=`, `<style>`, `<script>` o manejadores `on*=` en las vistas, o recursos de otro origen: la CSP del proxy (`script-src 'self'; style-src 'self'`) los bloquea. No usar `asp-validation-summary` (emite `style="display:none"`): usar el parcial `_ResumenErrores`.
@@ -87,22 +89,22 @@ Flujo y ramas: ver [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md). Resumen
 
 ## Despliegue
 
-Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción (diseño aprobado en [ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md), aún sin implementar): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el nginx `portalcv-nginx-prod` (único con 80/443) van delante y enrutan `gdb-crud.sitiosapps.com` a nuestro Caddy por la red compartida. GitHub Actions construye imágenes a GHCR y despliega por SSH con una llave restringida a `/srv/sitiosapps/gdb-crud`. El `.env` de producción vive solo en el servidor. No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación: afectan a los otros proyectos.
+Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción ([ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md) y [ADR 0013](docs/adr/0013-politica-de-seguridad-del-despliegue.md)): el VPS es **compartido** con PortalCV y Colfe; Cloudflare y el nginx `portalcv-nginx-prod` (único con 80/443) van delante y enrutan `gdb-crud.sitiosapps.com` a nuestro Caddy por la red compartida. Al fusionar `develop` en `main`, y con los cuatro trabajos del CI en verde, el trabajo `entrega` de `ci.yml` (que llama a `deploy.yml`) publica las imágenes en GHCR y las despliega por SSH con una llave restringida a `/usr/local/sbin/gdb-crud-entrada.sh`; el servidor valida cada entrega con una política de seguridad, hace copia de la base, levanta el stack y vuelve a la versión anterior si falla (código en `deploy/`, probado con `scripts/probar-despliegue.sh`). El proyecto vive en `/srv/sitiosapps/gdb-crud` y su `.env` solo en el servidor. **No tocar el nginx, `daemon.json`, el firewall ni SSH del VPS sin aprobación**: afectan a los otros proyectos.
 
 ## Documentos de referencia
 
 - [docs/diagnostico/diagnostico-2026-10-09.md](docs/diagnostico/diagnostico-2026-10-09.md): hallazgos H1–H8 y B1–B8.
 - [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md): fases y prioridades.
 - [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md): uso de Git, ramas locales y remotas.
-- [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción está aprobado, sin implementar hasta la fase 7).
-- [docs/adr/README.md](docs/adr/README.md): las 12 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
+- [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción, implementado en el repositorio; falta su primera publicación).
+- [docs/adr/README.md](docs/adr/README.md): las 13 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
 - [README.md](README.md): ejecución y decisiones técnicas.
 
 ## Estado conocido
 
 - Fases 0 a 3 del plan hechas, y la fase 4 en curso: **H1, H2, H4, H5, H6, H7, B2 (contrato SOAP), B3/B4/B5/B8 (#15), B7 (paginación), B6 (zona horaria), H8 (arquitectura y ADR) y #41 (CHECK de nombre) resueltos**. Todo está en `develop`; `main` sigue en el commit base y aún no hay nada que desplegar.
-- El proyecto compila sin advertencias, corre en modo A y B y tiene 302 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 95 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las mutaciones manuales aplicadas (34 al código, 7 al contrato de B2 y 25 a la paginación de B7) fueron todas detectadas.
+- El proyecto compila sin advertencias, corre en modo A y B y tiene 307 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 95 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las mutaciones manuales aplicadas (34 al código, 7 al contrato de B2 y 25 a la paginación de B7) fueron todas detectadas.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
-- Fases 4 y 5 completas (B2, #41 y B7 hechos; CI en verde). Siguiente: VPS (fase 6) y despliegue (7). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
-- CI: `.github/workflows/ci.yml` con tres trabajos independientes (`ci`, `migrador`, `docker`) en cada PR y push a `develop` y `main`. Ejecutan los mismos scripts que en local, con acciones fijadas por SHA. No bloquean el botón de fusionar (plan Free, ADR 0005): **no fusionar con un check en rojo**. El CD (despliegue) aún no existe: fases 6 a 8. Actualizar esta sección cuando se cierren.
+- Fases 4, 5 y 7 completas en el repositorio (el mecanismo de despliegue está construido y probado contra un servidor simulado). Pendiente: los pasos manuales de la fase 6 en el VPS y Cloudflare, y la primera publicación (fase 8). El plan de despliegue ya refleja el VPS compartido (nginx + Cloudflare).
+- CI: `.github/workflows/ci.yml` con cuatro trabajos independientes (`ci`, `migrador`, `docker`, `despliegue`) en cada PR y push a `develop` y `main`. Ejecutan los mismos scripts que en local, con acciones fijadas por SHA. No bloquean el botón de fusionar (plan Free, ADR 0005): **no fusionar con un check en rojo**. El CD (despliegue) aún no existe: fases 6 a 8. Actualizar esta sección cuando se cierren.
 - Decisiones de proceso (D1–D7) en [docs/ciclo-de-vida-desarrollo.md](docs/ciclo-de-vida-desarrollo.md): GitHub por HTTPS con `maomauro`, repo privado, Issues, flujo feature → develop → main, modo B para programar y A antes del PR, hook `pre-push`.

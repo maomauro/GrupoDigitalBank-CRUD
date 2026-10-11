@@ -8,8 +8,8 @@
 # comentario indica la version; Dependabot (ecosistema github-actions) propone las actualizaciones.
 #
 # Los trabajos son independientes a proposito: un PR muestra de una vez todo lo que falla, no solo lo primero.
-# Los nombres "ci", "migrador" y "docker" son los checks que se marcarian como obligatorios si el repositorio
-# pasara a un plan con proteccion de ramas (ADR 0005).
+# Los nombres "ci", "migrador", "docker" y "despliegue" son los checks que se marcarian como obligatorios si el
+# repositorio pasara a un plan con proteccion de ramas (ADR 0005).
 
 name: ci
 
@@ -22,9 +22,10 @@ on:
 permissions:
   contents: read
 
+# Una ejecucion nueva cancela la anterior de la misma rama, EXCEPTO en main: ahi puede haber un despliegue a mitad de camino
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   DOTNET_NOLOGO: "true"
@@ -90,9 +91,12 @@ jobs:
         with:
           persist-credentials: false
 
-      # shellcheck ya viene en el runner
-      - name: shellcheck de db/migrate.sh
-        run: shellcheck db/migrate.sh
+      # shellcheck ya viene en el runner. Incluye los scripts que se instalan en el servidor (deploy/) y su prueba.
+      - name: shellcheck de los scripts de shell
+        run: shellcheck -x db/migrate.sh deploy/*.sh scripts/probar-despliegue.sh docker/dev/borde/entrypoint.sh
+
+      - name: La politica de seguridad del despliegue compila
+        run: python3 -m py_compile deploy/politica.py
 
       # 9 escenarios sobre una base desechable: base vacia, repeticion, script nuevo, script con error, script
       # modificado, base sin registro, rol de aplicacion, validacion de entrada y datos invalidos previos
@@ -114,6 +118,17 @@ jobs:
         run: |
           cp .env.example .env
           docker compose config -q
+
+      # El compose de produccion no debe publicar NINGUN puerto: el servidor comparte nginx con otros proyectos y Docker
+      # salta el firewall (ufw) al publicar. Entra por la red compartida (ADR 0011)
+      - name: Compose de produccion valido y sin puertos publicados
+        run: |
+          { echo "IMAGE_TAG=ci"; echo "GITHUB_REPOSITORY=maomauro/grupodigitalbank-crud"; } >> .env
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+          if docker compose -f docker-compose.yml -f docker-compose.prod.yml config | grep -Eq '^[[:space:]]+ports:'; then
+            echo "::error::El compose de produccion publica puertos."
+            exit 1
+          fi
 
       - name: hadolint (Negocios)
         uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
@@ -147,3 +162,31 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
+
+  despliegue:
+    name: despliegue
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Prueba de punta a punta del mecanismo de despliegue (deploy/*.sh, docker-compose.prod.yml, ADR 0011) contra un
+      # servidor simulado: registro local, red compartida y nginx con el vhost de produccion delante. Cubre la llave
+      # restringida, los paquetes y composes maliciosos, el despliegue, el rollback, el bloqueo, las copias de
+      # seguridad y su restauracion (≈ 7 min)
+      - name: Prueba del despliegue
+        run: bash scripts/probar-despliegue.sh
+
+  # Entrega continua (D7): solo en un push a main (el merge de develop) y con todo lo anterior en verde. Publica las
+  # imagenes y despliega por SSH en el VPS (deploy.yml, ADR 0011). Los merges a develop no despliegan.
+  entrega:
+    name: entrega
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [ci, migrador, docker, despliegue]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

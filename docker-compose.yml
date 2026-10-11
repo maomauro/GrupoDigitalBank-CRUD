@@ -83,10 +83,11 @@ services:
       AUTH_USUARIO: ${AUTH_USUARIO:?Define AUTH_USUARIO en .env (usuario de acceso a la web)}
       AUTH_HASH: ${AUTH_HASH:?Define AUTH_HASH en .env (generalo con scripts/generar-hash-auth.ps1)}
       HSTS_MAX_AGE: ${HSTS_MAX_AGE:-31536000}   # segundos; 0 en desarrollo (ver Caddyfile)
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+    # Sin "ports": nadie publica nada desde este compose (CLAUDE.md, "Seguridad: nunca"). En produccion el proxy se une
+    # a la red compartida del VPS y lo alcanza el nginx de ahi (docker-compose.prod.yml); en desarrollo lo alcanza el
+    # servicio "borde" (docker-compose.dev.yml, perfil con-proxy).
+    expose:
+      - "80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

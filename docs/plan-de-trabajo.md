@@ -35,7 +35,7 @@ Leyenda de estado: ✅ hecho · 🔄 en curso · ⏳ pendiente.
 | 4 | Remediación del diagnóstico | Hallazgos corregidos con pruebas | 🔄 | 2–3 días |
 | 5 | Integración continua | Build + tests + escaneo en cada PR | ✅ | 3–4 h |
 | 6 | Preparar el VPS compartido | Auditoría, Cloudflare, vhost en el nginx compartido, llave de despliegue restringida | ⏳ | 3–4 h |
-| 7 | Entrega continua | Imágenes en GHCR y despliegue automático con rollback | ⏳ | 4–6 h |
+| 7 | Entrega continua | Imágenes en GHCR y despliegue automático con rollback | ✅ | 4–6 h |
 | 8 | Primera publicación | Sistema en `https://gdb-crud.sitiosapps.com` | ⏳ | 1–2 h |
 | 9 | Operación | Backups, monitoreo, runbook | ⏳ | 3–4 h |
 | 10 | Cierre | Documentación y checklist de aceptación | ⏳ | 2 h |
@@ -475,6 +475,8 @@ Rama `ci/integracion-continua`, PR #51 (issue #20). [`.github/workflows/ci.yml`]
 | `migrador` | `shellcheck db/migrate.sh` y `scripts/probar-migrador.ps1` (9 escenarios sobre una base desechable) | ≈ 30 s |
 | `docker` | `docker compose config -q` con `.env.example`, hadolint sobre los dos Dockerfile, construcción de las dos imágenes y Trivy (CRITICAL y HIGH con arreglo disponible) | ≈ 1 min |
 
+*(En la fase 7 se añadió un cuarto trabajo, `despliegue`, y el trabajo `docker` valida además el compose de producción.)*
+
 Decisiones y por qué:
 
 - **El CI ejecuta los mismos scripts que se corren en local** (`verificar.ps1`, `cobertura.ps1`, `probar-migrador.ps1`, con `pwsh` del runner) en vez de repetir los comandos en YAML. Así «lo que CI ejecuta se puede ejecutar idéntico en local» y hay un solo lugar donde mantenerlo.
@@ -528,11 +530,31 @@ timedatectl | grep -i 'time zone'; free -h
 
 `docker compose version` debe ser ≥ 2.24 (el override usa `!reset`).
 
+**Resultado (2026-10-11):**
+
+| Comprobación | Resultado | Conclusión |
+|---|---|---|
+| SSH | `permitrootlogin no`, `passwordauthentication no`; sin `AllowUsers` | Correcto. Sin `AllowUsers` entra cualquier usuario con llave; hoy solo existe `maomauro` |
+| Firewall (`ufw`) | Activo, entrada denegada por omisión; 22 abierto; **80 y 443 solo desde los rangos de Cloudflare** (IPv4 e IPv6) | Correcto: el origen no se puede alcanzar directamente desde internet |
+| `fail2ban`, `unattended-upgrades` | Ambos activos | Correcto |
+| `/etc/docker/daemon.json` | No existe | Sin rotación global de logs; este proyecto los limita por servicio (7.1). No se toca el daemon (reiniciarlo reinicia a todos) |
+| Docker Compose | v5.5.1 | Cumple el mínimo (2.24) para `!reset` |
+| Memoria | 11 GiB, 8,9 GiB libres, **sin swap** | Sobra para ~400 MB de este stack; la falta de swap es una observación para el servidor |
+| Zona horaria del servidor | `Europe/Berlin` | No afecta a la aplicación (el contenedor corre en UTC y «hoy» es `America/Bogota` por configuración, ADR 0006). **Sí afecta a las horas del `cron`**, que son hora de Berlín |
+| Contenedores | Los 6 arriba (Colfe 2 días, PortalCV 3 días) | Línea base para comprobar, después de cada paso, que nada se reinició |
+
+Observaciones para quien administra el servidor (no se corrigen dentro de este plan, ver el principio de la fase):
+
+1. **Los puertos publicados por Docker pueden saltarse `ufw`** (Docker agrega sus propias reglas de `iptables`). Si es así, la restricción de 80 y 443 a Cloudflare no se cumple para el contenedor del nginx. No está verificado: una comprobación de solo lectura es `sudo iptables -S DOCKER-USER` y, desde fuera de Cloudflare, `curl -k --resolve <dominio>:443:13.140.188.159 https://<dominio>/`.
+2. Sin rotación global de logs de Docker ni swap: el riesgo es llenar el disco o quedarse sin memoria por un proyecto ajeno.
+
 ### 6.2 DNS y certificado en Cloudflare
 
-1. Registro `A` (o `CNAME` al apex) `gdb-crud.sitiosapps.com` → `13.140.188.159`, **con proxy de Cloudflare activo**.
-2. Modo SSL/TLS **Full (strict)** (comprobar el actual: lo usan los demás proyectos).
-3. Certificado de Origen para `gdb-crud.sitiosapps.com`: guardar `/etc/nginx/ssl/gdb-crud.sitiosapps.com.pem` y `.key` (la llave con permisos `600`; la pega quien administra, nunca pasa por el repo ni por el chat). Anotar la fecha de vencimiento.
+El orden importa: **el certificado y el modo SSL se preparan primero, y el registro DNS se crea al final (paso del vhost, 6.6)**. Si el nombre ya apuntara al servidor antes de que el nginx tenga el vhost, Cloudflare enviaría las peticiones a un nginx que no conoce ese nombre.
+
+1. Comprobar el modo SSL/TLS de la zona; debe ser **Full (strict)** (lo usan los demás proyectos). **No cambiarlo** si es otro: afectaría a los demás; se anota y se decide aparte.
+2. Certificado de Origen para `gdb-crud.sitiosapps.com` (solo ese nombre, no un comodín: un par `.pem`/`.key` por subdominio, como el resto): guardar `/etc/nginx/ssl/gdb-crud.sitiosapps.com.pem` y `.key` (la llave con permisos `600`; la pega quien administra, nunca pasa por el repo ni por el chat). Anotar la fecha de vencimiento.
+3. **Al final, con el vhost ya activo (6.6):** registro `A` `gdb-crud.sitiosapps.com` → `13.140.188.159`, **con proxy de Cloudflare activo**.
 
 ### 6.3 Carpetas y configuración del proyecto
 
@@ -550,16 +572,16 @@ chmod 700 /srv/sitiosapps/_backups/gdb-crud
 DOMINIO=gdb-crud.sitiosapps.com
 POSTGRES_DB=usuarios_db
 POSTGRES_USER=usuarios_admin
-POSTGRES_PASSWORD=<openssl rand -base64 32>
+POSTGRES_PASSWORD=<openssl rand -hex 24>
 APP_DB_USER=usuarios_app
-APP_DB_PASSWORD=<openssl rand -base64 32>
+APP_DB_PASSWORD=<openssl rand -hex 24>
 AUTH_USUARIO=admin
 AUTH_HASH='<hash generado con scripts/generar-hash-auth.ps1, entre comillas simples>'
 IMAGE_TAG=latest
 GITHUB_REPOSITORY=maomauro/grupodigitalbank-crud
 ```
 
-`GITHUB_REPOSITORY` va en **minúsculas** (GHCR no admite mayúsculas). Login a GHCR con un PAT de solo lectura de paquetes: `echo $PAT | docker login ghcr.io -u maomauro --password-stdin`.
+Las contraseñas se generan en **hexadecimal** (`openssl rand -hex 24`), no en base64: sin `/`, `+`, `=` ni `;`, que romperían la cadena de conexión de Npgsql o la interpolación de Compose. `GITHUB_REPOSITORY` va en **minúsculas** (GHCR no admite mayúsculas). No hace falta iniciar sesión en GHCR en el servidor ni guardar un token: el despliegue usa el `GITHUB_TOKEN` de cada ejecución (7.2).
 
 ### 6.4 Llave de despliegue exclusiva y restringida
 
@@ -572,7 +594,7 @@ Hoy el único usuario con Docker es `maomauro`, y pertenecer al grupo `docker` e
    restrict,command="/usr/local/sbin/gdb-crud-entrada.sh" ssh-ed25519 AAAA... gdb-deploy
    ```
 
-3. `gdb-crud-entrada.sh` (versionado en el repo como `deploy/entrada.sh`, pero instalado **a mano** en `/usr/local/sbin/`, dueño `root`, permiso `755`, **fuera** de la carpeta donde se extrae el paquete: así un paquete no puede reemplazar el script que restringe la llave; se actualiza solo por un PR revisado y copia manual) lee `$SSH_ORIGINAL_COMMAND`, acepta **solo** `desplegar <tag>` con el tag validado por expresión regular, extrae el paquete recibido por la entrada estándar en `/srv/sitiosapps/gdb-crud` y ejecuta `desplegar.sh <tag>`. Cualquier otra orden se rechaza.
+3. `gdb-crud-entrada.sh` (versionado en el repo como `deploy/entrada.sh`; los cinco scripts de `deploy/` se instalan **a mano** con `sudo bash deploy/instalar.sh`, que los deja en `/usr/local/sbin/` con dueño `root` y permiso `755`, **fuera** de la carpeta donde se extrae el paquete: así un paquete no puede reemplazarlos; se actualizan solo por un PR revisado y copia manual, [ADR 0013](adr/0013-politica-de-seguridad-del-despliegue.md)) lee `$SSH_ORIGINAL_COMMAND`, acepta **solo** `desplegar <tag>` con el tag validado por expresión regular, extrae el paquete recibido por la entrada estándar en `/srv/sitiosapps/gdb-crud` y ejecuta `desplegar.sh <tag>`. Cualquier otra orden se rechaza.
 
 Verificar desde otra terminal que la llave **no** puede ejecutar `ls` ni abrir una shell. No se desactiva la verificación de host: el `known_hosts` se fija con `ssh-keyscan`.
 
@@ -584,42 +606,7 @@ Docker ya está instalado. **No se edita `/etc/docker/daemon.json`**: reiniciar 
 
 Cambio en **otro repositorio y sobre infraestructura de producción compartida**: se hace en un PR propio, con aprobación explícita y en una ventana. Añadir un volumen exige **recrear** `portalcv-nginx-prod`, unos segundos sin servicio para PortalCV y Colfe.
 
-1. `docker/gdb-crud.conf`, copiando la estructura de `docker/colfe.conf`:
-
-   ```nginx
-   server {
-       listen 80;
-       server_name gdb-crud.sitiosapps.com;
-       return 301 https://$host$request_uri;
-   }
-
-   server {
-       listen 443 ssl;
-       http2 on;
-       server_name gdb-crud.sitiosapps.com;
-
-       ssl_certificate     /etc/nginx/ssl/gdb-crud.sitiosapps.com.pem;
-       ssl_certificate_key /etc/nginx/ssl/gdb-crud.sitiosapps.com.key;
-
-       # Sin HSTS aquí: lo añade el Caddyfile (ADR 0009); duplicarlo repetiría la cabecera.
-       client_max_body_size 1m;
-
-       # Se resuelve en cada petición: con un proxy_pass fijo, si el contenedor no existe al arrancar o
-       # recargar, nginx no inicia y se caen también PortalCV y Colfe.
-       resolver 127.0.0.11 valid=10s ipv6=off;
-       set $gdb_crud_upstream http://gdb-crud-web:80;
-
-       location / {
-           proxy_pass $gdb_crud_upstream;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $http_cf_connecting_ip;
-           proxy_set_header X-Forwarded-Proto $scheme;
-           proxy_read_timeout 60s;
-       }
-   }
-   ```
-
+1. `docker/gdb-crud.conf`: **es una copia exacta de [`deploy/nginx/gdb-crud.conf`](../deploy/nginx/gdb-crud.conf)**, la fuente de verdad de este repositorio (la que el entorno local usa tal cual con el servicio `borde`). Sigue la estructura de `docker/colfe.conf`: redirección de 80 a 443, el certificado de origen de `/etc/nginx/ssl`, `server_tokens off`, **sin HSTS** (lo agrega el Caddyfile; duplicarlo repetiría la cabecera), `resolver 127.0.0.11` + `set $gdb_crud_upstream http://gdb-crud-web:80` (el nombre se resuelve en cada petición, así un contenedor ausente no tumba el nginx compartido) y `X-Forwarded-For $http_cf_connecting_ip` + `X-Forwarded-Proto $scheme`.
 2. Montarlo como volumen del servicio `nginx` en `docker-compose.prod.yml` de PortalCV.
 3. Antes de recrear: `nginx -t` en un contenedor desechable con la **misma imagen** y todos los `conf.d` (incluido el nuevo), y comprobar que los certificados existen. Antes y después, `curl -I` a PortalCV y a Colfe.
 4. Mientras el stack de este proyecto no esté desplegado el vhost responde 502, sin afectar a los demás: por eso el patrón con `resolver`.
@@ -638,102 +625,67 @@ Cambio en **otro repositorio y sobre infraestructura de producción compartida**
   | `VPS_KNOWN_HOSTS` | Salida de `ssh-keyscan -p <puerto> <host>` |
 
   Las contraseñas de la app **no** van en GitHub: viven en `/srv/sitiosapps/gdb-crud/.env`.
-- *Packages*: tras la primera publicación, vincular el paquete al repo y mantenerlo privado.
+- *Packages*: la etiqueta `org.opencontainers.image.source` con que se publican las imágenes las **vincula al repositorio** y siguen privadas; así el `GITHUB_TOKEN` del flujo puede leerlas. Tras la primera publicación, comprobarlo en la página del paquete (*Package settings*).
 
 ---
 
-## Fase 7. Entrega continua ⏳
+## Fase 7. Entrega continua ✅
 
-Rama `ci/despliegue-vps`.
+Rama `ci/despliegue-vps`. El mecanismo está **construido y probado de punta a punta contra un servidor simulado**; la primera publicación real es la fase 8. Decisiones: [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md) (entrar por el nginx compartido) y [ADR 0013](adr/0013-politica-de-seguridad-del-despliegue.md) (política de seguridad del paquete de despliegue).
 
-### 7.1 Compose y Caddyfile para entrar por el nginx compartido
+### 7.1 Compose, Caddyfile y entorno local
 
-1. **El compose base deja de publicar puertos.** Los `ports` del `proxy` pasan a `docker-compose.dev.yml` (perfil `con-proxy`). Así lo que viaja a producción no puede publicar nada por descuido. Se añade al job `docker` de CI la comprobación de que `docker compose -f docker-compose.yml -f docker-compose.prod.yml config` no contiene `ports:`.
-2. **`Caddyfile`:** la dirección del sitio pasa a `http://{$DOMINIO}` (TLS lo termina Cloudflare/nginx; Caddy ya no pide certificados) y se añade `servers { trusted_proxies static private_ranges }` para que conserve el `X-Forwarded-Proto`/`X-Forwarded-For` que envía nginx. Sin eso `web` vería `http` y la IP de nginx. Es una hipótesis a **verificar** con un nginx de prueba delante antes de desplegar, y a cubrir en `scripts/probar-acceso.ps1`; el perfil `con-proxy` local también queda en HTTP. Cambiar el `Caddyfile` obliga a repetir esa batería (ver `CLAUDE.md`).
-3. **`docker-compose.prod.yml`** (override): imágenes versionadas, el `proxy` se une a la red compartida con su alias, límites de logs y `no-new-privileges`. Se valida con `docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q` (en CI).
+- **El compose base ya no publica puertos** (los `ports` del `proxy` desaparecieron). El trabajo `docker` del CI comprueba que `docker-compose.yml` + `docker-compose.prod.yml` no contengan `ports:`.
+- **`Caddyfile`:** la dirección del sitio es `http://{$DOMINIO}` (sin TLS ni certificados), con `trusted_proxies static private_ranges` para conservar el `X-Forwarded-Proto` del nginx y un comodín `:80` que responde 404 a cualquier otro nombre de host (otro contenedor de la red compartida no recibe la aplicación ni pidiendo credenciales).
+- **`docker-compose.prod.yml`:** imágenes `${REGISTRO:-ghcr.io}/${GITHUB_REPOSITORY}/{negocios,web}:${IMAGE_TAG}` (sin `build`), el `proxy` unido a la red compartida `curriculum-vitae-web_portalcv-net-prod` con el alias `gdb-crud-web` (solo él; `db`, `negocios` y `web` quedan en la red interna), límite de logs (`json-file`, 10 MB × 5) y `no-new-privileges` en todo. No se toca `daemon.json`.
+- **Entorno local fiel a producción:** el perfil `con-proxy` del compose de desarrollo agrega el servicio `borde`, un nginx con HTTPS autofirmado y **el mismo vhost** que irá a producción (`deploy/nginx/gdb-crud.conf`, fuente de verdad que se copia al repositorio de PortalCV, 6.6). Así `probar-acceso.ps1` y `probar-navegador.ps1` prueban la cadena nginx → Caddy → aplicación **antes** de desplegar.
+- **Hallazgo de la cadena, ya corregido:** ni la cookie antiforgery ni la de TempData llevaban `Secure`, ni siquiera con `X-Forwarded-Proto: https`. La aplicación ahora usa `CookieSecurePolicy.SameAsRequest` (Secure con HTTPS; sin Secure en `http://localhost:8080`, donde una cookie Secure se descartaría). 5 pruebas nuevas; `probar-acceso.ps1` suma dos comprobaciones (HSTS una sola vez y cookie Secure) y quitar `trusted_proxies` del Caddyfile hace fallar exactamente la segunda. Además: `server_tokens off` en el vhost, y el script ahora acepta que `Server` lo ponga el proxy de delante (sin versión).
 
-```yaml
-x-registro: &registro
-  driver: json-file
-  options: { max-size: "10m", max-file: "5" }
+### 7.2 Mecanismo de despliegue (`deploy/`)
 
-services:
-  db:
-    logging: *registro
-    security_opt: ["no-new-privileges:true"]
-  migrador:
-    logging: *registro
-  negocios:
-    image: ghcr.io/${GITHUB_REPOSITORY}/negocios:${IMAGE_TAG}
-    build: !reset null
-    logging: *registro
-    security_opt: ["no-new-privileges:true"]
-  web:
-    image: ghcr.io/${GITHUB_REPOSITORY}/web:${IMAGE_TAG}
-    build: !reset null
-    logging: *registro
-    security_opt: ["no-new-privileges:true"]
-  proxy:
-    ports: !reset []
-    logging: *registro
-    security_opt: ["no-new-privileges:true"]
-    networks:
-      default: {}
-      compartida:
-        aliases: [gdb-crud-web]
+| Archivo (instalado en `/usr/local/sbin/`, dueño root) | Qué hace |
+|---|---|
+| `entrada.sh` (`gdb-crud-entrada.sh`) | Lo único que ejecuta la llave (`restrict,command=`). Solo acepta `desplegar <tag>`; lee el token de GHCR de la primera línea de la entrada estándar y el paquete `.tar.gz` del resto; **revisa el paquete antes de extraerlo** (solo archivos regulares con nombres de una lista cerrada); inicia sesión en GHCR en una carpeta de configuración de Docker temporal que borra al terminar |
+| `desplegar.sh` | Instala la entrega como `releases/<tag>/`, la valida con la política, hace una copia de la base si ya corre, descarga las imágenes, levanta con `up -d --wait` (el migrador corre antes que Negocios) y, si falla, **vuelve a la versión anterior** (las migraciones no se deshacen: expand/contract, ADR 0007). Bloqueo contra despliegues simultáneos; conserva las 5 últimas versiones; nunca escribe el `.env` (el tag viaja por `IMAGE_TAG` en el entorno) |
+| `politica.py` | Lista blanca sobre el compose ya resuelto (ADR 0013): servicios, imágenes, montajes, redes y opciones peligrosas. Lee el JSON por la **entrada estándar** (no abre ninguna ruta recibida por argumento) |
+| `backup.sh` | `pg_dump` comprimido con suma SHA-256, verificación de integridad, permisos 600, rotación (14 días) y copia externa opcional con `rclone`. Patrón de Colfe |
+| `probar-restauracion.sh` | Restaura la última copia en un PostgreSQL desechable y comprueba tabla, funciones y migraciones; falla con una copia corrupta o inexistente |
+| `instalar.sh` | Instala los cinco anteriores con dueño root y muestra sus sumas SHA-256 |
+| `nginx/gdb-crud.conf` | El vhost para el nginx compartido (6.6) |
 
-networks:
-  compartida:
-    external: true
-    name: curriculum-vitae-web_portalcv-net-prod
-```
+El **token** para descargar las imágenes es el `GITHUB_TOKEN` de cada ejecución (con `packages: read`): no hay un PAT en el servidor. Requiere que el paquete esté vinculado al repositorio, lo que hace la etiqueta `org.opencontainers.image.source` con que se publican las imágenes.
 
-(`!reset` requiere Compose ≥ 2.24, comprobado en 6.1.) Probar localmente que cada imagen arranca con `no-new-privileges`; añadir límites de memoria y, si arrancan bien así, `read_only: true` con `tmpfs: /tmp`. Solo `proxy` se une a la red compartida: si `db` o `web` entraran, sus nombres (`db`, `web`) serían visibles para los demás proyectos.
+### 7.3 Workflow `.github/workflows/deploy.yml`
 
-### 7.2 Workflow `.github/workflows/deploy.yml`
+- **Disparo (D7):** es un **trabajo más del propio `ci.yml`**: `entrega` llama a `deploy.yml` (*workflow reutilizable*) solo en un **push a `main`** (el merge de `develop`) y únicamente si `ci`, `migrador`, `docker` y `despliegue` terminaron en verde (`needs`). Además, `deploy.yml` tiene `workflow_dispatch` con el tag de una versión ya publicada (rollback o redespliegue). Los merges a `develop` ejecutan CI pero **no despliegan**. La concurrencia del CI **no cancela** las ejecuciones de `main` (cancelaría un despliegue a mitad de camino).
+- **Por qué no `workflow_run`** (primer diseño): ejecuta el archivo de la rama *por defecto* (`develop`) y obliga a hacer checkout de un SHA ajeno al evento (`head_sha`), el patrón de «código no confiable en un flujo con secretos». Aquí la condición lo acotaba a `main`, pero un flujo único no necesita ninguna de las dos cosas y se ve entero en una sola ejecución. *(Ver abajo: no era lo que SonarCloud marcaba.)*
+- **`imagenes`:** construye y publica `negocios` y `web` en GHCR con las etiquetas `sha-<12 hex>` y `latest` (nombre en minúsculas), con caché de GitHub Actions.
+- **`desplegar`** (*environment* `production`, `concurrency: deploy-production` a nivel de trabajo y sin cancelar): toma **el código de esa versión** (compose, `Caddyfile` y migraciones deben corresponder exactamente a lo que se despliega, también al volver atrás), arma el paquete, configura SSH con `StrictHostKeyChecking=yes` y `known_hosts` fijado (nunca se desactiva la verificación del host) y ejecuta `desplegar <tag>` pasando el token por la entrada estándar.
+- **Prueba de humo** como la vería un usuario (por Cloudflare y el nginx compartido): `/health` responde `ok`, HSTS presente y la raíz exige credenciales (401).
+- Acciones fijadas por SHA; `actionlint` sin avisos.
 
-Disparo (D7): **el merge de `develop` a `main`**, es decir, `workflow_run` de `ci` con `conclusion == 'success'` sobre la rama `main` (checkout de `head_sha`), más `workflow_dispatch` con input `tag` para re-desplegar o hacer rollback. Los merges a `develop` ejecutan CI pero **no despliegan**. El tag `vX.Y.Z` se crea sobre `main` después del release y etiqueta la imagen.
+### 7.4 Rollback
 
-1. **build-push:** `docker/login-action` a GHCR con `GITHUB_TOKEN` (`permissions: packages: write`), `docker/build-push-action` para `negocios` y `web`, etiquetas `sha-<corto>`, `latest` y `vX.Y.Z` en tags, caché `type=gha`. El nombre de la imagen se pasa a minúsculas. Opcional: provenance y SBOM.
-2. **deploy** (environment `production`, `needs: build-push`, `concurrency: deploy-production`, sin cancelar en curso):
-   - Configurar `~/.ssh` con `VPS_SSH_KEY` y `VPS_KNOWN_HOSTS` (nunca `StrictHostKeyChecking=no`).
-   - Empaquetar `docker-compose.yml`, `docker-compose.prod.yml`, `Caddyfile`, `db/` y `deploy/*.sh` (menos `entrada.sh`, que no viaja nunca en el paquete) en un `tar.gz` y enviarlo por la entrada estándar: `ssh ... "desplegar <tag>" < paquete.tgz`. La llave solo puede ejecutar `entrada.sh` (6.4), que valida el tag y llama a `desplegar.sh`:
+- **Automático** si el despliegue falla antes de dar por buena la versión nueva (descarga, migrador, healthchecks): `desplegar.sh` levanta de nuevo la anterior. Si es el primer despliegue, detiene el stack conservando los volúmenes.
+- **Tras una prueba de humo fallida** el despliegue queda en rojo y el rollback es **manual**: lanzar el workflow `deploy` con el tag anterior (`workflow_dispatch`).
+- **Esquema:** volver de versión no deshace migraciones; se diseñan *expand/contract*. Si hay que revertir datos, se restaura la copia tomada justo antes (`gdb-crud-probar-restauracion.sh` prueba que se puede).
 
-     ```bash
-     set -euo pipefail
-     cd /srv/sitiosapps/gdb-crud
-     C="docker compose -p gdb-crud -f docker-compose.yml -f docker-compose.prod.yml"
-     NUEVO="$1"
-     PREVIO=$(grep '^IMAGE_TAG=' .env | cut -d= -f2)
-     # Backup previo: el migrador puede cambiar el esquema al subir
-     if $C ps --status running db | grep -q db; then ./deploy/backup.sh; fi
-     sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$NUEVO/" .env
-     $C pull
-     if ! $C up -d --remove-orphans --wait --wait-timeout 120; then
-       echo "Fallo; rollback a $PREVIO"
-       sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$PREVIO/" .env
-       $C up -d --wait
-       exit 1
-     fi
-     docker image prune -f
-     ```
+### 7.5 Verificación
 
-     El nginx compartido **no se toca en cada despliegue**: resuelve `gdb-crud-web` en cada petición.
-3. **Smoke test:** `curl -fsS --retry 10 --retry-delay 5 https://gdb-crud.sitiosapps.com/health` (pasa por Cloudflare y nginx, como un usuario) y comprobación de la cabecera HSTS.
-
-### 7.3 Rollback
-
-- Automático si `up --wait` falla (también cuando el migrador termina con error).
-- Manual: relanzar el workflow con un tag/SHA anterior (`workflow_dispatch` con input `tag`) o, en el VPS, cambiar `IMAGE_TAG` y `docker compose -p gdb-crud up -d`.
-- Esquema: el rollback de imágenes no deshace migraciones. Se diseñan como *expand/contract* (compatibles hacia atrás); si hay que revertir datos, se restaura el backup tomado justo antes.
+- **`scripts/probar-despliegue.sh`** (`.ps1` en Windows; ≈ 7 min; es el trabajo `despliegue` del CI): un servidor simulado con registro local, red compartida y nginx con el vhost real delante. **75 comprobaciones**: 13 órdenes rechazadas; 6 paquetes peligrosos rechazados antes de extraerse (enlace, `..`, ruta absoluta, archivo extra, subcarpeta, paquete incompleto); **12 composes maliciosos rechazados** (privilegiado, monta `/`, monta el socket de Docker, publica puertos, red del host, otro registro, alias ajeno, `web` en la red compartida, servicio extra, volumen ajeno, `build`, `cap_add`); despliegue v1 sano, **sin ningún puerto publicado**, solo el `proxy` en la red compartida con su alias, y el token sin dejar credenciales; despliegue v2 con **copia previa**; **despliegue v3 roto que vuelve solo a v2** y el sitio sigue respondiendo; bloqueo concurrente; versión inexistente sin tocar nada; un nombre de host ajeno recibe 404; backup con suma, permisos 600 y restauración válida, y copias corruptas, inexistentes, sin esquema o sin funciones que **no** pasan.
+- **Lo que solo mostró el runner real:** el trabajo `despliegue` falló la primera vez en GitHub (30 comprobaciones) y no en mi máquina, porque los runners definen `GITHUB_REPOSITORY` (con mayúsculas, `maomauro/GrupoDigitalBank-CRUD`) y en Compose el entorno gana al `.env`: las imágenes salieron con otro nombre que el que valida la política, que las rechazó con razón. En el servidor real esa variable no existe, pero el mecanismo no debe depender de eso: `desplegar.sh` y `backup.sh` hacen `unset GITHUB_REPOSITORY`, de modo que el `.env` es la única fuente. Se reprodujo y se verificó localmente pasando esa variable al contenedor de prueba.
+- **SonarCloud, y una hipótesis equivocada:** el *C Security Rating on New Code* lo atribuí a `deploy.yml` (porque la captura que tenía mostraba ese archivo) y probé dos arreglos que no lo resolvieron. El detalle real estaba en las **anotaciones del check de GitHub** (`gh api …/check-runs/<id>/annotations`), que SonarCloud publica aunque el proyecto sea privado: la vulnerabilidad era `deploy/politica.py`, *Path Traversal* (la ruta del JSON llegaba por la línea de comandos y se abría). Ahora la política lee el compose por la entrada estándar. El resto eran avisos de estilo, atendidos en `deploy/`: `[[` en lugar de `[`, parámetros posicionales a variables locales, la complejidad cognitiva de `revisar()` (66 → funciones pequeñas) y la palabra «TODO» (en español, «todo») que Sonar toma por una tarea pendiente. Lección: **mirar las anotaciones antes de suponer**.
+- **Honestidad sobre el proceso:** la prueba tardó cuatro ejecuciones en pasar y **ninguno de los defectos estaba en el mecanismo**: `/tmp` montado sin permiso de ejecución en la VM de Docker Desktop (se llama a los scripts con `bash`, que además es más robusto), una comprobación mía que buscaba «db» en nombres que contienen «gdb», la cabecera `Host` con que se probaba el nginx (cayó en el comodín `:80`, que así demostró funcionar) y una cabecera `Host` duplicada.
+- **Control negativo de la propia prueba** (6 mutaciones sobre una copia del repositorio, **todas detectadas**): una política que deja pasar todo (los 12 composes maliciosos *se desplegaron de verdad* y la prueba lo marcó), sin rollback, una entrada que acepta cualquier orden, una entrada que admite enlaces simbólicos, sin copia previa al desplegar y una restauración que da todo por bueno. **Dos sobrevivieron al primer intento y señalaron huecos de la prueba, no del mecanismo:** faltaban órdenes de dos palabras con un tag válido (`otro v1`; con la comprobación de la primera palabra anulada, las demás se rechazaban igualmente por el tag) y faltaba una copia válida pero incompleta (tablas sin funciones) para ejercitar la comprobación final de la restauración, porque una copia corrupta falla antes. Se añadieron ambos casos (la prueba pasó de 69 a 75 comprobaciones) y las dos mutaciones pasaron a ser detectadas.
+- `shellcheck` limpio en todos los scripts (también en el CI), `actionlint` sin avisos y la política compila con `py_compile`.
 
 ---
 
 ## Fase 8. Primera publicación ⏳
 
-1. Registro DNS en Cloudflare, SSL en Full (strict) y certificado de origen instalado (6.2).
+1. SSL en Full (strict) comprobado y certificado de origen instalado (6.2, puntos 1 y 2). El registro DNS **todavía no**: se crea en el punto 3.
 2. Auditoría del VPS registrada (6.1), `/srv/sitiosapps/gdb-crud/.env` completo y llave restringida probada (6.3, 6.4).
-3. PR de `docker/gdb-crud.conf` fusionado en `Curriculum-Vitae-Web` y nginx recreado en la ventana acordada (6.6); PortalCV y Colfe responden igual que antes.
+3. PR de `docker/gdb-crud.conf` fusionado en `Curriculum-Vitae-Web` y nginx recreado en la ventana acordada (6.6); PortalCV y Colfe responden igual que antes. **Solo entonces** se crea el registro DNS (6.2, punto 3): hasta el primer despliegue el nombre responde 502, sin afectar a los demás.
 4. Secretos y environment `production` creados (6.7).
 5. `develop` con las fases 3 a 5 y 7.1 fusionadas y CI verde; PR de release `develop` → `main` (título `release: v1.0.0`), fusionado con **merge commit**. Ese merge dispara el despliegue.
 6. En el VPS: `docker compose -p gdb-crud ps` todo `healthy`; `docker ps` confirma que los contenedores de PortalCV y Colfe no se reiniciaron (tiempo de actividad intacto).
@@ -785,7 +737,7 @@ find "$DESTINO" -name 'usuarios_*.sql.gz*' -mtime +"${RETENTION_DAYS:-14}" -dele
 |---|---|
 | Revisar y fusionar PR de Dependabot | Semanal |
 | `apt upgrade` y reinicio si cambia el kernel | Según lo que arroje la auditoría 6.1; el reinicio se coordina con PortalCV y Colfe |
-| Rotar contraseñas de BD, llave de despliegue y PAT de GHCR | Cada 6 meses |
+| Rotar contraseñas de BD (y el hash de acceso) y la llave de despliegue | Cada 6 meses (ya no hay PAT de GHCR: se usa el `GITHUB_TOKEN` de cada ejecución) |
 | Probar restauración de backup | Trimestral |
 | Certificado de origen de Cloudflare | Anotar el vencimiento al crearlo (6.2) y renovarlo antes; la alerta de uptime avisa si falla |
 | Fuerza bruta sobre el Basic Auth (ADR 0004) | Regla de límite de tasa en Cloudflare para `gdb-crud.sitiosapps.com`; `fail2ban` sobre el log de Caddy ya no sirve porque Caddy solo ve la IP de nginx |
