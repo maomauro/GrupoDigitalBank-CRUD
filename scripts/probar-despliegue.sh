@@ -12,7 +12,9 @@
 # seguridad), despliegue correcto, que nada publique puertos, que solo el proxy entre a la red compartida, un segundo
 # despliegue con copia previa, un despliegue roto que vuelve a la version anterior, un bloqueo concurrente, una
 # descarga fallida, y la copia de seguridad con su restauracion.
-# shellcheck disable=SC2329  # las funciones auxiliares se invocan de forma indirecta (trap, chequear)
+# Las funciones auxiliares se invocan de forma indirecta (trap, chequear, esperar_codigo). Segun la version de shellcheck
+# el aviso es SC2317 ("inalcanzable") o SC2329 ("nunca invocada"): se silencian los dos
+# shellcheck disable=SC2317,SC2329
 set -uo pipefail
 
 RAIZ=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)

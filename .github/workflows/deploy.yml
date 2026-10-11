@@ -171,9 +171,11 @@ jobs:
       # Como lo veria un usuario: por Cloudflare y el nginx compartido. Un fallo aqui deja el despliegue en rojo; la
       # vuelta a la version anterior es manual (workflow_dispatch con el tag anterior), ver docs/plan-de-trabajo.md 7.3
       - name: Prueba de humo
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "$URL_PUBLICA/health" | grep -qx ok
           curl -fsSI "$URL_PUBLICA/health" | grep -iq '^strict-transport-security:'
           codigo=$(curl -s -o /dev/null -w '%{http_code}' "$URL_PUBLICA/")
           [ "$codigo" = 401 ] || { echo "::error::La raiz debe pedir credenciales (401) y respondio $codigo"; exit 1; }
-          echo "Desplegado ${{ steps.version.outputs.tag }}: /health responde, HSTS presente y la raiz exige credenciales."
+          echo "Desplegado $TAG: /health responde, HSTS presente y la raiz exige credenciales."
