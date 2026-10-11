@@ -6,7 +6,7 @@
 #
 # Requiere Linux (o un contenedor Linux con el socket de Docker), docker, docker compose, python3 y bash. Lo ejecuta el
 # CI; en Windows se corre dentro de un contenedor (ver docs/plan-de-trabajo.md, fase 7). No toca ningun recurso real:
-# todo lleva el prefijo "gdbprueba" y se elimina al terminar.
+# cada recurso lleva el prefijo "gdbprueba" y se elimina al terminar.
 #
 # Cubre: ordenes no permitidas, paquetes con enlaces o rutas peligrosas, composes maliciosos (la politica de
 # seguridad), despliegue correcto, que nada publique puertos, que solo el proxy entre a la red compartida, un segundo
@@ -46,7 +46,7 @@ esperar_codigo() {
     shift 2
     "$@" > "$PRUEBA/ultima-salida.txt" 2>&1
     real=$?
-    if [ "$real" = "$esperado" ]; then ok "$nombre (codigo $real)"; else falla "$nombre" "-> codigo $real, esperado $esperado: $(tail -n2 "$PRUEBA/ultima-salida.txt" | tr '\n' ' ')"; fi
+    if [[ "$real" = "$esperado" ]]; then ok "$nombre (codigo $real)"; else falla "$nombre" "-> codigo $real, esperado $esperado: $(tail -n2 "$PRUEBA/ultima-salida.txt" | tr '\n' ' ')"; fi
 }
 
 limpiar() {
@@ -57,7 +57,7 @@ limpiar() {
     docker network ls -q --filter "label=com.docker.compose.project=$PROYECTO" | xargs -r docker network rm > /dev/null 2>&1
     for v in v1 v2 v3; do docker rmi "$IMG/negocios:$v" "$IMG/web:$v" > /dev/null 2>&1; done
     docker rmi gdbprueba-borde > /dev/null 2>&1
-    [ -z "${GDB_PRUEBA_DIR:-}" ] && rm -rf "$PRUEBA"
+    [[ -z "${GDB_PRUEBA_DIR:-}" ]] && rm -rf "$PRUEBA"
     return 0
 }
 trap limpiar EXIT
@@ -107,7 +107,7 @@ entrada() { # entrada "<orden>" <paquete> [token]
     local orden=$1 paquete=$2 token=${3:--}
     { printf '%s\n' "$token"; cat "$paquete"; } | SSH_ORIGINAL_COMMAND="$orden" bash "$GDB_SBIN/gdb-crud-entrada.sh"
 }
-sin_release() { [ ! -f "$GDB_DIR/releases/ACTUAL" ]; }
+sin_release() { [[ ! -f "$GDB_DIR/releases/ACTUAL" ]]; }
 contenedores_del_proyecto() { docker ps -aq --filter "label=com.docker.compose.project=$PROYECTO" | wc -l | tr -d ' '; }
 
 # ----------------------------------------------------------------------------------------------------------------
@@ -200,7 +200,7 @@ config_antes=$(sha256sum "${HOME:-/root}/.docker/config.json" 2> /dev/null | cut
 esperar_codigo "desplegar v1 termina bien" 0 entrada "desplegar v1" "$PRUEBA/paquete-bueno.tgz" "tokenfalso"
 chequear "ACTUAL = v1" bash -c "[ \"\$(cat '$GDB_DIR/releases/ACTUAL')\" = v1 ]"
 chequear "los 5 servicios del proyecto estan en marcha o terminaron (migrador)" bash -c "[ \"\$(docker ps -aq --filter label=com.docker.compose.project=$PROYECTO | wc -l)\" = 5 ]"
-sanos() { [ "$(docker ps --filter "label=com.docker.compose.project=$PROYECTO" --filter health=healthy -q | wc -l | tr -d ' ')" = 4 ]; }
+sanos() { [[ "$(docker ps --filter "label=com.docker.compose.project=$PROYECTO" --filter health=healthy -q | wc -l | tr -d ' ')" = 4 ]]; }
 chequear "db, negocios, web y proxy estan sanos" sanos
 sin_puertos() { ! docker ps --filter "label=com.docker.compose.project=$PROYECTO" --format '{{.Ports}}' | grep -q -- '->'; }
 chequear "NINGUN contenedor publica puertos en el host" sin_puertos
@@ -221,7 +221,7 @@ cp "$RAIZ/deploy/nginx/gdb-crud.conf" "$PRUEBA/vhost/"
 docker build -q -t gdbprueba-borde "$RAIZ/docker/dev/borde" > /dev/null
 docker run -d --name gdbprueba-borde --network "$RED" -v "$PRUEBA/vhost/gdb-crud.conf:/vhost/gdb-crud.conf:ro" gdbprueba-borde > /dev/null
 curl_red() { docker run --rm --network "$RED" curlimages/curl:latest -sk -H "Host: gdb-crud.sitiosapps.com" "$@"; }
-esperar_borde() { for _ in $(seq 1 15); do [ "$(curl_red -o /dev/null -w '%{http_code}' https://gdbprueba-borde/health 2> /dev/null)" = 200 ] && return 0; sleep 2; done; return 1; }
+esperar_borde() { for _ in $(seq 1 15); do [[ "$(curl_red -o /dev/null -w '%{http_code}' https://gdbprueba-borde/health 2> /dev/null)" = 200 ]] && return 0; sleep 2; done; return 1; }
 chequear "a traves del nginx: /health responde 200" esperar_borde
 codigo() { curl_red -o /dev/null -w '%{http_code}' "$@" 2> /dev/null; }
 chequear "a traves del nginx: / sin credenciales = 401" [ "$(codigo https://gdbprueba-borde/)" = 401 ]
@@ -230,7 +230,7 @@ chequear "a traves del nginx: / con credenciales = 200" [ "$(codigo -u "admin:$C
 host_ajeno() {
     local codigo
     codigo=$(docker run --rm --network "$RED" curlimages/curl:latest -sk -o /dev/null -w '%{http_code}'         -H 'Host: otro.example.com' -u "admin:$CLAVE" https://gdbprueba-borde/ 2> /dev/null)
-    [ "$codigo" = 404 ]
+    [[ "$codigo" = 404 ]]
 }
 chequear "un nombre de host ajeno NO recibe la aplicacion (404 del comodin de Caddy, ni con credenciales)" host_ajeno
 
@@ -285,6 +285,6 @@ mkdir -p "$PRUEBA/vacio"
 esperar_codigo "sin copias de seguridad la prueba de restauracion falla" 1 env BACKUP_DIR="$PRUEBA/vacio" bash "$GDB_SBIN/gdb-crud-probar-restauracion.sh"
 
 echo
-if [ "$fallos" -eq 0 ]; then echo "Despliegue: todas las pruebas pasaron."; exit 0; fi
+if [[ "$fallos" -eq 0 ]]; then echo "Despliegue: todas las pruebas pasaron."; exit 0; fi
 echo "Despliegue: $fallos prueba(s) fallaron."
 exit 1

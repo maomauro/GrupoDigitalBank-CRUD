@@ -1,5 +1,5 @@
 #!/bin/sh
-# SOLO DESARROLLO: prepara el vhost de produccion y un certificado autofirmado, y arranca nginx.
+# SOLO DESARROLLO: prepara el vhost de produccion y un certificado autofirmado, y arranca nginx (sin privilegios).
 set -eu
 
 CERT=/etc/nginx/ssl/gdb-crud.sitiosapps.com.pem
