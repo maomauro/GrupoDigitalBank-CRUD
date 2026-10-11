@@ -31,7 +31,7 @@ Quien puede entregar un paquete es quien controla la cuenta de GitHub, el *envir
 ## Consecuencias
 
 - ➕ Una llave filtrada **no abre una shell** ni puede ejecutar nada distinto de `desplegar <tag>`; y aun con la llave, un compose o paquete hostil se rechaza antes de ejecutarse. Un atacante quedaría limitado a desplegar versiones válidas de este proyecto.
-- ➕ La política y la entrada tienen pruebas de punta a punta con 12 composes y 6 paquetes maliciosos (`scripts/probar-despliegue.sh`, en el CI) y se verificó con mutaciones que la prueba falla si se debilitan.
+- ➕ La política y la entrada tienen pruebas de punta a punta con 12 composes, 6 paquetes y 13 órdenes maliciosos (`scripts/probar-despliegue.sh`, en el CI) y se verificó con 6 mutaciones que la prueba falla si se debilita cualquiera de estas defensas.
 - ➖ **Riesgo residual que no se elimina:** quien controle el repositorio o el *environment* puede publicar una **imagen** maliciosa con la etiqueta de una versión: correría confinada por el compose (sin privilegios, sin puertos, sin montajes del host, solo con la red interna y el alias) pero con acceso a la base de este proyecto. Lo mitigan el 2FA de la cuenta de GitHub y las alertas de Dependabot, no este mecanismo.
 - ➖ La política es **estricta a propósito**: cambiar un servicio, un volumen o la imagen base (por ejemplo una actualización mayor de `postgres`) puede exigir editar `deploy/politica.py` y reinstalarlo en el servidor. Es el costo de fallar cerrado.
 - ➖ Los cuatro scripts instalados pueden quedar desactualizados respecto al repositorio; `instalar.sh` imprime sus sumas SHA-256 para compararlas.

@@ -109,7 +109,9 @@ contenedores_del_proyecto() { docker ps -aq --filter "label=com.docker.compose.p
 
 # ----------------------------------------------------------------------------------------------------------------
 titulo "1. La llave solo puede pedir 'desplegar <tag>'"
-for orden in "" "ls" "desplegar" "desplegar v1 v2" "desplegar ../../etc" 'desplegar v1;rm' "desplegar -rf" "bash" "cat /etc/passwd"; do
+# Incluye ordenes de DOS palabras con un tag valido ("otro v1"): sin la comprobacion de la primera palabra pasarian
+# la de las dos palabras y la del tag, y desplegarian
+for orden in "" "ls" "desplegar" "desplegar v1 v2" "desplegar ../../etc" 'desplegar v1;rm' "desplegar -rf" "bash" "cat /etc/passwd"     "otro v1" "DESPLEGAR v1" "desplegar2 v1" "rm v1"; do
     esperar_codigo "orden rechazada: [$orden]" 2 entrada "$orden" "$PRUEBA/paquete-bueno.tgz"
 done
 chequear "ninguna orden rechazada dejo una version instalada" sin_release
@@ -268,6 +270,14 @@ esperar_codigo "la restauracion de la ultima copia es valida" 0 bash "$GDB_SBIN/
 chequear "la copia restaurada contiene el usuario de prueba" grep -q "usuarios: 1" "$PRUEBA/ultima-salida.txt"
 head -c 200 "$ultimo" > "$PRUEBA/corrupta.sql.gz"
 esperar_codigo "una copia corrupta NO pasa la prueba de restauracion" 1 bash "$GDB_SBIN/gdb-crud-probar-restauracion.sh" "$PRUEBA/corrupta.sql.gz"
+# Copias VALIDAS como gzip pero incompletas: la restauracion no puede darlas por buenas (el ultimo caso es el que ejercita
+# la comprobacion final: las tablas existen y faltan las funciones, asi que ninguna consulta falla antes)
+printf '%s
+' 'SELECT 1;' | gzip > "$PRUEBA/sin-esquema.sql.gz"
+esperar_codigo "una copia valida pero SIN el esquema NO pasa la prueba de restauracion" 1 bash "$GDB_SBIN/gdb-crud-probar-restauracion.sh" "$PRUEBA/sin-esquema.sql.gz"
+printf '%s
+' 'CREATE TABLE public.usuario (id integer);' 'CREATE TABLE public.schema_migrations (version text);' "INSERT INTO public.schema_migrations VALUES ('001');" | gzip > "$PRUEBA/sin-funciones.sql.gz"
+esperar_codigo "una copia con las tablas pero SIN las funciones NO pasa la prueba de restauracion" 1 bash "$GDB_SBIN/gdb-crud-probar-restauracion.sh" "$PRUEBA/sin-funciones.sql.gz"
 mkdir -p "$PRUEBA/vacio"
 esperar_codigo "sin copias de seguridad la prueba de restauracion falla" 1 env BACKUP_DIR="$PRUEBA/vacio" bash "$GDB_SBIN/gdb-crud-probar-restauracion.sh"
 
