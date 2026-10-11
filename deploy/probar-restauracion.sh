@@ -8,7 +8,7 @@
 set -euo pipefail
 
 DESTINO=${BACKUP_DIR:-/srv/sitiosapps/_backups/gdb-crud}
-archivo=${1:-$(find "$DESTINO" -maxdepth 1 -type f -name 'usuarios_*.sql.gz' -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)}
+archivo=${1:-$(find "$DESTINO" -maxdepth 1 -type f -name 'usuarios_*.sql.gz' -printf '%T@ %p\n' | sort -rn | sed -n '1p' | cut -d' ' -f2-)}
 if [[ -z "$archivo" ]] || [[ ! -f "$archivo" ]]; then
     echo "No hay copias de seguridad en $DESTINO" >&2
     exit 1

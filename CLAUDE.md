@@ -34,6 +34,7 @@ powershell -ExecutionPolicy Bypass -File scripts\cobertura.ps1                  
 powershell -ExecutionPolicy Bypass -File scripts\generar-hash-auth.ps1 -ActualizarEnv   # hash de la clave de acceso (AUTH_USUARIO/AUTH_HASH en .env)
 powershell -ExecutionPolicy Bypass -File scripts\probar-acceso.ps1 -Usuario admin       # batería de acceso y cabeceras del proxy (stack con --profile con-proxy)
 powershell -ExecutionPolicy Bypass -File scripts\probar-navegador.ps1 -Usuario admin    # CSP y clic real de H1 en Chrome/Edge (opcional: Node + Chrome + Docker)
+powershell -ExecutionPolicy Bypass -File scripts\probar-backup-externo.ps1          # la copia externa cifrada (age) y su rotación, contra un almacén simulado (Docker)
 powershell -ExecutionPolicy Bypass -File scripts\probar-despliegue.ps1               # el mecanismo de despliegue de punta a punta contra un servidor simulado (≈ 7 min; en Linux: bash scripts/probar-despliegue.sh)
 powershell -ExecutionPolicy Bypass -File scripts\verificar-docs.ps1 [-Diagramas]       # enlaces relativos de los .md; con -Diagramas también analiza y dibuja los Mermaid (Node + Chrome)
 git config core.hooksPath .githooks          # una vez por clon: activa el hook pre-push
@@ -97,7 +98,8 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 - [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md): fases y prioridades.
 - [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md): uso de Git, ramas locales y remotas.
 - [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción, implementado en el repositorio; falta su primera publicación).
-- [docs/adr/README.md](docs/adr/README.md): las 14 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
+- [docs/adr/README.md](docs/adr/README.md): las 15 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
+- [docs/backups.md](docs/backups.md): copias locales y externas (age + Backblaze B2) y cómo se restauran; [ADR 0015](docs/adr/0015-copia-externa-cifrada-en-b2.md).
 - [README.md](README.md): ejecución y decisiones técnicas.
 
 ## Estado conocido
