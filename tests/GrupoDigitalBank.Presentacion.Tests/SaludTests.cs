@@ -22,6 +22,27 @@ public sealed class SaludTests(WebApplicationFactory<Program> fabrica) : IClassF
         (await respuesta.Content.ReadAsStringAsync()).ShouldBe("ok");
     }
 
+    // UptimeRobot y otros monitores comprueban con HEAD: sin esto recibian 405 y marcaban el sitio como caido
+    [Fact]
+    public async Task HealthAceptaHeadParaLosMonitoresExternos()
+    {
+        using var http = fabrica.CreateClient();
+
+        var respuesta = await http.SendAsync(new HttpRequestMessage(HttpMethod.Head, "/health"));
+
+        respuesta.IsSuccessStatusCode.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task HealthRechazaMetodosDeEscrituraConMetodoNoPermitido()
+    {
+        using var http = fabrica.CreateClient();
+
+        var respuesta = await http.PostAsync("/health", new StringContent(""));
+
+        respuesta.StatusCode.ShouldBe(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
     [Fact]
     public async Task HealthNoDependeDelServicioDeNegocios()
     {

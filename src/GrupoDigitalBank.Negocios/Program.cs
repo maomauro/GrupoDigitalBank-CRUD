@@ -42,7 +42,8 @@ app.UseServiceModel(serviceBuilder =>
     app.Services.GetRequiredService<ServiceMetadataBehavior>().HttpGetEnabled = app.Environment.IsDevelopment();
 });
 
-app.MapGet("/health", () => Results.Text("ok"));
+// GET y HEAD: los monitores externos (UptimeRobot) comprueban con HEAD y recibian 405
+app.MapMethods("/health", ["GET", "HEAD"], () => Results.Text("ok"));
 
 app.Run();
 
