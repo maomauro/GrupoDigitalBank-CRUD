@@ -266,7 +266,7 @@ chequear "no quedaron carpetas de entrega a medias" [ -z "$(find "$GDB_DIR/relea
 # ----------------------------------------------------------------------------------------------------------------
 titulo "8. Copia de seguridad y restauracion probada"
 esperar_codigo "backup manual termina bien" 0 bash "$GDB_SBIN/gdb-crud-backup.sh"
-ultimo=$(find "$BACKUP_DIR" -maxdepth 1 -name 'usuarios_*.sql.gz' -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)
+ultimo=$(find "$BACKUP_DIR" -maxdepth 1 -name 'usuarios_*.sql.gz' -printf '%T@ %p\n' | sort -rn | sed -n '1p' | cut -d' ' -f2-)
 chequear "la suma de verificacion coincide" bash -c "cd '$BACKUP_DIR' && sha256sum -c '$(basename "$ultimo").sha256'"
 chequear "los volcados solo los lee su dueno (600)" bash -c "[ \"\$(stat -c %a '$ultimo')\" = 600 ]"
 esperar_codigo "la restauracion de la ultima copia es valida" 0 bash "$GDB_SBIN/gdb-crud-probar-restauracion.sh"
