@@ -93,7 +93,7 @@ jobs:
 
       # shellcheck ya viene en el runner. Incluye los scripts que se instalan en el servidor (deploy/) y su prueba.
       - name: shellcheck de los scripts de shell
-        run: shellcheck -x db/migrate.sh deploy/*.sh scripts/probar-despliegue.sh scripts/probar-backup-externo.sh docker/dev/borde/entrypoint.sh
+        run: shellcheck -x db/migrate.sh deploy/*.sh scripts/probar-despliegue.sh scripts/probar-backup-externo.sh scripts/probar-alertas.sh docker/dev/borde/entrypoint.sh
 
       - name: La politica de seguridad del despliegue compila
         run: python3 -m py_compile deploy/politica.py
@@ -185,6 +185,11 @@ jobs:
         run: |
           sudo apt-get install -y -q age rclone
           bash scripts/probar-backup-externo.sh
+
+      # Alertas del servidor (deploy/alertas.sh): backup viejo, disco lleno, contenedor caido, copia externa vieja, latido.
+      # docker, df, curl y rclone son de mentira; no necesita credenciales.
+      - name: Prueba de las alertas
+        run: bash scripts/probar-alertas.sh
 
   # Entrega continua (D7): solo en un push a main (el merge de develop) y con todo lo anterior en verde. Publica las
   # imagenes y despliega por SSH en el VPS (deploy.yml, ADR 0011). Los merges a develop no despliegan.

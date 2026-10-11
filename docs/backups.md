@@ -60,3 +60,17 @@ rclone config create b2backup b2 account=ID_DE_LA_CLAVE key=CLAVE   # mejor con 
 La clave de aplicación de B2 se limita a **un solo bucket** y se escribe con `read -s` (sin dejarla en el historial). El archivo `~/.config/rclone/rclone.conf` debe tener permiso `600`. Para rotar la clave: crear otra en B2, repetir `rclone config create` y borrar la anterior.
 
 La prueba automática del script es `scripts/probar-backup-externo.sh` (en Windows, `.ps1`).
+
+## Alertas del servidor
+
+`deploy/alertas.sh` (instalado como `/usr/local/sbin/gdb-crud-alertas.sh`) se ejecuta cada día a las 05:00 (hora de Berlín) y revisa: la copia local más reciente (existe, tiene menos de 26 h, su suma y su gzip son válidos), el disco (máximo 85 %), los cuatro contenedores de GDB (sanos), la copia externa (menos de 35 días) y que la web responda por internet.
+
+Avisa con un **latido** a Healthchecks.io: si todo está bien hace ping a la dirección del latido; si algo falla hace ping a `<dirección>/fail` con la lista de problemas (aviso inmediato por correo); si el script deja de correr, el servicio avisa pasada la tolerancia (1 día de período y 2 h de gracia). La dirección del latido es **secreta**: vive en `~/.config/gdb-crud/heartbeat-url` con permiso 600, se pasa a `curl` por la entrada estándar y nunca se imprime.
+
+Instalación (una vez): `sudo bash instalar.sh`, guardar la dirección con `read -s` en ese archivo, y añadir al cron:
+
+```
+0 5 * * * RCLONE_REMOTE=b2backup:NOMBRE-DEL-BUCKET/gdb-crud URL_SALUD=https://gdb-crud.sitiosapps.com/health /usr/local/sbin/gdb-crud-alertas.sh >> /srv/sitiosapps/_backups/gdb-crud/alertas.log 2>&1
+```
+
+La prueba es `scripts/probar-alertas.sh` (corre en el CI).
