@@ -153,7 +153,9 @@ gh repo edit maomauro/GrupoDigitalBank-CRUD --default-branch develop --enable-sq
 
 ### 2.3 Protección de `main` y `develop` (cuenta Free)
 
-> **Verificado el 2026-10-09:** la API respondió `403 Upgrade to GitHub Pro or make this repository public`. La cuenta Free no admite protección de ramas, *rulesets* ni reglas de environments en repos privados.
+> **Verificado el 2026-10-09:** la API respondió `403 Upgrade to GitHub Pro or make this repository public`. La cuenta Free no admite protección de ramas ni *rulesets* en repos privados.
+>
+> **Corrección del 2026-10-11:** este párrafo decía también «ni reglas de environments», y **eso era falso**: al configurar el *environment* `production` en la interfaz, la restricción *Deployment branches and tags* (solo `main`) **sí está disponible y quedó aplicada**. Lo que no se ha comprobado es la opción de *revisores requeridos*.
 
 Vigente (**opción A**): las reglas se sostienen con el hook `pre-push` (rechaza push directo a `main` y `develop`, fase 3.5), el CI visible en cada PR, el checklist del PR y los ajustes de merge. Es una barrera local: se salta con `--no-verify` o desde otro equipo. Detalle en la guía de Git, §10.
 
@@ -613,7 +615,7 @@ Cambio en **otro repositorio y sobre infraestructura de producción compartida**
 
 ### 6.7 Conectar GitHub con el VPS
 
-- *Environments → `production`*: se puede crear en plan Free, pero **revisor requerido y restricción a la rama `main` no están disponibles** en repos privados Free (ver 2.3). Mientras tanto, el job `deploy` lleva `if: github.ref == 'refs/heads/main'` y solo `main` recibe el push de release.
+- *Environments → `production`*: creado el 2026-10-11 con la restricción **Deployment branches and tags → solo `main`** (verificada: disponible en privados Free; ver la corrección en 2.3). Así solo el código de `main`, que se fusiona a mano, puede leer los secretos de producción. *Revisores requeridos* no se ha comprobado y no se usa. Además, `entrega` solo corre en un push a `main`.
 - Secretos del environment:
 
   | Secreto | Contenido |
