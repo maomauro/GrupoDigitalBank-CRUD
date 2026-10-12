@@ -48,7 +48,9 @@ app.UseRouting();
 // Liveness del proceso web: no consulta el servicio de negocios. El proxy lo deja fuera del Basic Auth.
 // GET y HEAD: los monitores externos (UptimeRobot) comprueban con HEAD y recibian 405
 app.MapMethods("/health", ["GET", "HEAD"], () => Results.Text("ok"));
-app.MapControllerRoute("default", "{controller=Usuarios}/{action=Consultar}/{id?}");
+// Inicio publico en "/" y cierre de sesion en "/salir" (ADR 0016); el resto de la aplicacion sigue detras del Basic Auth del proxy
+app.MapControllerRoute("salir", "salir", new { controller = "Inicio", action = "Salir" });
+app.MapControllerRoute("default", "{controller=Inicio}/{action=Index}/{id?}");
 
 app.Run();
 
