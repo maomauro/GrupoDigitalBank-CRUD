@@ -40,8 +40,8 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
 
         html.ShouldContain("Página 2 de 3");
         html.ShouldContain("25 usuarios");
-        html.ShouldContain("href=\"/?pagina=1&amp;tamano=10\"");
-        html.ShouldContain("href=\"/?pagina=3&amp;tamano=10\"");
+        html.ShouldContain("href=\"/Usuarios/Consultar?pagina=1&amp;tamano=10\"");
+        html.ShouldContain("href=\"/Usuarios/Consultar?pagina=3&amp;tamano=10\"");
     }
 
     [Fact]
@@ -102,8 +102,8 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var html = await http.GetStringAsync("/Usuarios/Consultar?pagina=3&tamano=25");
 
         html.ShouldContain("<strong>25</strong>");
-        html.ShouldContain("href=\"/?pagina=1&amp;tamano=10\">10</a>");
-        html.ShouldContain("href=\"/?pagina=1&amp;tamano=50\">50</a>");
+        html.ShouldContain("href=\"/Usuarios/Consultar?pagina=1&amp;tamano=10\">10</a>");
+        html.ShouldContain("href=\"/Usuarios/Consultar?pagina=1&amp;tamano=50\">50</a>");
         html.ShouldNotContain(">25</a>");
     }
 

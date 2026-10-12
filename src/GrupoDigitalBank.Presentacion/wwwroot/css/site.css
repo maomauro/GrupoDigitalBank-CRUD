@@ -22,3 +22,32 @@ button.peligro { background: #b42318; padding: .3rem .7rem; }
 .alerta.error { background: #fde8e8; color: #7f1d1d; }
 .alerta.error:empty { display: none; }
 .msg-error { color: #b42318; font-size: .85rem; }
+
+/* Inicio publico y cierre de sesion (ADR 0016) */
+header .salir { margin-left: auto; color: #cfe8f7; text-decoration: none; }
+header .salir:hover { color: #fff; }
+.boton { display: inline-block; padding: .5rem 1rem; border-radius: 4px; background: #0b6aa2; color: #fff; text-decoration: none; }
+.hero { background: #fff; border: 1px solid #e4e7eb; border-radius: 8px; padding: 1.5rem 1.5rem 1rem; margin-bottom: 1.2rem; }
+.hero h1 { margin: .2rem 0 .8rem; font-size: 1.6rem; }
+.sobretitulo { margin: 0; color: #0b6aa2; font-weight: 600; font-size: .9rem; text-transform: uppercase; letter-spacing: .03em; }
+.botones { display: flex; flex-wrap: wrap; gap: .6rem; }
+.botones .boton-sec { margin-left: 0; display: inline-block; }
+.nota { color: #52606d; font-size: .85rem; }
+.indice { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin-bottom: 1.2rem; padding: .6rem .9rem; background: #eef2f6; border-radius: 6px; font-size: .9rem; }
+.indice a { color: #0b6aa2; text-decoration: none; }
+.indice a:hover { text-decoration: underline; }
+section[id] { scroll-margin-top: 1rem; }
+main section h2 { border-bottom: 2px solid #0b6aa2; padding-bottom: .25rem; margin-top: 2rem; }
+table.simple td, table.simple th { vertical-align: top; }
+code { background: #eef2f6; padding: .05rem .3rem; border-radius: 3px; font-size: .9em; }
+ol.flujo { list-style: none; padding: 0; margin: 1rem 0; display: flex; flex-wrap: wrap; gap: .5rem; counter-reset: paso; }
+ol.flujo li { counter-increment: paso; flex: 1 1 130px; background: #fff; border: 1px solid #b6c0cb; border-radius: 6px; padding: .6rem .7rem; position: relative; font-size: .9rem; }
+ol.flujo li::before { content: counter(paso); position: absolute; top: -.6rem; left: .6rem; background: #0b6aa2; color: #fff; border-radius: 50%; width: 1.3rem; height: 1.3rem; text-align: center; font-size: .75rem; line-height: 1.3rem; }
+ol.flujo li strong { display: block; }
+ol.flujo li span { color: #52606d; font-size: .8rem; }
+ul.decisiones li { margin-bottom: .45rem; }
+.grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .8rem 1.2rem; }
+.grupos h3 { margin: 0 0 .3rem; font-size: .95rem; color: #3e4c59; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; }
+.etiquetas span { background: #e1effa; color: #0b3d5c; padding: .15rem .55rem; border-radius: 999px; font-size: .8rem; }
+.pie-inicio { margin: 2.5rem 0 1rem; color: #52606d; font-size: .85rem; border-top: 1px solid #e4e7eb; padding-top: .8rem; }

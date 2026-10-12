@@ -48,6 +48,15 @@ http://{$DOMINIO} {
 		reverse_proxy web:8080
 	}
 
+	# Rutas publicas (ADR 0016): el inicio que explica la solucion (/), sus estilos y scripts y el cierre de sesion
+	# (/salir). Ninguna muestra datos ni consulta el servicio de negocios. Los patrones son EXACTOS o con comodin
+	# bajo css/ y js/: Caddy compara la ruta ya limpiada, asi que /css/../Usuarios/Consultar no se cuela como publica
+	# (lo vigila scripts/probar-acceso.ps1).
+	@publico path / /css/* /js/* /salir
+	handle @publico {
+		reverse_proxy web:8080
+	}
+
 	# Todo lo demas exige usuario y clave (hallazgo H2). AUTH_HASH es un hash bcrypt generado con
 	# scripts/generar-hash-auth.ps1 (caddy hash-password); la clave en claro nunca se guarda.
 	handle {

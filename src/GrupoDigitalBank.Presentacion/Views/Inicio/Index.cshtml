@@ -1,0 +1,179 @@
+@{
+    ViewData["Title"] = "Cómo se desarrolló";
+}
+
+<section class="hero">
+    <p class="sobretitulo">Prueba técnica · Desarrollador Senior · Grupo Digital Bank</p>
+    <h1>Gestión de usuarios: cómo se desarrolló esta solución</h1>
+    <p>
+        Sistema con <strong>arquitectura por capas en .NET 10</strong>: una web para registrar y consultar usuarios, un servicio
+        WCF con las reglas de negocio y una base de datos PostgreSQL. Esta página explica qué se hizo, con qué herramientas y por qué.
+        Elaborado por <strong>Edgar Mauricio Cifuentes Acosta</strong>.
+    </p>
+    <p class="botones">
+        <a class="boton" asp-controller="Usuarios" asp-action="Consultar">Ir a la aplicación</a>
+        <a class="boton-sec" asp-controller="Usuarios" asp-action="Registrar">Registrar un usuario</a>
+    </p>
+    <p class="nota">La aplicación pide usuario y clave (Basic Auth); esta página es pública. Para entrar, usa las credenciales enviadas con la entrega.</p>
+</section>
+
+<nav class="indice" aria-label="Contenido de la página">
+    <a href="#enunciado">El enunciado</a>
+    <a href="#arquitectura">Arquitectura</a>
+    <a href="#decisiones">Decisiones</a>
+    <a href="#herramientas">Herramientas</a>
+    <a href="#calidad">Calidad</a>
+    <a href="#seguridad">Seguridad</a>
+    <a href="#produccion">Producción</a>
+    <a href="#proceso">Cómo se trabajó</a>
+    <a href="#limites">Límites</a>
+</nav>
+
+<section id="enunciado">
+    <h2>1. El enunciado y cómo se cumple</h2>
+    <table class="simple">
+        <thead><tr><th>Lo que pedía la prueba</th><th>Cómo está resuelto</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>Presentación</strong>: página «usuario» con Nombre (caja de texto), Fecha de nacimiento (calendario) y Sexo (DropDownList)</td>
+                <td>Pantalla <em>Registrar</em> (ASP.NET Core MVC): <code>input</code> de texto, <code>input type="date"</code> y <code>select</code>. Valida en el servidor (con el mensaje junto a cada campo), otra vez en negocios y por último con restricciones en la base.</td>
+            </tr>
+            <tr>
+                <td><strong>Presentación</strong>: página «usuario consulta» con una grilla y las opciones Modificar y Eliminar por fila</td>
+                <td>Pantalla <em>Consultar</em>: grilla paginada <strong>en el servidor</strong> (no trae todos los usuarios), con Modificar y Eliminar (con confirmación) en cada fila.</td>
+            </tr>
+            <tr>
+                <td><strong>Negocios</strong>: servicio WCF con Agregar, Modificar, Consultar y Eliminar; la conexión a la base se hace aquí</td>
+                <td><strong>CoreWCF</strong> (WCF sobre .NET moderno) expone <code>Agregar</code>, <code>Modificar</code>, <code>Consultar</code> y <code>Eliminar</code> (más <code>ConsultarPagina</code> para la grilla). Es la <strong>única capa que habla con la base</strong>.</td>
+            </tr>
+            <tr>
+                <td><strong>Datos</strong>: tabla con Nombre (texto 100), Fecha de nacimiento (fecha) y Sexo (texto fijo 1)</td>
+                <td>Tabla <code>usuario</code>: <code>varchar(100)</code>, <code>date</code> y <code>char(1)</code>, con restricciones <code>CHECK</code> (sexo M/F, fecha razonable, nombre no vacío).</td>
+            </tr>
+            <tr>
+                <td><strong>Datos</strong>: procedimiento almacenado con el CRUD</td>
+                <td>Una rutina almacenada, <code>fn_usuario_crud</code>, con un parámetro de operación (<code>C</code>, <code>R</code>, <code>U</code>, <code>D</code>). En PostgreSQL es una <em>función</em> y no un <code>PROCEDURE</code>, porque devuelve las filas afectadas.</td>
+            </tr>
+            <tr>
+                <td>Lenguaje <strong>.NET</strong></td>
+                <td>.NET 10 (LTS, con soporte hasta noviembre de 2028), C# en las dos capas de código.</td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+
+<section id="arquitectura">
+    <h2>2. Arquitectura</h2>
+    <p>El recorrido de una petición, de afuera hacia adentro:</p>
+    <ol class="flujo">
+        <li><strong>Navegador</strong><span>HTTPS</span></li>
+        <li><strong>Cloudflare y gateway</strong><span>TLS; solo Cloudflare puede llegar</span></li>
+        <li><strong>Caddy</strong><span>usuario y clave, cabeceras, CSP</span></li>
+        <li><strong>Presentación</strong><span>ASP.NET Core MVC</span></li>
+        <li><strong>Negocios</strong><span>CoreWCF · SOAP</span></li>
+        <li><strong>PostgreSQL</strong><span><code>fn_usuario_crud</code></span></li>
+    </ol>
+    <table class="simple">
+        <thead><tr><th>Capa</th><th>Responsabilidad</th><th>Lo que NO hace</th></tr></thead>
+        <tbody>
+            <tr><td><strong>Presentación</strong></td><td>Vistas, formularios y validación de entrada. Habla con negocios solo por SOAP.</td><td>No referencia el proyecto de negocios ni toca la base.</td></tr>
+            <tr><td><strong>Negocios</strong></td><td>Contrato del servicio, validación (fuente de verdad), reglas y acceso a datos.</td><td>No conoce HTML ni HTTP de la web.</td></tr>
+            <tr><td><strong>Datos</strong></td><td>Tabla, restricciones, función CRUD y permisos.</td><td>No contiene reglas que no deban cumplirse siempre.</td></tr>
+        </tbody>
+    </table>
+    <p>
+        Los errores de negocio viajan como <code>FaultException&lt;ErrorServicio&gt;</code>: la web muestra un mensaje claro y nunca el detalle interno.
+        La validación existe en <strong>tres niveles</strong> (DataAnnotations, validador de negocios y <code>CHECK</code> de la base), así que un cambio de regla toca los tres.
+    </p>
+</section>
+
+<section id="decisiones">
+    <h2>3. Decisiones principales</h2>
+    <p>Cada una está escrita como un registro de decisión de arquitectura (ADR) con su porqué, sus alternativas y sus costos.</p>
+    <ul class="decisiones">
+        <li><strong>CoreWCF y SOAP entre capas.</strong> El enunciado pide WCF; CoreWCF lo mantiene en .NET moderno, con un contrato explícito entre las dos capas.</li>
+        <li><strong>Sin ORM.</strong> Npgsql con SQL parametrizado y una función almacenada: control total del SQL y de los tipos, y sin inyección posible por concatenación.</li>
+        <li><strong>Contrato SOAP duplicado a propósito.</strong> Presentación no referencia a Negocios; una prueba compara por reflexión los dos contratos y llama al servicio real para que no se desalineen.</li>
+        <li><strong>Rol de mínimo privilegio.</strong> La aplicación se conecta con un rol que solo puede <em>ejecutar</em> la función CRUD: no puede leer la tabla, borrar ni crear objetos.</li>
+        <li><strong>Migraciones propias con suma de verificación.</strong> Scripts SQL numerados; si uno ya aplicado cambia, el migrador aborta.</li>
+        <li><strong>«Hoy» es la fecha de Bogotá.</strong> La validación de la fecha de nacimiento usa la zona <code>America/Bogota</code>, aunque el servidor y la base estén en UTC.</li>
+        <li><strong>Paginación en el servidor.</strong> La grilla pide una página a la base; no carga todos los usuarios.</li>
+        <li><strong>Cabeceras de seguridad estrictas.</strong> CSP sin código ni estilos en línea, HSTS y el resto de cabeceras, aplicadas en el proxy.</li>
+        <li><strong>Autenticación mínima: Basic Auth en el proxy.</strong> Suficiente para proteger la demostración; la decisión queda registrada como provisional (ver <a href="#limites">Límites</a>).</li>
+    </ul>
+</section>
+
+<section id="herramientas">
+    <h2>4. Herramientas</h2>
+    <div class="grupos">
+        <div><h3>Aplicación</h3><p class="etiquetas"><span>.NET 10</span><span>C#</span><span>ASP.NET Core MVC</span><span>Razor</span><span>CoreWCF</span><span>Npgsql</span></p></div>
+        <div><h3>Datos</h3><p class="etiquetas"><span>PostgreSQL 17</span><span>PL/pgSQL</span><span>Migrador propio</span></p></div>
+        <div><h3>Pruebas</h3><p class="etiquetas"><span>xUnit</span><span>Shouldly</span><span>NSubstitute</span><span>Testcontainers</span><span>WebApplicationFactory</span></p></div>
+        <div><h3>Contenedores y entrega</h3><p class="etiquetas"><span>Docker Compose</span><span>Caddy</span><span>nginx</span><span>GitHub Actions</span><span>GHCR</span></p></div>
+        <div><h3>Calidad y seguridad</h3><p class="etiquetas"><span>SonarCloud</span><span>Trivy</span><span>Dependabot</span><span>ShellCheck</span><span>hadolint</span></p></div>
+        <div><h3>Infraestructura</h3><p class="etiquetas"><span>VPS (Contabo)</span><span>Cloudflare</span><span>Backblaze B2</span><span>UptimeRobot</span><span>Healthchecks.io</span></p></div>
+    </div>
+</section>
+
+<section id="calidad">
+    <h2>5. Calidad: cómo se sabe que funciona</h2>
+    <ul>
+        <li><strong>Más de 300 pruebas automáticas</strong>: unitarias, de vistas con el pipeline MVC real, de integración contra un PostgreSQL real (en un contenedor) y de contrato SOAP contra el servicio real.</li>
+        <li><strong>Cobertura</strong> de la capa de negocios del 100 % y de la presentación cercana al 95 %; el CI exige un mínimo del 80 % en negocios.</li>
+        <li><strong>Pruebas de mutación manuales</strong>: se rompe el código a propósito (decenas de veces) para comprobar que alguna prueba lo detecta. Todas las mutaciones aplicadas fueron detectadas.</li>
+        <li><strong>Integración continua</strong> en cada cambio: compilación sin advertencias (<code>TreatWarningsAsErrors</code>), formato, pruebas, validación de los <em>compose</em>, construcción de imágenes, análisis de vulnerabilidades y SonarCloud.</li>
+        <li><strong>El despliegue también se prueba</strong>: un servidor simulado en Docker ejercita la llave restringida, los paquetes maliciosos, el rollback y las copias de seguridad.</li>
+    </ul>
+</section>
+
+<section id="seguridad">
+    <h2>6. Seguridad por capas</h2>
+    <table class="simple">
+        <thead><tr><th>Dónde</th><th>Qué se hace</th></tr></thead>
+        <tbody>
+            <tr><td>Borde</td><td>Solo Cloudflare puede hablar con el servidor (certificado de cliente, mTLS). El único puerto publicado es el 443.</td></tr>
+            <tr><td>Proxy</td><td>Usuario y clave con hash bcrypt, CSP estricta, HSTS, <code>X-Frame-Options</code> y demás cabeceras.</td></tr>
+            <tr><td>Web</td><td>Sin JavaScript ni estilos en línea, antiforgery en los formularios, cookies <code>Secure</code>.</td></tr>
+            <tr><td>Negocios</td><td>Validación como fuente de verdad; los errores no filtran detalles internos.</td></tr>
+            <tr><td>Base de datos</td><td>SQL siempre parametrizado, rol de mínimo privilegio y restricciones <code>CHECK</code>.</td></tr>
+            <tr><td>Entrega</td><td>La llave SSH de despliegue no abre una shell: solo puede ejecutar una orden fija, y el servidor valida con una lista blanca lo que cada despliegue puede hacer.</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<section id="produccion">
+    <h2>7. Producción</h2>
+    <ul>
+        <li><strong>Despliegue:</strong> al fusionar a <code>main</code> con el CI en verde, GitHub Actions publica las imágenes y despliega por SSH; hace una copia previa de la base y vuelve solo a la versión anterior si algo falla.</li>
+        <li><strong>Copias de seguridad:</strong> diaria local y mensual externa, <strong>cifrada</strong>, con la restauración probada de punta a punta.</li>
+        <li><strong>Monitoreo:</strong> un monitor externo sobre <code>/health</code> y una revisión diaria del servidor (copia reciente, disco, contenedores) que avisa por correo.</li>
+        <li><strong>Runbook:</strong> qué hacer cuando suena cada alerta, escrito y comprobado en el servidor.</li>
+        <li><strong>Plataforma compartida:</strong> el servidor aloja otros proyectos detrás de un <em>gateway</em> independiente, por lo que se cuidó que un despliegue de uno no pueda afectar a los demás.</li>
+    </ul>
+</section>
+
+<section id="proceso">
+    <h2>8. Cómo se trabajó</h2>
+    <ul>
+        <li><strong>Diagnóstico primero:</strong> una revisión inicial del código dejó una lista de hallazgos (H1 a H8 y B1 a B8) que se fueron cerrando por prioridad.</li>
+        <li><strong>Plan por fases</strong> con criterios de aceptación verificables; el avance se marca en el propio plan.</li>
+        <li><strong>Flujo de ramas</strong> <em>feature → develop → main</em>: todo cambio entra por Pull Request (squash a <code>develop</code>, <em>merge commit</em> a <code>main</code>), con commits convencionales en español.</li>
+        <li><strong>Decisiones escritas:</strong> 16 ADR, y un ADR aceptado no se edita: si la decisión cambia, se escribe otro que lo reemplaza.</li>
+        <li><strong>Evidencia, no suposiciones:</strong> cada afirmación importante se verificó con una prueba o contra el servidor real antes de darla por buena.</li>
+    </ul>
+</section>
+
+<section id="limites">
+    <h2>9. Límites y trabajo futuro</h2>
+    <p>Lo que esta solución <strong>no</strong> hace, dicho con honestidad:</p>
+    <ul>
+        <li><strong>Un solo usuario y sin roles.</strong> La autenticación es Basic Auth en el proxy. Lo siguiente sería un inicio de sesión con cuentas por persona y roles.</li>
+        <li><strong>«Cerrar sesión» es un truco del navegador.</strong> Basic Auth no tiene sesión: el enlace obliga al navegador a olvidar las credenciales (basta con cancelar el cuadro que aparece). Con cuentas propias sería un cierre de sesión real.</li>
+        <li><strong>Sin alta disponibilidad:</strong> un solo servidor; la recuperación se apoya en las copias de seguridad.</li>
+        <li><strong>Contrato SOAP duplicado</strong> a mano; una prueba lo vigila, pero generarlo desde un único origen sería más robusto.</li>
+    </ul>
+</section>
+
+<footer class="pie-inicio">
+    <p>Edgar Mauricio Cifuentes Acosta · Prueba técnica para Grupo Digital Bank · octubre de 2026</p>
+</footer>
