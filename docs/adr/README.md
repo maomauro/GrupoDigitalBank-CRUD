@@ -23,6 +23,7 @@ La vista de conjunto está en [../arquitectura.md](../arquitectura.md).
 | [0013](0013-politica-de-seguridad-del-despliegue.md) | Política de seguridad para el paquete de despliegue | Propuesta |
 | [0014](0014-despliegue-detras-del-gateway-de-plataforma.md) | Despliegue detrás del gateway de plataforma (reemplaza al 0011) | Aceptada |
 | [0015](0015-copia-externa-cifrada-en-b2.md) | Copia externa cifrada con age en Backblaze B2 | Aceptada |
+| [0016](0016-inicio-publico-y-cierre-de-sesion.md) | Inicio público y cierre de sesión con Basic Auth | Aceptada |
 
 ## Plantilla
 

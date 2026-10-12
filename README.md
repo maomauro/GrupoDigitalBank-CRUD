@@ -27,7 +27,7 @@ Navegador ──HTTPS──▶ Caddy ──▶ Presentación (ASP.NET Core MVC)
 │   └── GrupoDigitalBank.Presentacion/  # Controllers · Models · Servicios (cliente SOAP) · Views
 ├── docker-compose.yml              # db + negocios + web + proxy (Caddy); no publica ningún puerto
 ├── docker-compose.prod.yml         # override de producción: imágenes de GHCR, red compartida del VPS
-├── Caddyfile                       # proxy interno: Basic Auth, cabeceras y CSP (sin TLS; ver ADR 0011)
+├── Caddyfile                       # proxy interno: Basic Auth, cabeceras y CSP (sin TLS; ver ADR 0014)
 ├── deploy/                         # scripts del servidor (llave restringida, política, backup) y vhost de nginx
 └── .env.example
 ```
@@ -68,5 +68,6 @@ Desarrollo local (modos A y B, con `docker-compose.dev.yml`) y pruebas: ver `CLA
 - **ASP.NET Core MVC:** separación clara vista/controlador/modelo, validación con DataAnnotations en servidor y plantillas Razor simples para dos pantallas.
 - **PostgreSQL + Npgsql (sin ORM):** control total del SQL y de los tipos; el CRUD se concentra en una función almacenada con parámetro de operación, lo que reduce superficie de SQL en la aplicación y evita inyección (parámetros tipados).
 - **Validación en tres niveles:** DataAnnotations en presentación (retroalimentación inmediata), `UsuarioValidador` en negocios (fuente de verdad) y `CHECK` en la BD (sexo, fecha y nombre no vacío).
-- **Docker Compose + Caddy interno:** despliegue reproducible; Caddy aplica Basic Auth, cabeceras de seguridad y CSP, y el TLS lo termina el nginx compartido del VPS tras Cloudflare ([ADR 0011](docs/adr/0011-despliegue-detras-del-nginx-compartido.md)).
+- **Docker Compose + Caddy interno:** despliegue reproducible; Caddy aplica Basic Auth, cabeceras de seguridad y CSP, y el TLS lo termina el gateway de plataforma del VPS tras Cloudflare ([ADR 0014](docs/adr/0014-despliegue-detras-del-gateway-de-plataforma.md)).
+- **Inicio público (`/`):** una página que explica cómo se desarrolló la solución (arquitectura e infraestructura con diagramas, enlaces al repositorio y a la documentación), con un enlace a la aplicación y «Cerrar sesión» en el menú ([ADR 0016](docs/adr/0016-inicio-publico-y-cierre-de-sesion.md)). La grilla está en `/Usuarios/Consultar`.
 - **.NET 10 (LTS):** soporte hasta noviembre de 2028.

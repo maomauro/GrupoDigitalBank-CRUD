@@ -11,9 +11,11 @@
     <header>
         <strong>Gestión de usuarios</strong>
         <nav>
+            <a asp-controller="Inicio" asp-action="Index">Inicio</a>
             <a asp-controller="Usuarios" asp-action="Registrar">Registrar</a>
             <a asp-controller="Usuarios" asp-action="Consultar">Consultar</a>
         </nav>
+        <a class="salir" asp-controller="Inicio" asp-action="Salir">Cerrar sesión</a>
     </header>
     <main>
         @if (TempData["Mensaje"] is string mensaje) { <div class="alerta ok">@mensaje</div> }

@@ -35,6 +35,7 @@ instalar entrada.sh gdb-crud-entrada.sh
 instalar desplegar.sh gdb-crud-desplegar.sh
 instalar backup.sh gdb-crud-backup.sh
 instalar backup-externo.sh gdb-crud-backup-externo.sh
+instalar alertas.sh gdb-crud-alertas.sh
 instalar probar-restauracion.sh gdb-crud-probar-restauracion.sh
 instalar politica.py gdb-crud-politica.py
 echo "Instalado en $destino. Compare las sumas con las del repositorio antes de seguir."
