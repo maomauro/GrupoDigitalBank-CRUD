@@ -13,6 +13,7 @@
     <p class="botones">
         <a class="boton" asp-controller="Usuarios" asp-action="Consultar">Ir a la aplicación</a>
         <a class="boton-sec" asp-controller="Usuarios" asp-action="Registrar">Registrar un usuario</a>
+        <a class="boton-sec" href="https://github.com/maomauro/GrupoDigitalBank-CRUD" target="_blank" rel="noopener">Ver el código en GitHub</a>
     </p>
     <p class="nota">La aplicación pide usuario y clave (Basic Auth); esta página es pública. Para entrar, usa las credenciales enviadas con la entrega.</p>
 </section>
@@ -24,9 +25,10 @@
     <a href="#herramientas">Herramientas</a>
     <a href="#calidad">Calidad</a>
     <a href="#seguridad">Seguridad</a>
-    <a href="#produccion">Producción</a>
+    <a href="#produccion">Infraestructura</a>
     <a href="#proceso">Cómo se trabajó</a>
     <a href="#limites">Límites</a>
+    <a href="#codigo">Código y documentos</a>
 </nav>
 
 <section id="enunciado">
@@ -64,15 +66,8 @@
 
 <section id="arquitectura">
     <h2>2. Arquitectura</h2>
-    <p>El recorrido de una petición, de afuera hacia adentro:</p>
-    <ol class="flujo">
-        <li><strong>Navegador</strong><span>HTTPS</span></li>
-        <li><strong>Cloudflare y gateway</strong><span>TLS; solo Cloudflare puede llegar</span></li>
-        <li><strong>Caddy</strong><span>usuario y clave, cabeceras, CSP</span></li>
-        <li><strong>Presentación</strong><span>ASP.NET Core MVC</span></li>
-        <li><strong>Negocios</strong><span>CoreWCF · SOAP</span></li>
-        <li><strong>PostgreSQL</strong><span><code>fn_usuario_crud</code></span></li>
-    </ol>
+    <p>La solución separa responsabilidades en tres capas. Cada flecha es la <strong>única</strong> forma en que una capa habla con la siguiente:</p>
+    <partial name="_DiagramaArquitectura" />
     <table class="simple">
         <thead><tr><th>Capa</th><th>Responsabilidad</th><th>Lo que NO hace</th></tr></thead>
         <tbody>
@@ -142,7 +137,9 @@
 </section>
 
 <section id="produccion">
-    <h2>7. Producción</h2>
+    <h2>7. Infraestructura y producción</h2>
+    <p>Dónde corre la solución, cómo llega el código hasta allí y cómo se vigila:</p>
+    <partial name="_DiagramaInfraestructura" />
     <ul>
         <li><strong>Despliegue:</strong> al fusionar a <code>main</code> con el CI en verde, GitHub Actions publica las imágenes y despliega por SSH; hace una copia previa de la base y vuelve solo a la versión anterior si algo falla.</li>
         <li><strong>Copias de seguridad:</strong> diaria local y mensual externa, <strong>cifrada</strong>, con la restauración probada de punta a punta.</li>
@@ -172,6 +169,23 @@
         <li><strong>Sin alta disponibilidad:</strong> un solo servidor; la recuperación se apoya en las copias de seguridad.</li>
         <li><strong>Contrato SOAP duplicado</strong> a mano; una prueba lo vigila, pero generarlo desde un único origen sería más robusto.</li>
     </ul>
+</section>
+
+<section id="codigo">
+    <h2>10. Código y documentación</h2>
+    <p>Todo el código, el historial de cambios y la documentación están en GitHub:</p>
+    <p><a class="boton" href="https://github.com/maomauro/GrupoDigitalBank-CRUD" target="_blank" rel="noopener">Abrir el repositorio en GitHub</a></p>
+    <ul class="enlaces-repo">
+        <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/blob/main/README.md" target="_blank" rel="noopener">README</a><span>Resumen, ejecución local y decisiones técnicas.</span></li>
+        <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/blob/main/docs/arquitectura.md" target="_blank" rel="noopener">Arquitectura (C4)</a><span>Contexto, contenedores, componentes y flujos con diagramas.</span></li>
+        <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/blob/main/docs/adr/README.md" target="_blank" rel="noopener">Decisiones (ADR)</a><span>El porqué de cada decisión, con alternativas y costos.</span></li>
+        <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/blob/main/docs/plan-de-trabajo.md" target="_blank" rel="noopener">Plan de trabajo</a><span>Fases, prioridades y criterios de aceptación.</span></li>
+        <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/blob/main/docs/diagnostico/diagnostico-2026-10-09.md" target="_blank" rel="noopener">Diagnóstico inicial</a><span>Los hallazgos de la revisión del código y cómo se cerraron.</span></li>
+        <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/blob/main/docs/runbook.md" target="_blank" rel="noopener">Runbook de operación</a><span>Qué hacer cuando suena cada alerta.</span></li>
+        <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/blob/main/docs/backups.md" target="_blank" rel="noopener">Copias de seguridad</a><span>Local, externa cifrada y cómo se restauran.</span></li>
+        <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/pulls?q=is%3Apr+is%3Amerged" target="_blank" rel="noopener">Pull Requests</a><span>Cada cambio entró por un PR, con su CI y su descripción.</span></li>
+    </ul>
+    <p class="nota">Si el repositorio pide iniciar sesión en GitHub, solicita acceso a Edgar Mauricio Cifuentes Acosta.</p>
 </section>
 
 <footer class="pie-inicio">

@@ -1,0 +1,65 @@
+<svg class="diagrama" viewBox="0 0 900 566" role="img" aria-labelledby="t-arq d-arq" xmlns="http://www.w3.org/2000/svg">
+    <title id="t-arq">Arquitectura por capas</title>
+    <desc id="d-arq">El navegador llama a la capa de presentación (ASP.NET Core MVC), que habla por SOAP con la capa de negocios (CoreWCF), la única que accede a la base de datos PostgreSQL.</desc>
+    <defs>
+        <marker id="punta-arq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="punta" />
+        </marker>
+    </defs>
+
+    <rect x="330" y="8" width="240" height="44" rx="8" class="caja-ext" />
+    <text x="450" y="35" class="t t-centro t-fuerte">Navegador del revisor</text>
+    <line x1="450" y1="52" x2="450" y2="92" class="flecha" marker-end="url(#punta-arq)" />
+    <text x="462" y="76" class="t t-peq">HTTPS</text>
+
+    <rect x="60" y="92" width="780" height="124" rx="10" class="capa capa-1" />
+    <text x="78" y="116" class="t t-fuerte">PRESENTACIÓN · ASP.NET Core MVC</text>
+    <text x="822" y="116" class="t t-peq t-der">src/GrupoDigitalBank.Presentacion</text>
+    <rect x="80" y="134" width="170" height="64" rx="6" class="caja" />
+    <text x="165" y="158" class="t t-centro t-fuerte">Vista «usuario»</text>
+    <text x="165" y="176" class="t t-centro t-peq">nombre · fecha · sexo</text>
+    <rect x="270" y="134" width="170" height="64" rx="6" class="caja" />
+    <text x="355" y="158" class="t t-centro t-fuerte">Vista «consulta»</text>
+    <text x="355" y="176" class="t t-centro t-peq">grilla · modificar · eliminar</text>
+    <rect x="460" y="134" width="170" height="64" rx="6" class="caja" />
+    <text x="545" y="158" class="t t-centro t-fuerte">Controlador</text>
+    <text x="545" y="176" class="t t-centro t-peq">validación DataAnnotations</text>
+    <rect x="650" y="134" width="170" height="64" rx="6" class="caja" />
+    <text x="735" y="158" class="t t-centro t-fuerte">Cliente SOAP</text>
+    <text x="735" y="176" class="t t-centro t-peq">IUsuarioClient</text>
+
+    <line x1="450" y1="216" x2="450" y2="266" class="flecha" marker-end="url(#punta-arq)" />
+    <text x="462" y="246" class="t t-peq">SOAP · BasicHttpBinding · errores como FaultException&lt;ErrorServicio&gt;</text>
+
+    <rect x="60" y="266" width="780" height="124" rx="10" class="capa capa-2" />
+    <text x="78" y="290" class="t t-fuerte">NEGOCIOS · CoreWCF</text>
+    <text x="822" y="290" class="t t-peq t-der">src/GrupoDigitalBank.Negocios · única capa con acceso a la base</text>
+    <rect x="80" y="308" width="170" height="64" rx="6" class="caja" />
+    <text x="165" y="332" class="t t-centro t-fuerte">Contrato del servicio</text>
+    <text x="165" y="350" class="t t-centro t-peq">ServiceContract · Fault</text>
+    <rect x="270" y="308" width="170" height="64" rx="6" class="caja" />
+    <text x="355" y="332" class="t t-centro t-fuerte">UsuarioService</text>
+    <text x="355" y="350" class="t t-centro t-peq">las 4 operaciones del CRUD</text>
+    <rect x="460" y="308" width="170" height="64" rx="6" class="caja" />
+    <text x="545" y="332" class="t t-centro t-fuerte">UsuarioValidador</text>
+    <text x="545" y="350" class="t t-centro t-peq">fuente de verdad</text>
+    <rect x="650" y="308" width="170" height="64" rx="6" class="caja" />
+    <text x="735" y="332" class="t t-centro t-fuerte">Repositorio</text>
+    <text x="735" y="350" class="t t-centro t-peq">Npgsql · SQL parametrizado</text>
+
+    <line x1="450" y1="390" x2="450" y2="440" class="flecha" marker-end="url(#punta-arq)" />
+    <text x="462" y="420" class="t t-peq">Npgsql · rol de mínimo privilegio (solo puede ejecutar las funciones)</text>
+
+    <rect x="60" y="440" width="780" height="118" rx="10" class="capa capa-3" />
+    <text x="78" y="464" class="t t-fuerte">DATOS · PostgreSQL 17</text>
+    <text x="822" y="464" class="t t-peq t-der">db/NNN_*.sql · migrador con suma de verificación</text>
+    <rect x="80" y="482" width="236" height="62" rx="6" class="caja" />
+    <text x="198" y="506" class="t t-centro t-fuerte">Tabla usuario</text>
+    <text x="198" y="524" class="t t-centro t-peq">varchar(100) · date · char(1) · CHECK</text>
+    <rect x="332" y="482" width="236" height="62" rx="6" class="caja" />
+    <text x="450" y="506" class="t t-centro t-fuerte">fn_usuario_crud</text>
+    <text x="450" y="524" class="t t-centro t-peq">C · R · U · D en una sola rutina</text>
+    <rect x="584" y="482" width="236" height="62" rx="6" class="caja" />
+    <text x="702" y="506" class="t t-centro t-fuerte">fn_usuario_pagina</text>
+    <text x="702" y="524" class="t t-centro t-peq">paginación en el servidor</text>
+</svg>

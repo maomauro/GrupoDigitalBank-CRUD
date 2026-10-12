@@ -55,6 +55,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     [InlineData("#produccion")]
     [InlineData("#proceso")]
     [InlineData("#limites")]
+    [InlineData("#codigo")]
     public async Task ElIndiceApuntaASeccionesQueExisten(string ancla)
     {
         using var http = fabrica.CreateClient();
@@ -74,6 +75,19 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
 
         html.ShouldContain("href=\"/Usuarios/Consultar\"");
         html.ShouldContain("href=\"/Usuarios/Registrar\"");
+    }
+
+    [Fact]
+    public async Task ElInicioEnlazaAlRepositorioYTraeLosDosDiagramas()
+    {
+        using var http = fabrica.CreateClient();
+
+        var html = await (await http.GetAsync("/")).Content.ReadAsStringAsync();
+
+        html.ShouldContain("href=\"https://github.com/maomauro/GrupoDigitalBank-CRUD\"");
+        html.ShouldContain("Arquitectura por capas");
+        html.ShouldContain("Infraestructura de producción");
+        html.ShouldContain("<svg");
     }
 
     [Fact]
