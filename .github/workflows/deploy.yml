@@ -166,6 +166,9 @@ jobs:
         run: |
           curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "$URL_PUBLICA/health" | grep -qx ok
           curl -fsSI "$URL_PUBLICA/health" | grep -iq '^strict-transport-security:'
+          # Una ruta protegida debe pedir credenciales; la raiz es el inicio publico (ADR 0016) y debe responder 200
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' "$URL_PUBLICA/Usuarios/Consultar")
+          [ "$codigo" = 401 ] || { echo "::error::Una ruta protegida debe pedir credenciales (401) y respondio $codigo"; exit 1; }
           codigo=$(curl -s -o /dev/null -w '%{http_code}' "$URL_PUBLICA/")
-          [ "$codigo" = 401 ] || { echo "::error::La raiz debe pedir credenciales (401) y respondio $codigo"; exit 1; }
-          echo "Desplegado $TAG: /health responde, HSTS presente y la raiz exige credenciales."
+          [ "$codigo" = 200 ] || { echo "::error::El inicio publico debe responder 200 y respondio $codigo"; exit 1; }
+          echo "Desplegado $TAG: /health responde, HSTS presente, el inicio es publico y las rutas protegidas exigen credenciales."
