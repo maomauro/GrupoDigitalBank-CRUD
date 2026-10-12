@@ -100,6 +100,7 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 - [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md): uso de Git, ramas locales y remotas.
 - [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción, implementado en el repositorio; falta su primera publicación).
 - [docs/adr/README.md](docs/adr/README.md): las 15 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
+- [docs/servidor.md](docs/servidor.md): inventario del servidor (carpetas, contenedores, redes, llaves, crons y servicios externos).
 - [docs/runbook.md](docs/runbook.md): qué hacer cuando suena cada alerta (sitio caído, alerta del servidor, despliegue fallido, restaurar, cambiar la clave).
 - [docs/backups.md](docs/backups.md): copias locales y externas (age + Backblaze B2) y cómo se restauran; [ADR 0015](docs/adr/0015-copia-externa-cifrada-en-b2.md).
 - [README.md](README.md): ejecución y decisiones técnicas.
