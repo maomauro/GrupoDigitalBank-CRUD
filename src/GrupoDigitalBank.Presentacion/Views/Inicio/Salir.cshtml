@@ -2,6 +2,12 @@
     ViewData["Title"] = "Sesión cerrada";
 }
 
+@section Cabecera {
+    @* Esta respuesta es un 401 (asi el navegador olvida las credenciales); desde aqui se pasa de inmediato al inicio publico.
+       El meta refresh no lo restringe la CSP. Si el navegador mostro el cuadro de usuario y clave, al cancelarlo se llega igual. *@
+    <meta http-equiv="refresh" content="0;url=/?sesion=cerrada" />
+}
+
 <h1>Sesión cerrada</h1>
 <p>Tus credenciales ya no están en este navegador.</p>
 <p>
@@ -10,5 +16,5 @@
 </p>
 <p>
     <a class="boton" asp-controller="Inicio" asp-action="Panel">Volver a entrar</a>
-    <a class="boton-sec" asp-controller="Inicio" asp-action="Index">Ir al inicio</a>
+    <a class="boton-sec" href="/?sesion=cerrada">Ir al inicio</a>
 </p>

@@ -2,5 +2,10 @@
     ViewData["Title"] = "Cómo se desarrolló";
 }
 
+@if (string.Equals(Context.Request.Query["sesion"], "cerrada", StringComparison.Ordinal))
+{
+    <div class="alerta ok" role="status">Sesión cerrada. Para volver a entrar, pulsa «Iniciar sesión».</div>
+}
+
 <partial name="_Presentacion" />
 <partial name="_Contenido" />

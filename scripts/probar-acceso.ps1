@@ -64,6 +64,7 @@ Write-Host "`n== Rutas publicas del inicio (ADR 0016): solo ellas, y sin datos =
 Prueba 'GET / (inicio) sin credenciales' @('200') @("$Base/")
 Prueba 'GET /css/site.css sin credenciales' @('200') @("$Base/css/site.css")
 Prueba 'GET /js/site.js sin credenciales' @('200') @("$Base/js/site.js")
+Prueba 'GET /?sesion=cerrada (inicio tras cerrar sesion) sin credenciales' @('200') @("$Base/?sesion=cerrada")
 $inicio = (& curl.exe -s $curlInseguro --max-time 20 "$Base/") -join "`n"
 Check 'El inicio explica la solucion y no muestra datos de usuarios' (($inicio -match 'Arquitectura') -and ($inicio -notmatch '/Usuarios/Editar/')) 'sin enlaces de edicion de la grilla'
 $cuerpoQuery = (& curl.exe -s $curlInseguro --max-time 20 "$Base/?x=/Usuarios/Consultar") -join "`n"
@@ -71,7 +72,7 @@ Check 'GET /?x=/Usuarios/Consultar sigue siendo solo el inicio' (($cuerpoQuery -
 $rs = (& curl.exe -s $curlInseguro -D - -o NUL --max-time 20 "$Base/salir") -join "`n"
 Check 'GET /salir: 401 con el desafio Basic del mismo realm y sin cache' (($rs -match '(?m)^HTTP/\S+ 401') -and ($rs -match 'WWW-Authenticate: Basic realm="restricted"') -and ($rs -match '(?im)^Cache-Control: no-store'))
 $rsc = (& curl.exe -s $curlInseguro --max-time 20 "$Base/salir") -join "`n"
-Check 'La pagina de /salir dice que la sesion se cerro' ($rsc -match 'Sesi.{1,2}n cerrada')
+Check 'La pagina de /salir dice que la sesion se cerro y lleva al inicio' (($rsc -match 'Sesi.{1,2}n cerrada') -and ($rsc -match 'http-equiv="refresh" content="0;url=/\?sesion=cerrada"'))
 # Los comodines css/ y js/ NO deben dejar pasar rutas protegidas ni variantes de /salir
 foreach ($ruta in '/css/../Usuarios/Consultar', '/js/../Usuarios/Consultar', '/css/%2e%2e/Usuarios/Consultar', '/css/..%2fUsuarios/Consultar', '/js/%2e%2e%2fUsuarios/Consultar', '/salir/', '/salir/x', '/salir/../Usuarios/Consultar', '/css/../Inicio/Salir') {
     Prueba "GET $ruta (evasion)" @('401', '404') @('--path-as-is', "$Base$ruta")

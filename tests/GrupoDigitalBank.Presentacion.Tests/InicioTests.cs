@@ -126,7 +126,24 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         respuesta.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         respuesta.Headers.WwwAuthenticate.ToString().ShouldBe("Basic realm=\"restricted\"");
         respuesta.Headers.CacheControl!.NoStore.ShouldBeTrue();
-        (await respuesta.Content.ReadAsStringAsync()).ShouldContain("Sesión cerrada");
+        var html = await respuesta.Content.ReadAsStringAsync();
+        html.ShouldContain("Sesión cerrada");
+        html.ShouldContain("http-equiv=\"refresh\" content=\"0;url=/?sesion=cerrada\"");
+    }
+
+    [Fact]
+    public async Task TrasCerrarSesionElInicioPublicoMuestraElAviso()
+    {
+        using var http = fabrica.CreateClient();
+
+        var con = await http.GetStringAsync("/?sesion=cerrada");
+        var sin = await http.GetStringAsync("/");
+        var otro = await http.GetStringAsync("/?sesion=<script>alert(1)</script>");
+
+        con.ShouldContain("Sesión cerrada. Para volver a entrar");
+        sin.ShouldNotContain("Sesión cerrada. Para volver a entrar");
+        otro.ShouldNotContain("Sesión cerrada. Para volver a entrar");
+        otro.ShouldNotContain("<script>alert(1)</script>");
     }
 
     [Fact]
