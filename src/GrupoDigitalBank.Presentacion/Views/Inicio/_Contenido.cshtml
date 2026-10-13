@@ -72,7 +72,8 @@
         <li><strong>Rol de mínimo privilegio.</strong> La aplicación se conecta con un rol que solo puede <em>ejecutar</em> la función CRUD: no puede leer la tabla, borrar ni crear objetos.</li>
         <li><strong>Migraciones propias con suma de verificación.</strong> Scripts SQL numerados; si uno ya aplicado cambia, el migrador aborta.</li>
         <li><strong>«Hoy» es la fecha de Bogotá.</strong> La validación de la fecha de nacimiento usa la zona <code>America/Bogota</code>, aunque el servidor y la base estén en UTC.</li>
-        <li><strong>Paginación en el servidor.</strong> La grilla pide una página a la base; no carga todos los usuarios.</li>
+        <li><strong>Paginación en el servidor.</strong> La grilla pide una página a la base (5 por página); no carga todos los usuarios.</li>
+        <li><strong>Edad y fecha de registro calculadas en Negocios.</strong> La edad no se guarda (cambia cada día): Negocios la calcula con la fecha de Bogotá y entrega la fecha de registro en esa hora.</li>
         <li><strong>Cabeceras de seguridad estrictas.</strong> CSP sin código ni estilos en línea, HSTS y el resto de cabeceras, aplicadas en el proxy.</li>
         <li><strong>Autenticación mínima: Basic Auth en el proxy.</strong> Suficiente para proteger la demostración; la decisión queda registrada como provisional (ver <a href="#limites">Límites</a>).</li>
     </ul>
@@ -86,6 +87,7 @@
         <div><h3>Pruebas</h3><p class="etiquetas"><span>xUnit</span><span>Shouldly</span><span>NSubstitute</span><span>Testcontainers</span><span>WebApplicationFactory</span></p></div>
         <div><h3>Contenedores y entrega</h3><p class="etiquetas"><span>Docker Compose</span><span>Caddy</span><span>nginx</span><span>GitHub Actions</span><span>GHCR</span></p></div>
         <div><h3>Calidad y seguridad</h3><p class="etiquetas"><span>SonarCloud</span><span>Trivy</span><span>Dependabot</span><span>ShellCheck</span><span>hadolint</span></p></div>
+        <div><h3>Apoyo de IA y diagramas</h3><p class="etiquetas"><span>Claude Code</span><span>CLAUDE.md</span><span>Skills de Claude</span><span>Excalidraw</span><span>Mermaid</span></p></div>
         <div><h3>Infraestructura</h3><p class="etiquetas"><span>VPS (Contabo)</span><span>Cloudflare</span><span>Backblaze B2</span><span>UptimeRobot</span><span>Healthchecks.io</span></p></div>
     </div>
 </section>
@@ -93,8 +95,8 @@
 <section id="calidad">
     <h2>5. Calidad: cómo se sabe que funciona</h2>
     <ul>
-        <li><strong>Más de 300 pruebas automáticas</strong>: unitarias, de vistas con el pipeline MVC real, de integración contra un PostgreSQL real (en un contenedor) y de contrato SOAP contra el servicio real.</li>
-        <li><strong>Cobertura</strong> de la capa de negocios del 100 % y de la presentación cercana al 95 %; el CI exige un mínimo del 80 % en negocios.</li>
+        <li><strong>357 pruebas automáticas</strong>: unitarias, de vistas con el pipeline MVC real, de integración contra un PostgreSQL real (en un contenedor) y de contrato SOAP contra el servicio real.</li>
+        <li><strong>Cobertura</strong> de la capa de negocios del 100 % y de la presentación cercana al 96 %; el CI exige un mínimo del 80 % en negocios.</li>
         <li><strong>Pruebas de mutación manuales</strong>: se rompe el código a propósito (decenas de veces) para comprobar que alguna prueba lo detecta. Todas las mutaciones aplicadas fueron detectadas.</li>
         <li><strong>Integración continua</strong> en cada cambio: compilación sin advertencias (<code>TreatWarningsAsErrors</code>), formato, pruebas, validación de los <em>compose</em>, construcción de imágenes, análisis de vulnerabilidades y SonarCloud.</li>
         <li><strong>El despliegue también se prueba</strong>: un servidor simulado en Docker ejercita la llave restringida, los paquetes maliciosos, el rollback y las copias de seguridad.</li>
@@ -136,6 +138,7 @@
         <li><strong>Plan por fases</strong> con criterios de aceptación verificables; el avance se marca en el propio plan.</li>
         <li><strong>Flujo de ramas</strong> <em>feature → develop → main</em>: todo cambio entra por Pull Request (squash a <code>develop</code>, <em>merge commit</em> a <code>main</code>), con commits convencionales en español.</li>
         <li><strong>Decisiones escritas:</strong> 17 ADR, y un ADR aceptado no se edita: si la decisión cambia, se escribe otro que lo reemplaza.</li>
+        <li><strong>Con apoyo de IA, validado por pruebas:</strong> el desarrollo se hizo con <strong>Claude Code</strong> (Anthropic) dentro de VS Code para el diagnóstico, la implementación por fases, las pruebas, la documentación y la operación del servidor. El archivo <code>CLAUDE.md</code> del repositorio le da el contexto del proyecto (arquitectura, convenciones y lo que nunca se debe hacer), y se apoyó en <strong>skills de Claude</strong> (<em>infraestructura-vps</em>, con el contexto del servidor compartido, <em>archify</em>, para diagramas, y <em>notion-centro-de-edgar</em>, para registrar accesos sin guardar secretos). Los gráficos se dibujaron con <strong>Excalidraw</strong>. Nada se fusionó sin pasar por las pruebas, el CI y la revisión de una persona.</li>
         <li><strong>Evidencia, no suposiciones:</strong> cada afirmación importante se verificó con una prueba o contra el servidor real antes de darla por buena.</li>
     </ul>
 </section>
