@@ -58,6 +58,21 @@ public class UsuarioRepositorioIntegracionTests(PostgresFixture bd) : IClassFixt
     }
 
     [Fact]
+    public async Task CrearRegistraLaFechaDeAltaYLaModificacionNoLaCambia()
+    {
+        var antes = DateTime.UtcNow.AddMinutes(-1);
+        var creado = await _repositorio.CrearAsync(Nuevo());
+
+        creado.FechaRegistro.Kind.ShouldBe(DateTimeKind.Utc);
+        creado.FechaRegistro.ShouldBeInRange(antes, DateTime.UtcNow.AddMinutes(1));
+
+        creado.Nombre = NombreUnico("Cambio");
+        var modificado = await _repositorio.ModificarAsync(creado);
+
+        modificado!.FechaRegistro.ShouldBe(creado.FechaRegistro);
+    }
+
+    [Fact]
     public async Task CrearConservaLaFechaDeNacimientoSinDesfaseDeZonaHoraria()
     {
         var creado = await _repositorio.CrearAsync(Nuevo(fecha: new DateTime(1985, 12, 31)));

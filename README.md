@@ -25,6 +25,11 @@ Navegador ──HTTPS──▶ Caddy ──▶ Presentación (ASP.NET Core MVC)
 ├── src/
 │   ├── GrupoDigitalBank.Negocios/  # Contratos · Servicios · Validacion · Datos
 │   └── GrupoDigitalBank.Presentacion/  # Controllers · Models · Servicios (cliente SOAP) · Views
+├── tests/                          # unitarias, de vistas, de integración (PostgreSQL real) y de contrato SOAP
+├── scripts/                        # verificación, cobertura, pruebas de acceso, navegador, migrador y despliegue
+├── docs/                           # arquitectura, plan, runbook, backups, servidor y ADR
+├── docker/dev/                     # solo desarrollo: borde con HTTPS local
+├── .github/workflows/              # CI y entrega (ci.yml, deploy.yml)
 ├── docker-compose.yml              # db + negocios + web + proxy (Caddy); no publica ningún puerto
 ├── docker-compose.prod.yml         # override de producción: imágenes de GHCR, red compartida del VPS
 ├── Caddyfile                       # proxy interno: Basic Auth, cabeceras y CSP (sin TLS; ver ADR 0014)
@@ -65,9 +70,9 @@ Desarrollo local (modos A y B, con `docker-compose.dev.yml`) y pruebas: ver `CLA
 ## Decisiones técnicas
 
 - **CoreWCF (SOAP, BasicHttpBinding):** expone la lógica de negocio como servicio con contrato explícito y versionable, manteniendo WCF como estándar de integración sin depender de .NET Framework. Los errores viajan como `FaultException<ErrorServicio>`.
-- **ASP.NET Core MVC:** separación clara vista/controlador/modelo, validación con DataAnnotations en servidor y plantillas Razor simples para dos pantallas.
+- **ASP.NET Core MVC:** separación clara vista/controlador/modelo, validación con DataAnnotations en servidor y plantillas Razor simples (inicio, panel con la grilla, formulario y documentación).
 - **PostgreSQL + Npgsql (sin ORM):** control total del SQL y de los tipos; el CRUD se concentra en una función almacenada con parámetro de operación, lo que reduce superficie de SQL en la aplicación y evita inyección (parámetros tipados).
 - **Validación en tres niveles:** DataAnnotations en presentación (retroalimentación inmediata), `UsuarioValidador` en negocios (fuente de verdad) y `CHECK` en la BD (sexo, fecha y nombre no vacío).
 - **Docker Compose + Caddy interno:** despliegue reproducible; Caddy aplica Basic Auth, cabeceras de seguridad y CSP, y el TLS lo termina el gateway de plataforma del VPS tras Cloudflare ([ADR 0014](docs/adr/0014-despliegue-detras-del-gateway-de-plataforma.md)).
-- **Inicio público (`/`):** una página que explica cómo se desarrolló la solución (arquitectura e infraestructura con diagramas, enlaces al repositorio y a la documentación), con un enlace a la aplicación y «Cerrar sesión» en el menú ([ADR 0016](docs/adr/0016-inicio-publico-y-cierre-de-sesion.md)). La grilla está en `/Usuarios/Consultar`.
+- **Inicio público (`/`):** una página que explica cómo se desarrolló la solución (arquitectura e infraestructura con diagramas, enlaces al repositorio y a la documentación), con un enlace a la aplicación y «Cerrar sesión» en el menú ([ADR 0016](docs/adr/0016-inicio-publico-y-cierre-de-sesion.md)). Con sesión, «Gestión de usuarios» (`/inicio`) muestra la grilla paginada de 5 en 5, con Edad y Fecha de registro e iconos de acción ([ADR 0017](docs/adr/0017-panel-de-usuarios-edad-y-fecha-de-registro.md)).
 - **.NET 10 (LTS):** soporte hasta noviembre de 2028.

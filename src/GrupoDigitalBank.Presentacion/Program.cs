@@ -50,6 +50,9 @@ app.UseRouting();
 app.MapMethods("/health", ["GET", "HEAD"], () => Results.Text("ok"));
 // Inicio publico en "/" y cierre de sesion en "/salir" (ADR 0016); el resto de la aplicacion sigue detras del Basic Auth del proxy
 app.MapControllerRoute("salir", "salir", new { controller = "Inicio", action = "Salir" });
+// Inicio CON sesion (grilla): el proxy lo protege; "/" es el inicio publico
+app.MapControllerRoute("panel", "inicio", new { controller = "Inicio", action = "Panel" });
+app.MapControllerRoute("acerca", "acerca", new { controller = "Inicio", action = "Acerca" });
 app.MapControllerRoute("default", "{controller=Inicio}/{action=Index}/{id?}");
 
 app.Run();

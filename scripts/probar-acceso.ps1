@@ -50,51 +50,55 @@ $basic = [Convert]::ToBase64String((New-Object Text.UTF8Encoding($false)).GetByt
 $auth = @('-H', "Authorization: Basic $basic")
 
 Write-Host "`n== Credenciales ==" -ForegroundColor Cyan
-Prueba 'GET /Usuarios/Consultar sin credenciales' @('401') @("$Base/Usuarios/Consultar")
-Prueba 'GET /Usuarios/Consultar con clave incorrecta' @('401') @('-H', ('Authorization: Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${Usuario}:clave-equivocada-xyz"))), "$Base/Usuarios/Consultar")
-Prueba 'GET /Usuarios/Consultar con usuario incorrecto' @('401') @('-H', ('Authorization: Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("otro:$claveTexto"))), "$Base/Usuarios/Consultar")
-Prueba 'GET /Usuarios/Consultar con credenciales correctas' @('200') ($auth + "$Base/Usuarios/Consultar")
+Prueba 'GET /inicio sin credenciales' @('401') @("$Base/inicio")
+Prueba 'GET /inicio con clave incorrecta' @('401') @('-H', ('Authorization: Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${Usuario}:clave-equivocada-xyz"))), "$Base/inicio")
+Prueba 'GET /inicio con usuario incorrecto' @('401') @('-H', ('Authorization: Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("otro:$claveTexto"))), "$Base/inicio")
+Prueba 'GET /inicio con credenciales correctas' @('200') ($auth + "$Base/inicio")
 Prueba 'GET /Usuarios/Registrar con credenciales' @('200') ($auth + "$Base/Usuarios/Registrar")
 
 Write-Host "`n== Todo lo demas exige credenciales ==" -ForegroundColor Cyan
-foreach ($ruta in '/Usuarios/Consultar', '/Usuarios/Registrar', '/Usuarios/Editar/1', '/Inicio', '/Inicio/Index', '/Inicio/Salir', '/Usuarios') { Prueba "GET $ruta" @('401') @("$Base$ruta") }
+foreach ($ruta in '/Usuarios/Registrar', '/Usuarios/Editar/1', '/Inicio', '/Inicio/Index', '/Inicio/Salir', '/inicio', '/acerca', '/Inicio/Panel', '/Inicio/Acerca', '/Usuarios') { Prueba "GET $ruta" @('401') @("$Base$ruta") }
 foreach ($m in 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS') { Prueba "$m /Usuarios/Eliminar/1" @('401') @('-X', $m, "$Base/Usuarios/Eliminar/1") }
 
 Write-Host "`n== Rutas publicas del inicio (ADR 0016): solo ellas, y sin datos ==" -ForegroundColor Cyan
 Prueba 'GET / (inicio) sin credenciales' @('200') @("$Base/")
 Prueba 'GET /css/site.css sin credenciales' @('200') @("$Base/css/site.css")
 Prueba 'GET /js/site.js sin credenciales' @('200') @("$Base/js/site.js")
+Prueba 'GET /?sesion=cerrada (inicio tras cerrar sesion) sin credenciales' @('200') @("$Base/?sesion=cerrada")
 $inicio = (& curl.exe -s $curlInseguro --max-time 20 "$Base/") -join "`n"
 Check 'El inicio explica la solucion y no muestra datos de usuarios' (($inicio -match 'Arquitectura') -and ($inicio -notmatch '/Usuarios/Editar/')) 'sin enlaces de edicion de la grilla'
-$cuerpoQuery = (& curl.exe -s $curlInseguro --max-time 20 "$Base/?x=/Usuarios/Consultar") -join "`n"
-Check 'GET /?x=/Usuarios/Consultar sigue siendo solo el inicio' (($cuerpoQuery -match 'Arquitectura') -and ($cuerpoQuery -notmatch '/Usuarios/Editar/'))
+$cuerpoQuery = (& curl.exe -s $curlInseguro --max-time 20 "$Base/?x=/inicio") -join "`n"
+Check 'GET /?x=/inicio sigue siendo solo el inicio' (($cuerpoQuery -match 'Arquitectura') -and ($cuerpoQuery -notmatch '/Usuarios/Editar/'))
 $rs = (& curl.exe -s $curlInseguro -D - -o NUL --max-time 20 "$Base/salir") -join "`n"
 Check 'GET /salir: 401 con el desafio Basic del mismo realm y sin cache' (($rs -match '(?m)^HTTP/\S+ 401') -and ($rs -match 'WWW-Authenticate: Basic realm="restricted"') -and ($rs -match '(?im)^Cache-Control: no-store'))
 $rsc = (& curl.exe -s $curlInseguro --max-time 20 "$Base/salir") -join "`n"
-Check 'La pagina de /salir dice que la sesion se cerro' ($rsc -match 'Sesi.{1,2}n cerrada')
+Check 'La pagina de /salir dice que la sesion se cerro y lleva al inicio' (($rsc -match 'Sesi.{1,2}n cerrada') -and ($rsc -match 'http-equiv="refresh" content="0;url=/\?sesion=cerrada"'))
 # Los comodines css/ y js/ NO deben dejar pasar rutas protegidas ni variantes de /salir
-foreach ($ruta in '/css/../Usuarios/Consultar', '/js/../Usuarios/Consultar', '/css/%2e%2e/Usuarios/Consultar', '/css/..%2fUsuarios/Consultar', '/js/%2e%2e%2fUsuarios/Consultar', '/salir/', '/salir/x', '/salir/../Usuarios/Consultar', '/css/../Inicio/Salir') {
+foreach ($ruta in '/css/../inicio', '/js/../inicio', '/css/%2e%2e/inicio', '/css/..%2finicio', '/js/%2e%2e%2finicio', '/salir/', '/salir/x', '/salir/../inicio', '/css/../Inicio/Salir') {
     Prueba "GET $ruta (evasion)" @('401', '404') @('--path-as-is', "$Base$ruta")
 }
-$bypass = (& curl.exe -s $curlInseguro --max-time 20 --path-as-is "$Base/css/../Usuarios/Consultar") -join "`n"
+$bypass = (& curl.exe -s $curlInseguro --max-time 20 --path-as-is "$Base/css/../inicio") -join "`n"
 Check 'Ninguna evasion devuelve la grilla' (($bypass -notmatch '/Usuarios/Editar/') -and ($bypass -notmatch 'Gesti.n de usuarios'))
-Prueba 'GET //Usuarios/Consultar (doble barra)' @('401') @("$Base//Usuarios/Consultar")
+Prueba 'GET //inicio (doble barra)' @('401') @("$Base//inicio")
 Prueba 'POST /salir' @('401', '404', '405') @('-X', 'POST', "$Base/salir")
+
+Prueba 'GET /inicio con credenciales (inicio con sesion y grilla)' @('200') ($auth + "$Base/inicio")
+Prueba 'GET /acerca con credenciales' @('200') ($auth + "$Base/acerca")
 
 Write-Host "`n== /health abierto, pero SOLO /health ==" -ForegroundColor Cyan
 Prueba 'GET /health sin credenciales' @('200') @("$Base/health")
 Prueba 'GET /HEALTH (mayusculas)' @('200') @("$Base/HEALTH")
-Prueba 'GET /health?x=/Usuarios/Consultar' @('200') @("$Base/health?x=/Usuarios/Consultar")
+Prueba 'GET /health?x=/inicio' @('200') @("$Base/health?x=/inicio")
 foreach ($ruta in '/health/', '/health/x', '/healthz', '/health.json', '/healthcheck', '/health;x') { Prueba "GET $ruta" @('401') @("$Base$ruta") }
-Prueba 'GET /health/../Usuarios/Consultar' @('401') @('--path-as-is', "$Base/health/../Usuarios/Consultar")
-Prueba 'GET //Usuarios/Consultar (doble barra)' @('401') @("$Base//Usuarios/Consultar")
+Prueba 'GET /health/../inicio' @('401') @('--path-as-is', "$Base/health/../inicio")
+Prueba 'GET //inicio (doble barra)' @('401') @("$Base//inicio")
 # Caddy trata //health como /health y la app no tiene esa ruta: 404, sin exponer nada protegido
 Prueba 'GET //health (doble barra)' @('404', '401') @("$Base//health")
-$cuerpo = (& curl.exe -s $curlInseguro --max-time 20 "$Base/health?x=/Usuarios/Consultar")
+$cuerpo = (& curl.exe -s $curlInseguro --max-time 20 "$Base/health?x=/inicio")
 Check '/health devuelve solo "ok" (no contenido protegido)' ($cuerpo -eq 'ok') "cuerpo=[$cuerpo]"
 
 Write-Host "`n== Cabeceras ==" -ForegroundColor Cyan
-$cab = (& curl.exe -s $curlInseguro -D - -o NUL --max-time 20 "$Base/Usuarios/Consultar") -join "`n"
+$cab = (& curl.exe -s $curlInseguro -D - -o NUL --max-time 20 "$Base/inicio") -join "`n"
 Check 'responde 401 con desafio Basic' ($cab -match '401' -and $cab -match 'WWW-Authenticate: Basic')
 if ($Base -like 'https://*') {
     $http = $Base -replace '^https', 'http'
@@ -112,7 +116,7 @@ function Cabeceras([string[]]$argumentos) {
     $h
 }
 $respuestas = [ordered]@{
-    '401 sin credenciales (GET protegido)' = @("$Base/Usuarios/Consultar")
+    '401 sin credenciales (GET protegido)' = @("$Base/inicio")
     '200 inicio publico (GET /)'     = @("$Base/")
     '401 /salir (cierre de sesion)'  = @("$Base/salir")
     '401 sin credenciales (POST)'    = @('-X', 'POST', "$Base/Usuarios/Eliminar/1")
@@ -162,10 +166,10 @@ function Enviar($ruta, [string[]]$campos) {
     & curl.exe -s $curlInseguro -b $cookies -c $cookies @auth -L --max-time 20 @datos --data-urlencode "__RequestVerificationToken=$t" "$Base$ruta"
 }
 try {
-    $antes = @(Ids (Pagina '/Usuarios/Consultar'))
+    $antes = @(Ids (Pagina '/inicio?tamano=50'))
     $r = Enviar '/Usuarios/Registrar' @('Nombre=Prueba Proxy', 'FechaNacimiento=1990-05-20', 'Sexo=F')
     Check 'Registrar un usuario (antiforgery + cookies via proxy)' ($r -match 'Prueba Proxy' -and $r -match 'registrado correctamente')
-    $despues = @(Ids (Pagina '/Usuarios/Consultar'))
+    $despues = @(Ids (Pagina '/inicio?tamano=50'))
     $nuevo = $despues | Where-Object { $antes -notcontains $_ } | Select-Object -First 1
     Check 'Aparece en la grilla con id nuevo' ($null -ne $nuevo) "id=$nuevo"
     $r = Enviar '/Usuarios/Editar' @("Id=$nuevo", 'Nombre=Prueba Proxy Modificada', 'FechaNacimiento=1991-06-21', 'Sexo=F')
@@ -173,7 +177,7 @@ try {
     $r = Enviar '/Usuarios/Registrar' @('Nombre=', 'FechaNacimiento=1990-05-20', 'Sexo=F')
     Check 'Validacion: nombre vacio rechazado' ($r -match 'El nombre es obligatorio')
     $null = Enviar '/Usuarios/Eliminar' @("id=$nuevo")
-    $final = @(Ids (Pagina '/Usuarios/Consultar'))
+    $final = @(Ids (Pagina '/inicio?tamano=50'))
     Check 'Eliminar: quedan exactamente los usuarios previos' (($final -join ',') -eq ($antes -join ',')) "previos=[$($antes -join ',')] ahora=[$($final -join ',')]"
 }
 finally {

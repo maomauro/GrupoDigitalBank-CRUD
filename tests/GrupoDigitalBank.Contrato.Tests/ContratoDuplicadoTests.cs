@@ -40,7 +40,7 @@ public sealed class ContratoDuplicadoTests
         var presentacion = DescribirDatos(typeof(PresentacionServicios.UsuarioDto));
 
         presentacion.ShouldBe(negocios);
-        negocios.Count(l => l.StartsWith("campo ", StringComparison.Ordinal)).ShouldBe(4);
+        negocios.Count(l => l.StartsWith("campo ", StringComparison.Ordinal)).ShouldBe(6);
     }
 
     [Fact]

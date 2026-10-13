@@ -54,11 +54,11 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
 
     [Theory]
     [MemberData(nameof(NombresMaliciosos))]
-    public async Task ConsultarNoGeneraManejadoresEnLineaConNombresMaliciosos(string nombre)
+    public async Task LaGrillaNoGeneraManejadoresEnLineaConNombresMaliciosos(string nombre)
     {
         using var http = ClienteConUsuario(nombre);
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         TieneManejadorEnLinea(html).ShouldBeFalse("la vista no debe usar atributos de evento en linea");
         html.ShouldNotContain("<script>alert", Case.Insensitive);
@@ -66,11 +66,11 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     }
 
     [Fact]
-    public async Task ConsultarMuestraElNombreMaliciosoComoTextoCodificado()
+    public async Task LaGrillaMuestraElNombreMaliciosoComoTextoCodificado()
     {
         using var http = ClienteConUsuario("x');alert(1);//");
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         // En la celda el apostrofe sale como entidad HTML: se ve como texto, no se ejecuta
         html.ShouldContain("<td>x&#x27;);alert(1);//</td>");
@@ -81,7 +81,7 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     {
         using var http = ClienteConUsuario("Ana Perez");
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         html.ShouldContain("data-confirmar=\"");
         html.ShouldContain("Ana Perez");
@@ -127,9 +127,9 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
 
     public static TheoryData<string, string> PaginasParaLaCsp => new()
     {
-        { "con-usuario", "/Usuarios/Consultar" },
-        { "vacia", "/Usuarios/Consultar" },
-        { "con-error", "/Usuarios/Consultar" },
+        { "con-usuario", "/inicio" },
+        { "vacia", "/inicio" },
+        { "con-error", "/inicio" },
         { "con-usuario", "/Usuarios/Registrar" },
         { "con-usuario", "/Usuarios/Editar/7" },
         { "con-usuario", "/Usuarios/Error" }
@@ -174,7 +174,7 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     {
         using var http = ClienteVacio();
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         html.ShouldNotContain("alerta error", Case.Insensitive);
         html.ShouldNotContain("data-valmsg-summary");
@@ -185,7 +185,7 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     {
         using var http = ClienteQueFalla();
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         html.ShouldContain("class=\"alerta error\"");
         html.ShouldContain("<li>No fue posible comunicarse con el servicio de negocios.</li>");
@@ -227,7 +227,7 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
     {
         using var http = ClienteConUsuario("Ana Perez");
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
         var respuesta = await http.GetAsync("/js/site.js");
 
         html.ShouldContain("src=\"/js/site.js\"");

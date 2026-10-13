@@ -8,10 +8,10 @@ namespace GrupoDigitalBank.Negocios.Datos;
 public sealed class UsuarioRepositorio(NpgsqlDataSource dataSource) : IUsuarioRepositorio
 {
     private const string Sql =
-        "SELECT id, nombre, fecha_nacimiento, sexo FROM fn_usuario_crud(@op, @id, @nombre, @fecha, @sexo)";
+        "SELECT id, nombre, fecha_nacimiento, sexo, fecha_registro FROM fn_usuario_crud(@op, @id, @nombre, @fecha, @sexo)";
 
     private const string SqlPagina =
-        "SELECT id, nombre, fecha_nacimiento, sexo, total FROM fn_usuario_pagina(@limite, @desplazamiento)";
+        "SELECT id, nombre, fecha_nacimiento, sexo, fecha_registro, total FROM fn_usuario_pagina(@limite, @desplazamiento)";
 
     public async Task<UsuarioDto> CrearAsync(UsuarioDto usuario, CancellationToken ct = default)
         => (await EjecutarAsync("C", null, usuario, ct)).Single();
@@ -33,7 +33,7 @@ public sealed class UsuarioRepositorio(NpgsqlDataSource dataSource) : IUsuarioRe
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            total = reader.GetInt64(4);
+            total = reader.GetInt64(5);
             // Pagina fuera de rango o tabla vacia: una sola fila con id nulo que solo trae el total
             if (reader.IsDBNull(0)) continue;
             usuarios.Add(Mapear(reader));
@@ -63,12 +63,13 @@ public sealed class UsuarioRepositorio(NpgsqlDataSource dataSource) : IUsuarioRe
         return resultado;
     }
 
-    // Las columnas 0 a 3 son id, nombre, fecha_nacimiento y sexo en ambas consultas
+    // Las columnas 0 a 4 son id, nombre, fecha_nacimiento, sexo y fecha_registro (UTC) en ambas consultas
     private static UsuarioDto Mapear(NpgsqlDataReader reader) => new()
     {
         Id = reader.GetInt32(0),
         Nombre = reader.GetString(1),
         FechaNacimiento = reader.GetFieldValue<DateOnly>(2).ToDateTime(TimeOnly.MinValue),
-        Sexo = reader.GetString(3).Trim()
+        Sexo = reader.GetString(3).Trim(),
+        FechaRegistro = reader.GetFieldValue<DateTime>(4)
     };
 }
