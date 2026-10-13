@@ -99,3 +99,7 @@ header a.app:hover { color: #fff; text-decoration: underline; }
 a.icono-boton:not(.boton) { width: 2rem; height: 2rem; border-radius: 4px; color: #0b6aa2; border: 1px solid #0b6aa2; }
 a.icono-boton:not(.boton):hover { background: #0b6aa2; color: #fff; }
 button.peligro.icono-boton { width: 2rem; height: 2rem; padding: 0; }
+
+/* Edad calculada bajo la fecha de nacimiento */
+.edad-calculada { align-self: flex-start; padding: .15rem .7rem; border-radius: 999px; background: #e6f2fa; color: #0b6aa2; font-size: .9rem; font-weight: 600; border: 1px solid #b9d9ee; }
+.edad-calculada[hidden] { display: none; }

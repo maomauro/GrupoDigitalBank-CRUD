@@ -350,6 +350,21 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
+    public async Task ElFormularioMuestraLaEdadCalculadaDeLaFechaDeNacimiento()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var html = await http.GetStringAsync("/Usuarios/Registrar");
+        var script = await http.GetStringAsync("/js/site.js");
+
+        html.ShouldContain("data-edad-destino=\"edad-calculada\"");
+        html.ShouldContain("id=\"edad-calculada\"");
+        html.ShouldNotContain("style=");
+        script.ShouldContain("America/Bogota");
+        script.ShouldContain("data-edad-destino");
+    }
+
+    [Fact]
     public async Task ElTituloDelMenuAbreLaExplicacionPublicaSinSesionYLaProtegidaConSesion()
     {
         using var http = ClienteConGrilla(out _);

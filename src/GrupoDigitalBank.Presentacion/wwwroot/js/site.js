@@ -55,3 +55,39 @@ document.querySelectorAll("[data-autocierre]").forEach(function (aviso) {
         window.setTimeout(function () { aviso.remove(); }, 400);
     }, milisegundos);
 });
+
+// Edad calculada junto a la fecha de nacimiento: data-edad-destino="id" en el input de fecha. "Hoy" es la fecha de
+// America/Bogota (como en Negocios), no la del equipo del usuario. Solo orienta; la validacion real es la del servidor.
+(function () {
+    var entrada = document.querySelector("input[data-edad-destino]");
+    if (entrada === null) return;
+    var destino = document.getElementById(entrada.getAttribute("data-edad-destino"));
+    if (destino === null) return;
+
+    function hoyEnBogota() {
+        var partes = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" })
+            .format(new Date()).split("-");
+        return { a: +partes[0], m: +partes[1], d: +partes[2] };
+    }
+
+    function actualizar() {
+        var v = /^(\d{4})-(\d{2})-(\d{2})$/.exec(entrada.value);
+        var hoy = hoyEnBogota();
+        var edad = null;
+        if (v !== null && +v[1] >= 1900) {
+            edad = hoy.a - +v[1];
+            if (hoy.m < +v[2] || (hoy.m === +v[2] && hoy.d < +v[3])) edad--;
+        }
+        if (edad === null || edad < 0) {
+            destino.hidden = true;
+            destino.textContent = "";
+            return;
+        }
+        destino.textContent = "Edad: " + edad + (edad === 1 ? " año" : " años");
+        destino.hidden = false;
+    }
+
+    entrada.addEventListener("input", actualizar);
+    entrada.addEventListener("change", actualizar);
+    actualizar();
+})();

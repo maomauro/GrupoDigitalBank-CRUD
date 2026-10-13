@@ -10,7 +10,8 @@
 </div>
 <div class="campo">
     <label asp-for="FechaNacimiento"></label>
-    <input asp-for="FechaNacimiento" type="date" />
+    <input asp-for="FechaNacimiento" type="date" data-edad-destino="edad-calculada" />
+    <span id="edad-calculada" class="edad-calculada" role="status" aria-live="polite" hidden></span>
     <span asp-validation-for="FechaNacimiento" class="msg-error"></span>
 </div>
 <div class="campo">
