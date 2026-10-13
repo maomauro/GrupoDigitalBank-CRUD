@@ -19,6 +19,16 @@ public sealed class PaginaViewModel
     public int Total { get; init; }
 
     public int TotalPaginas => Math.Max(1, (Total + Tamano - 1) / Tamano);
+    public bool HayVariasPaginas => TotalPaginas > 1;
+
+    /// <summary>
+    /// Tamanos que tiene sentido ofrecer: ninguno mientras todo quepa en la primera opcion; cada opcion mayor aparece
+    /// cuando los usuarios superan la anterior (10 -> con mas de 10, 25 -> con mas de 10, 50 -> con mas de 25).
+    /// </summary>
+    public IReadOnlyList<int> TamanosOfrecidos => Total <= Tamanos[0]
+        ? []
+        : Tamanos.Where((t, i) => i == 0 || Total > Tamanos[i - 1] || t == Tamano).ToList();
+
     public bool HayAnterior => Pagina > 1;
     public bool HaySiguiente => Pagina < TotalPaginas;
     public string TextoTotal => Total == 1 ? "1 usuario" : $"{Total} usuarios";

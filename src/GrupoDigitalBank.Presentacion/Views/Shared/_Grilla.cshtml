@@ -39,35 +39,45 @@ else
     </table>
 
     <nav class="paginacion" aria-label="Paginación">
-        <span>Página @Model.Pagina de @Model.TotalPaginas · @Model.TextoTotal</span>
-        @if (Model.HayAnterior)
+        @if (Model.HayVariasPaginas)
         {
-            <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="@(Model.Pagina - 1)" asp-route-tamano="@Model.Tamano" rel="prev">Anterior</a>
-        }
-        else
-        {
-            <span class="deshabilitado">Anterior</span>
-        }
-        @if (Model.HaySiguiente)
-        {
-            <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="@(Model.Pagina + 1)" asp-route-tamano="@Model.Tamano" rel="next">Siguiente</a>
-        }
-        else
-        {
-            <span class="deshabilitado">Siguiente</span>
-        }
-        <span class="tamanos">Por página:
-            @foreach (var t in PaginaViewModel.Tamanos)
+            <span>Página @Model.Pagina de @Model.TotalPaginas · @Model.TextoTotal</span>
+            if (Model.HayAnterior)
             {
-                if (t == Model.Tamano)
-                {
-                    <strong>@t</strong>
-                }
-                else
-                {
-                    <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="1" asp-route-tamano="@t">@t</a>
-                }
+                <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="@(Model.Pagina - 1)" asp-route-tamano="@Model.Tamano" rel="prev">Anterior</a>
             }
-        </span>
+            else
+            {
+                <span class="deshabilitado">Anterior</span>
+            }
+            if (Model.HaySiguiente)
+            {
+                <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="@(Model.Pagina + 1)" asp-route-tamano="@Model.Tamano" rel="next">Siguiente</a>
+            }
+            else
+            {
+                <span class="deshabilitado">Siguiente</span>
+            }
+        }
+        else
+        {
+            <span>@Model.TextoTotal</span>
+        }
+        @if (Model.TamanosOfrecidos.Count > 0)
+        {
+            <span class="tamanos">Por página:
+                @foreach (var t in Model.TamanosOfrecidos)
+                {
+                    if (t == Model.Tamano)
+                    {
+                        <strong>@t</strong>
+                    }
+                    else
+                    {
+                        <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="1" asp-route-tamano="@t">@t</a>
+                    }
+                }
+            </span>
+        }
     </nav>
 }

@@ -69,16 +69,29 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
     }
 
     [Fact]
-    public async Task ConUnaSolaPaginaNingunaDireccionEsUnEnlace()
+    public async Task ConUnaSolaPaginaNoSeMuestranLosControlesDePaginacion()
     {
         var (http, _) = Pagina(1, 10, 3, 3);
         using var _ = http;
 
         var html = await http.GetStringAsync("/Usuarios/Consultar");
 
-        html.ShouldContain("<span class=\"deshabilitado\">Anterior</span>");
-        html.ShouldContain("<span class=\"deshabilitado\">Siguiente</span>");
-        html.ShouldContain("Página 1 de 1");
+        html.ShouldContain("3 usuarios");
+        html.ShouldNotContain("Anterior");
+        html.ShouldNotContain("Siguiente");
+        html.ShouldNotContain("Página 1 de 1");
+        html.ShouldNotContain("Por página");
+    }
+
+    [Theory]
+    [InlineData(10, new int[0])]
+    [InlineData(11, new[] { 10, 25 })]
+    [InlineData(25, new[] { 10, 25 })]
+    [InlineData(26, new[] { 10, 25, 50 })]
+    public void LosTamanosSeOfrecenAMedidaQueCrecenLosUsuarios(int total, int[] esperados)
+    {
+        GrupoDigitalBank.Presentacion.Models.PaginaViewModel.Desde(new PaginaUsuarios { Usuarios = [], Total = total, Pagina = 1, Tamano = 10 })
+            .TamanosOfrecidos.ShouldBe(esperados);
     }
 
     [Fact]
