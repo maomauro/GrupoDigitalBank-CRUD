@@ -382,6 +382,18 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
+    public async Task ElIndiceDeLaExplicacionVaEnUnaLineaYQuedaFijoAlDesplazarse()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var css = await http.GetStringAsync("/css/site.css");
+
+        css.ShouldContain(".indice { position: sticky; top: 0;");
+        css.ShouldContain("flex-wrap: nowrap");
+        css.ShouldContain("scroll-margin-top");
+    }
+
+    [Fact]
     public async Task ElTituloDelMenuAbreLaExplicacionPublicaSinSesionYLaProtegidaConSesion()
     {
         using var http = ClienteConGrilla(out _);
