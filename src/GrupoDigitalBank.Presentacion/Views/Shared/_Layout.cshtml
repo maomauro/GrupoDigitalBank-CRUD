@@ -30,7 +30,7 @@
         }
     </header>
     <main>
-        @if (TempData["Mensaje"] is string mensaje) { <div class="alerta ok">@mensaje</div> }
+        @if (TempData["Mensaje"] is string mensaje) { <div class="alerta ok" role="status" data-autocierre="5000">@mensaje</div> }
         @if (TempData["Error"] is string error) { <div class="alerta error">@error</div> }
         @RenderBody()
     </main>

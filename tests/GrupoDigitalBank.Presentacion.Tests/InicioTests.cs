@@ -218,6 +218,43 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         script.ShouldContain("history.replaceState");
     }
 
+    [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"")]
+    private static partial Regex TokenAntiforgery();
+
+    [Fact]
+    public async Task ElAvisoDeUsuarioRegistradoSeDesvaneceA5SegundosPeroLosErroresSeQuedan()
+    {
+        var cliente = Substitute.For<IUsuarioClient>();
+        cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(new PaginaUsuarios { Usuarios = [], Total = 0, Pagina = 1, Tamano = 10 });
+        cliente.EliminarAsync(Arg.Any<int>()).Returns<Task>(_ => throw new ServicioException("No se pudo eliminar."));
+        using var http = fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
+        {
+            s.RemoveAll<IUsuarioClient>();
+            s.AddSingleton(cliente);
+        })).CreateClient();
+
+        // Registrar: el aviso de exito se oculta solo
+        var token = TokenAntiforgery().Match(await http.GetStringAsync("/Usuarios/Registrar")).Groups[1].Value;
+        var registro = await http.PostAsync("/Usuarios/Registrar", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Nombre"] = "Ana Torres",
+            ["FechaNacimiento"] = "1990-05-20",
+            ["Sexo"] = "F",
+            ["__RequestVerificationToken"] = token
+        }));
+        var html = await registro.Content.ReadAsStringAsync();
+        html.ShouldContain("data-autocierre=\"5000\">Usuario registrado correctamente.");
+
+        // Un error NO se oculta solo: hay que poder leerlo
+        token = TokenAntiforgery().Match(await http.GetStringAsync("/Usuarios/Registrar")).Groups[1].Value;
+        var eliminar = await http.PostAsync("/Usuarios/Eliminar/7", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = token }));
+        var conError = await eliminar.Content.ReadAsStringAsync();
+        conError.ShouldContain("No se pudo eliminar.");
+        conError.ShouldContain("class=\"alerta error\"");
+        conError.ShouldNotContain("class=\"alerta error\" role=\"alert\" data-autocierre");
+        conError.ShouldNotContain("data-autocierre=\"5000\">No se pudo eliminar.");
+    }
+
     [Fact]
     public async Task ElAvisoDeSesionCerradaSeDesvaneceSoloALos5Segundos()
     {
