@@ -150,8 +150,8 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
             var menu = Cabecera(await (await http.GetAsync(ruta)).Content.ReadAsStringAsync());
 
             menu.ShouldContain("Grupo Digital Bank", customMessage: ruta);
-            menu.ShouldContain("Gestión de usuarios", customMessage: ruta);
             menu.ShouldContain("Iniciar sesión", customMessage: ruta);
+            menu.ShouldNotContain("Gestión de usuarios", customMessage: ruta);
             menu.ShouldNotContain("Cerrar sesión", customMessage: ruta);
             menu.ShouldNotContain(">Inicio</a>", customMessage: ruta);
         }
@@ -166,12 +166,12 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         {
             var menu = Cabecera(await (await http.GetAsync(ruta)).Content.ReadAsStringAsync());
 
-            menu.ShouldContain("Grupo Digital Bank", customMessage: ruta);
-            menu.ShouldContain("Gestión de usuarios", customMessage: ruta);
-            menu.ShouldContain("href=\"/inicio\"", customMessage: ruta);
+            menu.ShouldContain("class=\"marca\" href=\"/acerca\"", customMessage: ruta);
+            menu.ShouldContain("class=\"app\" href=\"/inicio\">Gestión de usuarios</a>", customMessage: ruta);
             menu.ShouldContain("href=\"/salir\"", customMessage: ruta);
             menu.ShouldContain("Cerrar sesión", customMessage: ruta);
             menu.ShouldNotContain("Iniciar sesión", customMessage: ruta);
+            menu.ShouldNotContain(">Inicio</a>", customMessage: ruta);
         }
     }
 
