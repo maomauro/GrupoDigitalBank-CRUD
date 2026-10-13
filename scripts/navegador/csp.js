@@ -83,6 +83,8 @@ async function probarRuta(browser, ruta) {
 async function regresionH1(browser) {
   const resultados = [];
   const payload = "x');alert(1);//";
+  // El formulario fuerza el nombre a mayusculas (ADR 0017): lo que se guarda y se muestra es esta version
+  const esperado = payload.toUpperCase();
   const page = await nuevaPagina(browser);
   const dialogos = [];
   let aceptar = false;
@@ -100,12 +102,14 @@ async function regresionH1(browser) {
   await page.evaluate(() => { document.querySelector('input[name="FechaNacimiento"]').value = '1990-01-01'; });
   await page.select('select[name="Sexo"]', 'M').catch(() => page.click('input[name="Sexo"][value="M"]'));
   await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click('button[type="submit"]')]);
+  // La grilla pagina de 5 en 5 y el usuario nuevo queda al final: se pide una pagina de 50 para encontrarlo
+  await page.goto(BASE + '/inicio?tamano=50', { waitUntil: 'networkidle0' });
   resultados.push(comprobar(dialogos.length === 0, 'H1: registrar el usuario con el nombre malicioso no abre ningun dialogo', `(${dialogos.length})`));
 
-  const fila = () => page.evaluateHandle(p => [...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent === p) || null, payload);
+  const fila = () => page.evaluateHandle(p => [...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent === p) || null, esperado);
   let f = await fila();
   resultados.push(
-    comprobar(f.asElement() !== null, 'H1: el nombre malicioso aparece en la grilla como TEXTO (no se ejecuto)', `(${payload})`),
+    comprobar(f.asElement() !== null, 'H1: el nombre malicioso aparece en la grilla como TEXTO (no se ejecuto)', `(${esperado})`),
     comprobar(dialogos.length === 0, 'H1: cargar la grilla con el nombre malicioso NO ejecuta alert(1)', `(dialogos: ${dialogos.length})`));
 
   // Clic en Eliminar y CANCELAR: debe haber exactamente un confirm con el nombre literal, y el usuario sigue ahi
@@ -113,7 +117,7 @@ async function regresionH1(browser) {
   await new Promise(r => setTimeout(r, 600));
   resultados.push(
     comprobar(dialogos.length === 1 && dialogos[0].tipo === 'confirm', 'H1: el clic en Eliminar abre UN solo dialogo y es un confirm (ningun alert)', JSON.stringify(dialogos.map(d => d.tipo))),
-    comprobar(dialogos[0]?.mensaje === `¿Eliminar a ${payload}?`, 'H1: el confirm muestra el nombre literal', `(${dialogos[0]?.mensaje})`));
+    comprobar(dialogos[0]?.mensaje === `¿Eliminar a ${esperado}?`, 'H1: el confirm muestra el nombre literal', `(${dialogos[0]?.mensaje})`));
   f = await fila();
   resultados.push(comprobar(f.asElement() !== null, 'H1: al CANCELAR el confirm el usuario NO se elimina'));
 

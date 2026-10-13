@@ -18,29 +18,12 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
         {
             await cliente.AgregarAsync(modelo.ADto());
             TempData["Mensaje"] = "Usuario registrado correctamente.";
-            return RedirectToAction(nameof(Consultar));
+            return RedirectToAction(nameof(InicioController.Panel), "Inicio");
         }
         catch (ServicioException ex)
         {
             AgregarErrores(ex);
             return View(modelo);
-        }
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Consultar(int pagina = 1, int tamano = PaginaViewModel.TamanoPorOmision)
-    {
-        // Lo que llega por la URL no es de fiar: se acota a lo que el servicio acepta en vez de mostrar un error
-        pagina = PaginaViewModel.NormalizarPagina(pagina);
-        tamano = PaginaViewModel.NormalizarTamano(tamano);
-        try
-        {
-            return View(PaginaViewModel.Desde(await cliente.ConsultarPaginaAsync(pagina, tamano)));
-        }
-        catch (ServicioException ex)
-        {
-            AgregarErrores(ex);
-            return View(new PaginaViewModel { Pagina = pagina, Tamano = tamano });
         }
     }
 
@@ -55,7 +38,7 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
         catch (ServicioException ex)
         {
             TempData["Error"] = ex.Message;
-            return RedirectToAction(nameof(Consultar));
+            return RedirectToAction(nameof(InicioController.Panel), "Inicio");
         }
     }
 
@@ -67,7 +50,7 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
         {
             await cliente.ModificarAsync(modelo.ADto());
             TempData["Mensaje"] = "Usuario modificado correctamente.";
-            return RedirectToAction(nameof(Consultar));
+            return RedirectToAction(nameof(InicioController.Panel), "Inicio");
         }
         catch (ServicioException ex)
         {
@@ -89,7 +72,7 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
             TempData["Error"] = ex.Message;
         }
         // Vuelve a la pagina desde la que se elimino; si ya no existe, el servicio devuelve la ultima
-        return RedirectToAction(nameof(Consultar), new { pagina, tamano });
+        return RedirectToAction(nameof(InicioController.Panel), "Inicio", new { pagina, tamano });
     }
 
     [ResponseCache(Duration = 0, NoStore = true)]

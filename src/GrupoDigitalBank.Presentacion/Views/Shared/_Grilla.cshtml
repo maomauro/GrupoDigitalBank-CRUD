@@ -1,0 +1,77 @@
+@model PaginaViewModel
+@if (Model.Usuarios.Count == 0)
+{
+    <p>No hay usuarios registrados. <a asp-controller="Usuarios" asp-action="Registrar">Registrar el primero</a>.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr><th>Id</th><th>Nombre</th><th>Fecha de nacimiento</th><th>Edad</th><th>Sexo</th><th>Fecha de registro</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var u in Model.Usuarios)
+        {
+            <tr>
+                <td>@u.Id</td>
+                <td>@u.Nombre</td>
+                <td>@u.FechaNacimiento?.ToString("yyyy-MM-dd")</td>
+                <td>@u.Edad años</td>
+                <td>@u.SexoTexto</td>
+                <td>@u.FechaRegistro?.ToString("yyyy-MM-dd HH:mm")</td>
+                <td class="acciones">
+                    <a class="icono-boton" asp-controller="Usuarios" asp-action="Editar" asp-route-id="@u.Id" title="Modificar" aria-label="Modificar a @u.Nombre"><partial name="_Icono" model="@("editar")" /></a>
+                    @* Eliminar vuelve a esta misma pagina y tamano *@
+                    <form asp-controller="Usuarios" asp-action="Eliminar" asp-route-id="@u.Id" asp-route-pagina="@Model.Pagina" asp-route-tamano="@Model.Tamano" method="post"
+                          data-confirmar="¿Eliminar a @u.Nombre?">
+                        <button type="submit" class="peligro icono-boton" title="Eliminar" aria-label="Eliminar a @u.Nombre"><partial name="_Icono" model="@("eliminar")" /></button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <nav class="paginacion" aria-label="Paginación">
+        @if (Model.HayVariasPaginas)
+        {
+            <span>Página @Model.Pagina de @Model.TotalPaginas · @Model.TextoTotal</span>
+            if (Model.HayAnterior)
+            {
+                <a asp-controller="Inicio" asp-action="Panel" asp-route-pagina="@(Model.Pagina - 1)" asp-route-tamano="@Model.Tamano" rel="prev">Anterior</a>
+            }
+            else
+            {
+                <span class="deshabilitado">Anterior</span>
+            }
+            if (Model.HaySiguiente)
+            {
+                <a asp-controller="Inicio" asp-action="Panel" asp-route-pagina="@(Model.Pagina + 1)" asp-route-tamano="@Model.Tamano" rel="next">Siguiente</a>
+            }
+            else
+            {
+                <span class="deshabilitado">Siguiente</span>
+            }
+        }
+        else
+        {
+            <span>@Model.TextoTotal</span>
+        }
+        @if (Model.TamanosOfrecidos.Count > 0)
+        {
+            <span class="tamanos">Por página:
+                @foreach (var t in Model.TamanosOfrecidos)
+                {
+                    if (t == Model.Tamano)
+                    {
+                        <strong>@t</strong>
+                    }
+                    else
+                    {
+                        <a asp-controller="Inicio" asp-action="Panel" asp-route-pagina="1" asp-route-tamano="@t">@t</a>
+                    }
+                }
+            </span>
+        }
+    </nav>
+}

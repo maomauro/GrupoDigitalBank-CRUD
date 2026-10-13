@@ -14,22 +14,22 @@ public sealed partial class UsuarioService(IUsuarioRepositorio repositorio, ILog
     public Task<UsuarioDto> Agregar(UsuarioDto usuario) => Ejecutar(async () =>
     {
         ValidarOFallar(usuario);
-        return await repositorio.CrearAsync(usuario);
+        return Completar(await repositorio.CrearAsync(usuario));
     });
 
     public Task<UsuarioDto> Modificar(UsuarioDto usuario) => Ejecutar(async () =>
     {
         ValidarOFallar(usuario);
         if (usuario.Id <= 0) throw Fault("VALIDACION", "El id es obligatorio.");
-        return await repositorio.ModificarAsync(usuario)
-               ?? throw Fault("NO_ENCONTRADO", $"No existe el usuario {usuario.Id}.");
+        return Completar(await repositorio.ModificarAsync(usuario)
+               ?? throw Fault("NO_ENCONTRADO", $"No existe el usuario {usuario.Id}."));
     });
 
     public Task<List<UsuarioDto>> Consultar(int? id) => Ejecutar(async () =>
     {
         var lista = await repositorio.ConsultarAsync(id);
         if (id.HasValue && lista.Count == 0) throw Fault("NO_ENCONTRADO", $"No existe el usuario {id}.");
-        return lista;
+        return lista.ConvertAll(Completar);
     });
 
     // Limites de la paginacion: con 100 por pagina y 100 000 paginas el desplazamiento maximo (9 999 900) cabe en un int
@@ -54,7 +54,7 @@ public sealed partial class UsuarioService(IUsuarioRepositorio repositorio, ILog
             resultado = await repositorio.ConsultarPaginaAsync(tamano, (pagina - 1) * tamano);
         }
 
-        return new PaginaUsuarios { Usuarios = resultado.Usuarios, Total = resultado.Total, Pagina = pagina, Tamano = tamano };
+        return new PaginaUsuarios { Usuarios = resultado.Usuarios.ConvertAll(Completar), Total = resultado.Total, Pagina = pagina, Tamano = tamano };
     });
 
     public Task Eliminar(int id) => Ejecutar(async () =>
@@ -94,6 +94,17 @@ public sealed partial class UsuarioService(IUsuarioRepositorio repositorio, ILog
 
     // "Hoy" es la fecha de la zona horaria de negocio (America/Bogota), no la del servidor (UTC): hallazgo B6.
     private DateOnly Hoy => DateOnly.FromDateTime(tiempo.GetLocalNow().DateTime);
+
+    // Anos cumplidos a "hoy" (Bogota) y fecha de registro en la hora de negocio: la base guarda el instante en UTC
+    private UsuarioDto Completar(UsuarioDto u)
+    {
+        var nacimiento = DateOnly.FromDateTime(u.FechaNacimiento);
+        var edad = Hoy.Year - nacimiento.Year;
+        if (Hoy < nacimiento.AddYears(edad)) edad--;
+        u.Edad = Math.Max(0, edad);
+        u.FechaRegistro = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(u.FechaRegistro, DateTimeKind.Utc), tiempo.LocalTimeZone);
+        return u;
+    }
 
     private void ValidarOFallar(UsuarioDto usuario)
     {

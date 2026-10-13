@@ -23,12 +23,16 @@ public class UsuarioViewModel
     [Display(Name = "Sexo")]
     public string? Sexo { get; set; }
 
+    public DateTime? FechaRegistro { get; set; }
+
+    public int Edad { get; set; }
+
     public string SexoTexto => Sexo == "M" ? "Masculino" : Sexo == "F" ? "Femenino" : "";
 
     public UsuarioDto ADto() => new()
     {
         Id = Id,
-        Nombre = Nombre.Trim(),
+        Nombre = Nombre.Trim().ToUpperInvariant(),
         FechaNacimiento = FechaNacimiento ?? default,
         Sexo = Sexo ?? string.Empty
     };
@@ -38,6 +42,8 @@ public class UsuarioViewModel
         Id = d.Id,
         Nombre = d.Nombre,
         FechaNacimiento = d.FechaNacimiento,
-        Sexo = d.Sexo
+        Sexo = d.Sexo,
+        FechaRegistro = d.FechaRegistro == default ? null : d.FechaRegistro,
+        Edad = d.Edad
     };
 }

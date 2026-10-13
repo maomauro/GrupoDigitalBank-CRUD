@@ -148,6 +148,35 @@ public class UsuarioServiceTests
         error.Mensaje.ShouldContain("9");
     }
 
+    // ---------- Edad y fecha de registro ----------
+
+    [Theory]
+    [InlineData("1990-10-10", 36)]   // cumple hoy (10 de octubre en Bogota)
+    [InlineData("1990-10-11", 35)]   // cumple manana
+    [InlineData("2026-10-10", 0)]
+    public async Task ConsultarCalculaLaEdadEnAnosCumplidosConLaFechaDeBogota(string nacimiento, int esperada)
+    {
+        var u = Valido(3);
+        u.FechaNacimiento = DateTime.Parse(nacimiento, System.Globalization.CultureInfo.InvariantCulture);
+        _repositorio.ConsultarAsync(3, Arg.Any<CancellationToken>()).Returns([u]);
+
+        var lista = await _servicio.Consultar(3);
+
+        lista.Single().Edad.ShouldBe(esperada);
+    }
+
+    [Fact]
+    public async Task LaFechaDeRegistroSeEntregaEnLaHoraDeBogotaYNoEnUtc()
+    {
+        var u = Valido(3);
+        u.FechaRegistro = new DateTime(2026, 10, 10, 2, 30, 0, DateTimeKind.Utc);   // 21:30 del dia anterior en Bogota
+        _repositorio.ConsultarAsync(3, Arg.Any<CancellationToken>()).Returns([u]);
+
+        var lista = await _servicio.Consultar(3);
+
+        lista.Single().FechaRegistro.ShouldBe(new DateTime(2026, 10, 9, 21, 30, 0));
+    }
+
     // ---------- ConsultarPagina (B7) ----------
 
     private static List<UsuarioDto> Usuarios(int desde, int cantidad)

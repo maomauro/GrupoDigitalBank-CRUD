@@ -62,7 +62,8 @@ Modos de ejecución local (detalle en el plan, fase 3.3):
 - Sin handlers JavaScript inline en las vistas (ver H1 del diagnóstico); usar atributos `data-*` y `wwwroot/js`.
 - Versiones de paquetes fijas y centralizadas en `Directory.Packages.props`: los `.csproj` no llevan `Version`. Los Dockerfile copian `global.json` y los `Directory.*.props` antes del `restore`; si se añade otro archivo de ese tipo, copiarlo también.
 - Cambios de esquema: *expand/contract*, compatibles hacia atrás durante un despliegue.
-- La grilla se pagina en el servidor (`ConsultarPagina` y `fn_usuario_pagina`, [ADR 0012](docs/adr/0012-paginacion-en-el-servidor.md)): no volver a traer todos los usuarios para listarlos.
+- La grilla se pagina en el servidor (`ConsultarPagina` y `fn_usuario_pagina`, [ADR 0012](docs/adr/0012-paginacion-en-el-servidor.md)): no volver a traer todos los usuarios para listarlos. Por omisión 5 por página y los controles solo aparecen si hacen falta ([ADR 0017](docs/adr/0017-panel-de-usuarios-edad-y-fecha-de-registro.md)).
+- La grilla vive en `/inicio` (panel con sesión) y muestra Edad (la calcula Negocios con la fecha de Bogotá) y Fecha de registro (`db/006`); las acciones son iconos SVG en línea. El nombre se escribe en mayúsculas (campo y Presentación; no es regla de negocio).
 
 ## Git
 
@@ -100,7 +101,7 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 - [docs/git-guia-tecnica.md](docs/git-guia-tecnica.md): uso de Git, ramas locales y remotas.
 - [docs/arquitectura.md](docs/arquitectura.md): vista C4, flujos, seguridad por capas y despliegue (el de producción, implementado en el repositorio; falta su primera publicación).
 - [docs/servidor.md](docs/servidor.md): inventario del servidor (carpetas, contenedores, redes, llaves, crons y servicios externos).
-- [docs/adr/README.md](docs/adr/README.md): las 16 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
+- [docs/adr/README.md](docs/adr/README.md): las 17 decisiones de arquitectura con su porqué. **Un ADR aceptado no se edita**: si la decisión cambia, se escribe uno nuevo que lo reemplaza.
 - [docs/runbook.md](docs/runbook.md): qué hacer cuando suena cada alerta (sitio caído, alerta del servidor, despliegue fallido, restaurar, cambiar la clave).
 - [docs/backups.md](docs/backups.md): copias locales y externas (age + Backblaze B2) y cómo se restauran; [ADR 0015](docs/adr/0015-copia-externa-cifrada-en-b2.md).
 - [README.md](README.md): ejecución y decisiones técnicas.
@@ -108,7 +109,7 @@ Plan completo en [docs/plan-de-trabajo.md](docs/plan-de-trabajo.md). Producción
 ## Estado conocido
 
 - **En producción desde el 2026-10-11** en `https://gdb-crud.sitiosapps.com`, detrás del gateway de plataforma (ADR 0014). Fases 0 a 8 del plan hechas: **H1, H2, H4, H5, H6, H7, B2 (contrato SOAP), B3/B4/B5/B8 (#15), B7 (paginación), B6 (zona horaria), H8 (arquitectura y ADR) y #41 (CHECK de nombre) resueltos**. `main` = producción; el primer despliegue fue el release #57.
-- El proyecto compila sin advertencias, corre en modo A y B y tiene 328 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 95 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las mutaciones manuales aplicadas (34 al código, 7 al contrato de B2 y 25 a la paginación de B7) fueron todas detectadas.
+- El proyecto compila sin advertencias, corre en modo A y B y tiene 357 pruebas (unitarias, vistas con `WebApplicationFactory`, integración con PostgreSQL real y contrato SOAP real). Cobertura: Negocios 100 %, Presentación 96 % (`scripts/cobertura.ps1`; el CI debe exigir >= 80 % en Negocios). Las mutaciones manuales aplicadas (34 al código, 7 al contrato de B2 y 25 a la paginación de B7) fueron todas detectadas.
 - Dependabot configurado (`.github/dependabot.yml`), alertas y correcciones automáticas de seguridad activas.
 - Operación (fase 9): backup local diario 02:45 (hora de Berlín) y copia externa mensual cifrada con age en Backblaze B2 (ADR 0015, [docs/backups.md](docs/backups.md)), con restauración probada. Monitoreo: UptimeRobot sobre `/health` (acepta GET y HEAD) y alertas del servidor (`deploy/alertas.sh`, latido a Healthchecks.io, [docs/backups.md](docs/backups.md)). Runbook de operación: [docs/runbook.md](docs/runbook.md). Pendiente: SonarCloud como puerta (#24).
 - CI: `.github/workflows/ci.yml` con cuatro trabajos independientes (`ci`, `migrador`, `docker`, `despliegue`) en cada PR y push a `develop` y `main`. Ejecutan los mismos scripts que en local, con acciones fijadas por SHA. No bloquean el botón de fusionar (plan Free, ADR 0005): **no fusionar con un check en rojo**. El CD (`entrega`) despliega a producción en cada push a `main` con todo en verde.

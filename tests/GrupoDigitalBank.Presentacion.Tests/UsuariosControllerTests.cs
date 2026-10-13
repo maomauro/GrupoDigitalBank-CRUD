@@ -42,91 +42,6 @@ public sealed class UsuariosControllerTests : IDisposable
     private static IEnumerable<string> Errores(ControllerBase c) =>
         c.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
 
-    // ---------- Consultar ----------
-
-    private static PaginaUsuarios Pagina(int pagina, int tamano, int total, params UsuarioDto[] usuarios)
-        => new() { Usuarios = [.. usuarios], Total = total, Pagina = pagina, Tamano = tamano };
-
-    [Fact]
-    public async Task ConsultarDevuelveLaPrimeraPaginaDe10PorOmision()
-    {
-        _cliente.ConsultarPaginaAsync(1, 10).Returns(Pagina(1, 10, 1, Dto(1)));
-
-        var resultado = await _controlador.Consultar();
-
-        var modelo = resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<PaginaViewModel>();
-        modelo.Usuarios.ShouldHaveSingleItem().Nombre.ShouldBe("Ana Perez");
-        modelo.Total.ShouldBe(1);
-        modelo.Pagina.ShouldBe(1);
-        modelo.Tamano.ShouldBe(10);
-    }
-
-    [Fact]
-    public async Task ConsultarPasaLaPaginaYElTamanoPedidosAlServicio()
-    {
-        _cliente.ConsultarPaginaAsync(3, 25).Returns(Pagina(3, 25, 60, Dto(51)));
-
-        var resultado = await _controlador.Consultar(3, 25);
-
-        var modelo = resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<PaginaViewModel>();
-        modelo.Pagina.ShouldBe(3);
-        modelo.Tamano.ShouldBe(25);
-        modelo.TotalPaginas.ShouldBe(3);
-    }
-
-    [Theory]
-    [InlineData(7)]
-    [InlineData(0)]
-    [InlineData(-10)]
-    [InlineData(1000)]
-    public async Task ConsultarConUnTamanoNoPermitidoUsaElTamanoPorOmision(int tamano)
-    {
-        _cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(Pagina(1, 10, 0));
-
-        await _controlador.Consultar(1, tamano);
-
-        await _cliente.Received(1).ConsultarPaginaAsync(1, 10);
-    }
-
-    [Theory]
-    [InlineData(0, 1)]
-    [InlineData(-5, 1)]
-    [InlineData(100_000, 100_000)]
-    [InlineData(100_001, 100_000)]
-    [InlineData(int.MaxValue, 100_000)]
-    public async Task ConsultarAcotaLaPaginaALosLimitesDelServicio(int pedida, int esperada)
-    {
-        _cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(Pagina(1, 10, 0));
-
-        await _controlador.Consultar(pedida, 10);
-
-        await _cliente.Received(1).ConsultarPaginaAsync(esperada, 10);
-    }
-
-    [Fact]
-    public async Task ConsultarMuestraLaPaginaQueDevolvioElServicioNoLaPedida()
-    {
-        // El servicio devuelve la ultima pagina cuando se pide una fuera de rango
-        _cliente.ConsultarPaginaAsync(9, 10).Returns(Pagina(3, 10, 25, Dto(21)));
-
-        var resultado = await _controlador.Consultar(9, 10);
-
-        resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<PaginaViewModel>().Pagina.ShouldBe(3);
-    }
-
-    [Fact]
-    public async Task ConsultarMuestraPaginaVaciaYElErrorSiElServicioFalla()
-    {
-        _cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns<PaginaUsuarios>(_ => throw new ServicioException("Sin conexion."));
-
-        var resultado = await _controlador.Consultar(2, 25);
-
-        var modelo = resultado.ShouldBeOfType<ViewResult>().Model.ShouldBeOfType<PaginaViewModel>();
-        modelo.Usuarios.ShouldBeEmpty();
-        modelo.Total.ShouldBe(0);
-        Errores(_controlador).ShouldBe(["Sin conexion."]);
-    }
-
     // ---------- Registrar ----------
 
     [Fact]
@@ -142,9 +57,9 @@ public sealed class UsuariosControllerTests : IDisposable
     {
         var resultado = await _controlador.Registrar(ModeloValido());
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Mensaje"].ShouldBe("Usuario registrado correctamente.");
-        await _cliente.Received(1).AgregarAsync(Arg.Is<UsuarioDto>(u => u.Nombre == "Ana Perez" && u.Sexo == "F"));
+        await _cliente.Received(1).AgregarAsync(Arg.Is<UsuarioDto>(u => u.Nombre == "ANA PEREZ" && u.Sexo == "F"));
     }
 
     [Fact]
@@ -203,7 +118,7 @@ public sealed class UsuariosControllerTests : IDisposable
 
         var resultado = await _controlador.Editar(99);
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Error"].ShouldBe("No existe el usuario 99.");
     }
 
@@ -212,7 +127,7 @@ public sealed class UsuariosControllerTests : IDisposable
     {
         var resultado = await _controlador.Editar(ModeloValido(5));
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Mensaje"].ShouldBe("Usuario modificado correctamente.");
         await _cliente.Received(1).ModificarAsync(Arg.Is<UsuarioDto>(u => u.Id == 5));
     }
@@ -247,7 +162,7 @@ public sealed class UsuariosControllerTests : IDisposable
     {
         var resultado = await _controlador.Eliminar(7);
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Mensaje"].ShouldBe("Usuario eliminado correctamente.");
         await _cliente.Received(1).EliminarAsync(7);
     }
@@ -258,7 +173,8 @@ public sealed class UsuariosControllerTests : IDisposable
         var resultado = await _controlador.Eliminar(7, 4, 25);
 
         var redireccion = resultado.ShouldBeOfType<RedirectToActionResult>();
-        redireccion.ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        redireccion.ActionName.ShouldBe(nameof(InicioController.Panel));
+        redireccion.ControllerName.ShouldBe("Inicio");
         redireccion.RouteValues.ShouldNotBeNull();
         redireccion.RouteValues["pagina"].ShouldBe(4);
         redireccion.RouteValues["tamano"].ShouldBe(25);
@@ -284,7 +200,7 @@ public sealed class UsuariosControllerTests : IDisposable
 
         var resultado = await _controlador.Eliminar(7);
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Error"].ShouldBe("No existe el usuario 7.");
         _controlador.TempData.ContainsKey("Mensaje").ShouldBeFalse();
     }
@@ -297,5 +213,13 @@ public sealed class UsuariosControllerTests : IDisposable
         var resultado = _controlador.Error();
 
         resultado.ShouldBeOfType<ViewResult>().Model.ShouldBe("traza-123");
+    }
+
+    /// <summary>Registrar, modificar y eliminar vuelven al inicio con sesion (grilla + boton de nuevo usuario), no a la pagina suelta de consulta.</summary>
+    private static void AlInicioConSesion(IActionResult resultado)
+    {
+        var redireccion = resultado.ShouldBeOfType<RedirectToActionResult>();
+        redireccion.ActionName.ShouldBe(nameof(InicioController.Panel));
+        redireccion.ControllerName.ShouldBe("Inicio");
     }
 }

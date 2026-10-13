@@ -224,8 +224,8 @@ curl_red() { docker run --rm --network "$RED" curlimages/curl:latest -sk -H "Hos
 esperar_borde() { for _ in $(seq 1 15); do [[ "$(curl_red -o /dev/null -w '%{http_code}' https://gdbprueba-borde/health 2> /dev/null)" = 200 ]] && return 0; sleep 2; done; return 1; }
 chequear "a traves del nginx: /health responde 200" esperar_borde
 codigo() { curl_red -o /dev/null -w '%{http_code}' "$@" 2> /dev/null; }
-chequear "a traves del nginx: una ruta protegida sin credenciales = 401" [ "$(codigo https://gdbprueba-borde/Usuarios/Consultar)" = 401 ]
-chequear "a traves del nginx: una ruta protegida con credenciales = 200" [ "$(codigo -u "admin:$CLAVE" https://gdbprueba-borde/Usuarios/Consultar)" = 200 ]
+chequear "a traves del nginx: una ruta protegida sin credenciales = 401" [ "$(codigo https://gdbprueba-borde/inicio)" = 401 ]
+chequear "a traves del nginx: una ruta protegida con credenciales = 200" [ "$(codigo -u "admin:$CLAVE" https://gdbprueba-borde/inicio)" = 200 ]
 chequear "a traves del nginx: el inicio publico (/) responde 200 sin credenciales (ADR 0016)" [ "$(codigo https://gdbprueba-borde/)" = 200 ]
 # Sin el envoltorio curl_red: este anade su propia cabecera Host y curl usa la primera que recibe
 host_ajeno() {

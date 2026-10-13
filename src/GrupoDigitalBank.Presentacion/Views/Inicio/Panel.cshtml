@@ -1,0 +1,14 @@
+@model PaginaViewModel
+@{
+    ViewData["Title"] = "Inicio";
+    ViewData["Autenticado"] = true;
+}
+
+<section id="usuarios">
+    <div class="barra-acciones">
+        <h1>Usuarios registrados</h1>
+        <a class="boton icono-boton" asp-controller="Usuarios" asp-action="Registrar" title="Nuevo usuario" aria-label="Nuevo usuario"><partial name="_Icono" model="@("nuevo")" /></a>
+    </div>
+    <partial name="_ResumenErrores" />
+    <partial name="_Grilla" model="Model" />
+</section>
