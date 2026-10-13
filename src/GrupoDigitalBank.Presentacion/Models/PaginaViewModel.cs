@@ -5,13 +5,13 @@ namespace GrupoDigitalBank.Presentacion.Models;
 /// <summary>Una pagina de la grilla de usuarios y lo necesario para dibujar su navegacion.</summary>
 public sealed class PaginaViewModel
 {
-    public const int TamanoPorOmision = 10;
+    public const int TamanoPorOmision = 5;
 
     /// <summary>Limite del servicio de negocios (<c>ConsultarPagina</c>): pedir mas daria un error de validacion.</summary>
     public const int PaginaMaxima = 100_000;
 
     /// <summary>Tamanos ofrecidos al usuario. Cualquier otro valor de la URL se ignora.</summary>
-    public static IReadOnlyList<int> Tamanos { get; } = [10, 25, 50];
+    public static IReadOnlyList<int> Tamanos { get; } = [5, 10, 25, 50];
 
     public List<UsuarioViewModel> Usuarios { get; init; } = [];
     public int Pagina { get; init; } = 1;
@@ -23,7 +23,7 @@ public sealed class PaginaViewModel
 
     /// <summary>
     /// Tamanos que tiene sentido ofrecer: ninguno mientras todo quepa en la primera opcion; cada opcion mayor aparece
-    /// cuando los usuarios superan la anterior (10 -> con mas de 10, 25 -> con mas de 10, 50 -> con mas de 25).
+    /// cuando los usuarios superan la anterior (5 -> con mas de 5, 10 -> con mas de 5, 25 -> con mas de 10, 50 -> con mas de 25).
     /// </summary>
     public IReadOnlyList<int> TamanosOfrecidos => Total <= Tamanos[0]
         ? []

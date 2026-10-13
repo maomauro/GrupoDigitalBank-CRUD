@@ -84,10 +84,11 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
     }
 
     [Theory]
-    [InlineData(10, new int[0])]
-    [InlineData(11, new[] { 10, 25 })]
-    [InlineData(25, new[] { 10, 25 })]
-    [InlineData(26, new[] { 10, 25, 50 })]
+    [InlineData(5, new int[0])]
+    [InlineData(6, new[] { 5, 10 })]
+    [InlineData(10, new[] { 5, 10 })]
+    [InlineData(11, new[] { 5, 10, 25 })]
+    [InlineData(26, new[] { 5, 10, 25, 50 })]
     public void LosTamanosSeOfrecenAMedidaQueCrecenLosUsuarios(int total, int[] esperados)
     {
         GrupoDigitalBank.Presentacion.Models.PaginaViewModel.Desde(new PaginaUsuarios { Usuarios = [], Total = total, Pagina = 1, Tamano = 10 })
@@ -158,13 +159,13 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
     [Fact]
     public async Task UnaUrlConValoresQueNoSonNumerosSeTrataComoLaPrimeraPagina()
     {
-        var (http, cliente) = Pagina(1, 10, 5, 5);
+        var (http, cliente) = Pagina(1, 5, 5, 5);
         using var _ = http;
 
         var respuesta = await http.GetAsync("/Usuarios/Consultar?pagina=abc&tamano=xyz");
 
         respuesta.IsSuccessStatusCode.ShouldBeTrue();
-        await cliente.Received(1).ConsultarPaginaAsync(1, 10);
+        await cliente.Received(1).ConsultarPaginaAsync(1, 5);
     }
 
     [Fact]
@@ -175,7 +176,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
 
         await http.GetStringAsync("/Usuarios/Consultar?pagina=2147483647&tamano=999999");
 
-        await cliente.Received(1).ConsultarPaginaAsync(100_000, 10);
+        await cliente.Received(1).ConsultarPaginaAsync(100_000, 5);
     }
 
     [Fact]

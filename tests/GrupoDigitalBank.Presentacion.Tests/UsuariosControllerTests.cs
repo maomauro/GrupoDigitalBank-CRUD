@@ -48,9 +48,9 @@ public sealed class UsuariosControllerTests : IDisposable
         => new() { Usuarios = [.. usuarios], Total = total, Pagina = pagina, Tamano = tamano };
 
     [Fact]
-    public async Task ConsultarDevuelveLaPrimeraPaginaDe10PorOmision()
+    public async Task ConsultarDevuelveLaPrimeraPaginaDe5PorOmision()
     {
-        _cliente.ConsultarPaginaAsync(1, 10).Returns(Pagina(1, 10, 1, Dto(1)));
+        _cliente.ConsultarPaginaAsync(1, 5).Returns(Pagina(1, 5, 1, Dto(1)));
 
         var resultado = await _controlador.Consultar();
 
@@ -58,7 +58,7 @@ public sealed class UsuariosControllerTests : IDisposable
         modelo.Usuarios.ShouldHaveSingleItem().Nombre.ShouldBe("Ana Perez");
         modelo.Total.ShouldBe(1);
         modelo.Pagina.ShouldBe(1);
-        modelo.Tamano.ShouldBe(10);
+        modelo.Tamano.ShouldBe(5);
     }
 
     [Fact]
@@ -81,11 +81,11 @@ public sealed class UsuariosControllerTests : IDisposable
     [InlineData(1000)]
     public async Task ConsultarConUnTamanoNoPermitidoUsaElTamanoPorOmision(int tamano)
     {
-        _cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(Pagina(1, 10, 0));
+        _cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(Pagina(1, 5, 0));
 
         await _controlador.Consultar(1, tamano);
 
-        await _cliente.Received(1).ConsultarPaginaAsync(1, 10);
+        await _cliente.Received(1).ConsultarPaginaAsync(1, 5);
     }
 
     [Theory]

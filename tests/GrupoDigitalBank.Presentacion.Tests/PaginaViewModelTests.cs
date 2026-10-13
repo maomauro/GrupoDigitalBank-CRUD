@@ -37,13 +37,14 @@ public sealed class PaginaViewModelTests
     }
 
     [Theory]
+    [InlineData(5, 5)]
     [InlineData(10, 10)]
     [InlineData(25, 25)]
     [InlineData(50, 50)]
-    [InlineData(5, 10)]
-    [InlineData(100, 10)]
-    [InlineData(0, 10)]
-    [InlineData(-25, 10)]
+    [InlineData(7, 5)]
+    [InlineData(100, 5)]
+    [InlineData(0, 5)]
+    [InlineData(-25, 5)]
     public void SoloSeAceptanLosTamanosOfrecidos(int pedido, int esperado)
     {
         PaginaViewModel.NormalizarTamano(pedido).ShouldBe(esperado);

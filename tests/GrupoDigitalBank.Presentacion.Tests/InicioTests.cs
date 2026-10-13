@@ -414,7 +414,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     public async Task LaPaginacionDelInicioConSesionSeQuedaEnElInicio()
     {
         var cliente = Substitute.For<IUsuarioClient>();
-        cliente.ConsultarPaginaAsync(2, 10).Returns(new PaginaUsuarios
+        cliente.ConsultarPaginaAsync(2, 5).Returns(new PaginaUsuarios
         {
             Usuarios = [new UsuarioDto { Id = 11, Nombre = "Laura Gómez", FechaNacimiento = new DateTime(1998, 3, 14), Sexo = "F" }],
             Total = 25,
@@ -444,7 +444,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         var respuesta = await http.GetAsync($"/inicio?pagina={pagina}&tamano={tamano}");
 
         respuesta.StatusCode.ShouldBe(HttpStatusCode.OK);
-        await cliente.Received().ConsultarPaginaAsync(1, 10);
+        await cliente.Received().ConsultarPaginaAsync(1, 5);
     }
 
     [Fact]
