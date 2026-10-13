@@ -273,7 +273,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     {
         using var http = ClienteConGrilla(out _);
 
-        foreach (var ruta in new[] { "/inicio", "/Usuarios/Consultar", "/Usuarios/Registrar" })
+        foreach (var ruta in new[] { "/inicio", "/Usuarios/Registrar" })
         {
             var menu = Cabecera(await (await http.GetAsync(ruta)).Content.ReadAsStringAsync());
 
@@ -443,7 +443,6 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
 
         html.ShouldContain("href=\"/inicio?pagina=1&amp;tamano=10\"");
         html.ShouldContain("href=\"/inicio?pagina=3&amp;tamano=10\"");
-        html.ShouldNotContain("/Usuarios/Consultar?pagina=");
     }
 
     [Theory]

@@ -5,8 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace GrupoDigitalBank.Presentacion.Controllers;
 
 /// <summary>
-/// Pagina de inicio publica (explica como se desarrollo la solucion) y cierre de sesion.
-/// Ninguna accion consulta el servicio de negocios ni muestra datos: por eso el proxy las deja fuera del Basic Auth (ADR 0016).
+/// Inicio publico (explica como se desarrollo la solucion), cierre de sesion y, con sesion, el panel con la grilla de usuarios.
+/// Las acciones publicas (Index y Salir) no consultan el servicio de negocios ni muestran datos: por eso el proxy las deja fuera
+/// del Basic Auth (ADR 0016). Panel y Acerca SI quedan detras de el.
 /// </summary>
 public sealed class InicioController : Controller
 {
@@ -29,7 +30,7 @@ public sealed class InicioController : Controller
     [HttpGet]
     public async Task<IActionResult> Panel([FromServices] IUsuarioClient cliente, int pagina = 1, int tamano = PaginaViewModel.TamanoPorOmision)
     {
-        // Lo que llega por la URL no es de fiar: se acota a lo que el servicio acepta (igual que Usuarios/Consultar)
+        // Lo que llega por la URL no es de fiar: se acota a lo que el servicio acepta en vez de mostrar un error
         pagina = PaginaViewModel.NormalizarPagina(pagina);
         tamano = PaginaViewModel.NormalizarTamano(tamano);
         try

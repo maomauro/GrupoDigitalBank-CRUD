@@ -1,10 +1,4 @@
 @model PaginaViewModel
-@{
-    // A donde apuntan los enlaces de paginacion: por omision la pagina "Usuarios/Consultar"; el inicio con sesion los lleva a si mismo
-    var destinoControlador = ViewData["DestinoControlador"] as string ?? "Usuarios";
-    var destinoAccion = ViewData["DestinoAccion"] as string ?? "Consultar";
-}
-
 @if (Model.Usuarios.Count == 0)
 {
     <p>No hay usuarios registrados. <a asp-controller="Usuarios" asp-action="Registrar">Registrar el primero</a>.</p>
@@ -44,7 +38,7 @@ else
             <span>Página @Model.Pagina de @Model.TotalPaginas · @Model.TextoTotal</span>
             if (Model.HayAnterior)
             {
-                <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="@(Model.Pagina - 1)" asp-route-tamano="@Model.Tamano" rel="prev">Anterior</a>
+                <a asp-controller="Inicio" asp-action="Panel" asp-route-pagina="@(Model.Pagina - 1)" asp-route-tamano="@Model.Tamano" rel="prev">Anterior</a>
             }
             else
             {
@@ -52,7 +46,7 @@ else
             }
             if (Model.HaySiguiente)
             {
-                <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="@(Model.Pagina + 1)" asp-route-tamano="@Model.Tamano" rel="next">Siguiente</a>
+                <a asp-controller="Inicio" asp-action="Panel" asp-route-pagina="@(Model.Pagina + 1)" asp-route-tamano="@Model.Tamano" rel="next">Siguiente</a>
             }
             else
             {
@@ -74,7 +68,7 @@ else
                     }
                     else
                     {
-                        <a asp-controller="@destinoControlador" asp-action="@destinoAccion" asp-route-pagina="1" asp-route-tamano="@t">@t</a>
+                        <a asp-controller="Inicio" asp-action="Panel" asp-route-pagina="1" asp-route-tamano="@t">@t</a>
                     }
                 }
             </span>

@@ -28,23 +28,6 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Consultar(int pagina = 1, int tamano = PaginaViewModel.TamanoPorOmision)
-    {
-        // Lo que llega por la URL no es de fiar: se acota a lo que el servicio acepta en vez de mostrar un error
-        pagina = PaginaViewModel.NormalizarPagina(pagina);
-        tamano = PaginaViewModel.NormalizarTamano(tamano);
-        try
-        {
-            return View(PaginaViewModel.Desde(await cliente.ConsultarPaginaAsync(pagina, tamano)));
-        }
-        catch (ServicioException ex)
-        {
-            AgregarErrores(ex);
-            return View(new PaginaViewModel { Pagina = pagina, Tamano = tamano });
-        }
-    }
-
-    [HttpGet]
     public async Task<IActionResult> Editar(int id)
     {
         try

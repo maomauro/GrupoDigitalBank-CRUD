@@ -29,19 +29,18 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         return (http, cliente);
     }
 
-    // La ruta por omision es Usuarios/Consultar, asi que los enlaces a la grilla se generan como "/?pagina=..."
     [Fact]
     public async Task UnaPaginaIntermediaMuestraDondeEstaYEnlazaALaAnteriorYALaSiguiente()
     {
         var (http, _) = Pagina(pagina: 2, tamano: 10, total: 25, usuarios: 10);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar?pagina=2");
+        var html = await http.GetStringAsync("/inicio?pagina=2");
 
         html.ShouldContain("Página 2 de 3");
         html.ShouldContain("25 usuarios");
-        html.ShouldContain("href=\"/Usuarios/Consultar?pagina=1&amp;tamano=10\"");
-        html.ShouldContain("href=\"/Usuarios/Consultar?pagina=3&amp;tamano=10\"");
+        html.ShouldContain("href=\"/inicio?pagina=1&amp;tamano=10\"");
+        html.ShouldContain("href=\"/inicio?pagina=3&amp;tamano=10\"");
     }
 
     [Fact]
@@ -50,7 +49,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, _) = Pagina(1, 10, 25, 10);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         html.ShouldContain("<span class=\"deshabilitado\">Anterior</span>");
         html.ShouldContain("Siguiente</a>");
@@ -62,7 +61,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, _) = Pagina(3, 10, 25, 5);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar?pagina=3");
+        var html = await http.GetStringAsync("/inicio?pagina=3");
 
         html.ShouldContain("<span class=\"deshabilitado\">Siguiente</span>");
         html.ShouldContain("Anterior</a>");
@@ -74,7 +73,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, _) = Pagina(1, 10, 3, 3);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         html.ShouldContain("3 usuarios");
         html.ShouldNotContain("Anterior");
@@ -101,7 +100,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, _) = Pagina(1, 10, 1, 1);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         html.ShouldContain("1 usuario");
         html.ShouldNotContain("1 usuarios");
@@ -113,11 +112,11 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, _) = Pagina(3, 25, 120, 25);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar?pagina=3&tamano=25");
+        var html = await http.GetStringAsync("/inicio?pagina=3&tamano=25");
 
         html.ShouldContain("<strong>25</strong>");
-        html.ShouldContain("href=\"/Usuarios/Consultar?pagina=1&amp;tamano=10\">10</a>");
-        html.ShouldContain("href=\"/Usuarios/Consultar?pagina=1&amp;tamano=50\">50</a>");
+        html.ShouldContain("href=\"/inicio?pagina=1&amp;tamano=10\">10</a>");
+        html.ShouldContain("href=\"/inicio?pagina=1&amp;tamano=50\">50</a>");
         html.ShouldNotContain(">25</a>");
     }
 
@@ -127,7 +126,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, _) = Pagina(2, 25, 60, 2);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar?pagina=2&tamano=25");
+        var html = await http.GetStringAsync("/inicio?pagina=2&tamano=25");
 
         html.ShouldContain("action=\"/Usuarios/Eliminar/1?pagina=2&amp;tamano=25\"");
         html.ShouldContain("action=\"/Usuarios/Eliminar/2?pagina=2&amp;tamano=25\"");
@@ -139,7 +138,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, _) = Pagina(1, 10, 0, 0);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar");
+        var html = await http.GetStringAsync("/inicio");
 
         html.ShouldContain("No hay usuarios registrados");
         html.ShouldNotContain("class=\"paginacion\"");
@@ -151,7 +150,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, cliente) = Pagina(3, 25, 120, 25);
         using var _ = http;
 
-        await http.GetStringAsync("/Usuarios/Consultar?pagina=3&tamano=25");
+        await http.GetStringAsync("/inicio?pagina=3&tamano=25");
 
         await cliente.Received(1).ConsultarPaginaAsync(3, 25);
     }
@@ -162,7 +161,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, cliente) = Pagina(1, 5, 5, 5);
         using var _ = http;
 
-        var respuesta = await http.GetAsync("/Usuarios/Consultar?pagina=abc&tamano=xyz");
+        var respuesta = await http.GetAsync("/inicio?pagina=abc&tamano=xyz");
 
         respuesta.IsSuccessStatusCode.ShouldBeTrue();
         await cliente.Received(1).ConsultarPaginaAsync(1, 5);
@@ -174,7 +173,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, cliente) = Pagina(1, 10, 5, 5);
         using var _ = http;
 
-        await http.GetStringAsync("/Usuarios/Consultar?pagina=2147483647&tamano=999999");
+        await http.GetStringAsync("/inicio?pagina=2147483647&tamano=999999");
 
         await cliente.Received(1).ConsultarPaginaAsync(100_000, 5);
     }
@@ -185,7 +184,7 @@ public sealed class PaginacionVistasTests(WebApplicationFactory<Program> fabrica
         var (http, _) = Pagina(2, 10, 25, 10);
         using var _ = http;
 
-        var html = await http.GetStringAsync("/Usuarios/Consultar?pagina=2");
+        var html = await http.GetStringAsync("/inicio?pagina=2");
 
         html.ShouldNotContain(" style=", Case.Insensitive);
         html.ShouldNotContain("onclick=", Case.Insensitive);

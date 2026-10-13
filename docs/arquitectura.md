@@ -76,7 +76,7 @@ Reglas de dependencia (verificadas por el diseño y las pruebas, ver [`CLAUDE.md
 
 ```mermaid
 flowchart LR
-    vistas["Vistas Razor<br/>Inicio · Acerca · Panel · Consultar · Registrar · Editar · Error<br/>parcial _ResumenErrores"]
+    vistas["Vistas Razor<br/>Inicio · Acerca · Panel · Registrar · Editar · Error<br/>parcial _ResumenErrores"]
     ctrl["UsuariosController"]
     vm["UsuarioViewModel<br/>DataAnnotations"]
     cli["IUsuarioClient / UsuarioClient<br/>ChannelFactory SOAP"]
