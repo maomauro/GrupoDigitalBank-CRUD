@@ -16,7 +16,7 @@ Con el inicio público (ADR 0016) la raíz dejó de ser la grilla. Al revisar la
 4. **Edad en vivo en el formulario.** Al escribir la fecha de nacimiento, `site.js` muestra «Edad: N años» (con la fecha de Bogotá) y limita el calendario a `1900-01-01` – hoy. Es solo una ayuda: la validación sigue siendo la de los tres niveles.
 5. **Nombre en mayúsculas.** El campo lo convierte mientras se escribe y Presentación lo normaliza al enviar (`ToUpperInvariant`). No es una regla de negocio: Negocios y la base no la exigen.
 6. **Paginación de 5 en 5.** Tamaño por omisión 5; opciones 5, 10, 25 y 50 (antes 10, 25 y 50). Los controles solo aparecen cuando hacen falta: con una sola página solo se muestra el total, y cada tamaño mayor se ofrece cuando los usuarios superan al anterior. Negocios y la base no cambian (el tamaño lo pide la web).
-7. **Acciones con iconos.** Modificar, Eliminar y Nuevo usuario son iconos SVG en línea, con `title` y `aria-label`, sin `style=` ni recursos externos (la CSP no cambia). El ancho máximo del contenido pasa a 1024 px.
+7. **Acciones con iconos.** Modificar, Eliminar y Nuevo usuario son iconos SVG en línea, con `title` y `aria-label`, sin `style=` ni recursos externos (la CSP no cambia). El ancho máximo del contenido pasa a 1366 px.
 
 ## Alternativas consideradas
 
