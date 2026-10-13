@@ -42,11 +42,6 @@ section[id] { scroll-margin-top: 1rem; }
 main section h2 { border-bottom: 2px solid #0b6aa2; padding-bottom: .25rem; margin-top: 2rem; }
 table.simple td, table.simple th { vertical-align: top; }
 code { background: #eef2f6; padding: .05rem .3rem; border-radius: 3px; font-size: .9em; }
-ol.flujo { list-style: none; padding: 0; margin: 1rem 0; display: flex; flex-wrap: wrap; gap: .5rem; counter-reset: paso; }
-ol.flujo li { counter-increment: paso; flex: 1 1 130px; background: #fff; border: 1px solid #b6c0cb; border-radius: 6px; padding: .6rem .7rem; position: relative; font-size: .9rem; }
-ol.flujo li::before { content: counter(paso); position: absolute; top: -.6rem; left: .6rem; background: #0b6aa2; color: #fff; border-radius: 50%; width: 1.3rem; height: 1.3rem; text-align: center; font-size: .75rem; line-height: 1.3rem; }
-ol.flujo li strong { display: block; }
-ol.flujo li span { color: #52606d; font-size: .8rem; }
 ul.decisiones li { margin-bottom: .45rem; }
 .grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .8rem 1.2rem; }
 .grupos h3 { margin: 0 0 .3rem; font-size: .95rem; color: #3e4c59; }
@@ -87,7 +82,6 @@ header .iniciar { margin-left: auto; padding: .35rem .95rem; border: 1px solid #
 header .iniciar:hover { background: #0b6aa2; border-color: #0b6aa2; }
 .barra-acciones { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem 1rem; margin-bottom: .8rem; }
 .barra-acciones h1 { margin: 0; font-size: 1.5rem; }
-.separador-seccion { border: 0; border-top: 2px solid #d9e2ec; margin: 2.2rem 0 1.4rem; }
 header .marca { display: flex; align-items: center; gap: 1rem; color: #fff; text-decoration: none; }
 header .marca:hover strong, header .marca:hover .app { text-decoration: underline; }
 header a.app { color: #cfe8f7; text-decoration: none; padding-left: 1rem; border-left: 1px solid #3d6f8f; }
