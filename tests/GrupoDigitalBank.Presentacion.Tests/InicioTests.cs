@@ -362,6 +362,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         html.ShouldNotContain("style=");
         script.ShouldContain("America/Bogota");
         script.ShouldContain("data-edad-destino");
+        script.ShouldContain("entrada.max");
     }
 
     [Fact]

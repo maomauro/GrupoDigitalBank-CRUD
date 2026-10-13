@@ -87,6 +87,11 @@ document.querySelectorAll("[data-autocierre]").forEach(function (aviso) {
         destino.hidden = false;
     }
 
+    // Limites del propio campo (el calendario no deja elegir fechas futuras); el servidor valida igual
+    var h = hoyEnBogota();
+    entrada.min = "1900-01-01";
+    entrada.max = h.a + "-" + String(h.m).padStart(2, "0") + "-" + String(h.d).padStart(2, "0");
+
     entrada.addEventListener("input", actualizar);
     entrada.addEventListener("change", actualizar);
     actualizar();
