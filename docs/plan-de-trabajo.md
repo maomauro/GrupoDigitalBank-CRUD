@@ -704,6 +704,10 @@ El **token** para descargar las imágenes es el `GITHUB_TOKEN` de cada ejecució
 
 ---
 
+## Ajustes de uso posteriores a la primera publicación ✅
+
+Tras la revisión de la aplicación en local (2026-10-13) se hicieron ajustes de presentación y de datos, todos documentados en el [ADR 0017](adr/0017-panel-de-usuarios-edad-y-fecha-de-registro.md): menú por estado con el panel en `/inicio` y la documentación protegida en `/acerca`, columnas **Edad** y **Fecha de registro** (`db/006_fecha_registro.sql`, edad calculada en Negocios con la fecha de Bogotá), iconos en las acciones, edad en vivo y límites de fecha en el formulario, nombre en mayúsculas, paginación de 5 en 5 con controles solo cuando hacen falta y ancho máximo de 1024 px. Verificación: pruebas unitarias, de integración y de contrato, baterías `probar-acceso` y `probar-navegador` contra el stack reconstruido, y revisión visual en Chrome.
+
 ## Fase 9. Operación ⏳
 
 ### 9.1 Backups de PostgreSQL

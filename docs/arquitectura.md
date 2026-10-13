@@ -76,7 +76,7 @@ Reglas de dependencia (verificadas por el diseño y las pruebas, ver [`CLAUDE.md
 
 ```mermaid
 flowchart LR
-    vistas["Vistas Razor<br/>Consultar · Registrar · Editar · Error<br/>parcial _ResumenErrores"]
+    vistas["Vistas Razor<br/>Inicio · Acerca · Panel · Consultar · Registrar · Editar · Error<br/>parcial _ResumenErrores"]
     ctrl["UsuariosController"]
     vm["UsuarioViewModel<br/>DataAnnotations"]
     cli["IUsuarioClient / UsuarioClient<br/>ChannelFactory SOAP"]
@@ -174,7 +174,7 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 
 ## 6. Datos
 
-- Tabla `usuario(id identity, nombre varchar(100), fecha_nacimiento date, sexo char(1))` con `CHECK` de sexo (`M`/`F`), de fecha (entre 1900-01-01 y hoy en Colombia, `db/003`) y de nombre (al menos un carácter que no sea blanco, `db/004`).
+- Tabla `usuario(id identity, nombre varchar(100), fecha_nacimiento date, sexo char(1), fecha_registro timestamptz)` (la fecha de registro llega en `db/006`; Negocios la entrega en hora de Bogotá y calcula la edad, [ADR 0017](adr/0017-panel-de-usuarios-edad-y-fecha-de-registro.md)) con `CHECK` de sexo (`M`/`F`), de fecha (entre 1900-01-01 y hoy en Colombia, `db/003`) y de nombre (al menos un carácter que no sea blanco, `db/004`).
 - La escritura y la consulta por id pasan por `fn_usuario_crud(p_operacion, …)` (`C`/`R`/`U`/`D`), declarada `SECURITY DEFINER` con `search_path` fijo ([ADR 0002](adr/0002-sin-orm-funcion-almacenada.md)). La grilla se lee con `fn_usuario_pagina(limite, desplazamiento)` (`db/005`): una página ordenada por `id` más el total, en una sola sentencia ([ADR 0012](adr/0012-paginacion-en-el-servidor.md)).
 - Esquema versionado en `db/NNN_*.sql` más `schema_migrations` con el checksum de cada script aplicado ([ADR 0007](adr/0007-migraciones-propias-con-checksum.md)). Un script aplicado nunca se edita.
 - Dos roles: `usuarios_admin` (propietario, ejecuta las migraciones) y `usuarios_app` (solo `EXECUTE` de las dos funciones).
@@ -229,7 +229,7 @@ flowchart LR
 
 ## 9. Calidad y verificación
 
-- **328 pruebas** (106 unitarias de Negocios, 54 de integración con PostgreSQL real en Testcontainers, 153 de Presentación con `WebApplicationFactory` y 15 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
+- **356 pruebas** (110 unitarias de Negocios, 55 de integración con PostgreSQL real en Testcontainers, 176 de Presentación con `WebApplicationFactory` y 15 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
 - Mutaciones manuales, todas detectadas: 34 al código de producción, 7 al contrato SOAP (más 3 que ni compilan) y 25 a la paginación.
 - Herramientas en `scripts/`: `verificar.ps1` (el contrato del CI), `cobertura.ps1`, `probar-migrador.ps1`, `probar-acceso.ps1` y, en navegador real, `probar-navegador.ps1`.
 - Integración continua con GitHub Actions (`.github/workflows/ci.yml`, cuatro trabajos independientes en cada PR y push a `develop` y `main`): `ci` (format, build, 328 pruebas en Linux, cobertura y paquetes vulnerables), `migrador` (shellcheck y los 9 escenarios del migrador), `docker` (Compose de desarrollo y de producción sin puertos, hadolint, construcción de imágenes y Trivy) y `despliegue` (el mecanismo de despliegue de punta a punta contra un servidor simulado). Además SonarCloud (análisis por PR) y Dependabot, que ahora también cubre las acciones.

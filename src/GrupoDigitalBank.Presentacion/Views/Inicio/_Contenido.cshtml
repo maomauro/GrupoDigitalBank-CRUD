@@ -18,11 +18,11 @@
         <tbody>
             <tr>
                 <td><strong>Presentación</strong>: página «usuario» con Nombre (caja de texto), Fecha de nacimiento (calendario) y Sexo (DropDownList)</td>
-                <td>Pantalla <em>Registrar</em> (ASP.NET Core MVC): <code>input</code> de texto, <code>input type="date"</code> y <code>select</code>. Valida en el servidor (con el mensaje junto a cada campo), otra vez en negocios y por último con restricciones en la base.</td>
+                <td>Pantalla <em>Registrar</em> (ASP.NET Core MVC): <code>input</code> de texto, <code>input type="date"</code> y <code>select</code>. Valida en el servidor (con el mensaje junto a cada campo), otra vez en negocios y por último con restricciones en la base. El nombre se escribe en mayúsculas y, al elegir la fecha de nacimiento, el formulario muestra la edad calculada y no admite fechas futuras.</td>
             </tr>
             <tr>
                 <td><strong>Presentación</strong>: página «usuario consulta» con una grilla y las opciones Modificar y Eliminar por fila</td>
-                <td>Pantalla <em>Consultar</em>: grilla paginada <strong>en el servidor</strong> (no trae todos los usuarios), con Modificar y Eliminar (con confirmación) en cada fila.</td>
+                <td>Pantalla <em>Gestión de usuarios</em>: grilla paginada <strong>en el servidor</strong> (5 por página; no trae todos los usuarios) con Edad y Fecha de registro, e iconos de Modificar y Eliminar (con confirmación) en cada fila.</td>
             </tr>
             <tr>
                 <td><strong>Negocios</strong>: servicio WCF con Agregar, Modificar, Consultar y Eliminar; la conexión a la base se hace aquí</td>
@@ -30,7 +30,7 @@
             </tr>
             <tr>
                 <td><strong>Datos</strong>: tabla con Nombre (texto 100), Fecha de nacimiento (fecha) y Sexo (texto fijo 1)</td>
-                <td>Tabla <code>usuario</code>: <code>varchar(100)</code>, <code>date</code> y <code>char(1)</code>, con restricciones <code>CHECK</code> (sexo M/F, fecha razonable, nombre no vacío).</td>
+                <td>Tabla <code>usuario</code>: <code>varchar(100)</code>, <code>date</code> y <code>char(1)</code> (más la fecha de registro, <code>timestamptz</code>), con restricciones <code>CHECK</code> (sexo M/F, fecha razonable, nombre no vacío).</td>
             </tr>
             <tr>
                 <td><strong>Datos</strong>: procedimiento almacenado con el CRUD</td>
@@ -135,7 +135,7 @@
         <li><strong>Diagnóstico primero:</strong> una revisión inicial del código dejó una lista de hallazgos (H1 a H8 y B1 a B8) que se fueron cerrando por prioridad.</li>
         <li><strong>Plan por fases</strong> con criterios de aceptación verificables; el avance se marca en el propio plan.</li>
         <li><strong>Flujo de ramas</strong> <em>feature → develop → main</em>: todo cambio entra por Pull Request (squash a <code>develop</code>, <em>merge commit</em> a <code>main</code>), con commits convencionales en español.</li>
-        <li><strong>Decisiones escritas:</strong> 16 ADR, y un ADR aceptado no se edita: si la decisión cambia, se escribe otro que lo reemplaza.</li>
+        <li><strong>Decisiones escritas:</strong> 17 ADR, y un ADR aceptado no se edita: si la decisión cambia, se escribe otro que lo reemplaza.</li>
         <li><strong>Evidencia, no suposiciones:</strong> cada afirmación importante se verificó con una prueba o contra el servidor real antes de darla por buena.</li>
     </ul>
 </section>
