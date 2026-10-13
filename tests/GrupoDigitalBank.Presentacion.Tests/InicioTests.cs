@@ -183,11 +183,27 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         var menu = Cabecera(await http.GetStringAsync("/inicio"));
         var script = await http.GetStringAsync("/js/site.js");
 
-        menu.ShouldContain("class=\"salir\" data-confirmar=\"¿Cerrar sesión?");
+        menu.ShouldContain("class=\"salir\"");
+        menu.ShouldContain("data-confirmar=\"¿Cerrar sesión?");
         menu.ShouldContain("href=\"/salir\"");
         script.ShouldContain("a[data-confirmar]");
         script.ShouldContain("window.confirm");
         script.ShouldContain("preventDefault");
+    }
+
+    [Fact]
+    public async Task CerrarSesionNoMuestraElCuadroDelNavegadorLaCierraEnSegundoPlano()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var menu = Cabecera(await http.GetStringAsync("/inicio"));
+        var script = await http.GetStringAsync("/js/site.js");
+
+        menu.ShouldContain("data-cerrar-sesion");
+        menu.ShouldContain("data-destino=\"/?sesion=cerrada\"");
+        script.ShouldContain("XMLHttpRequest");
+        script.ShouldContain("data-cerrar-sesion");
+        script.ShouldContain("window.location.assign");
     }
 
     [Fact]

@@ -22,7 +22,7 @@
         @if (conSesion)
         {
             <a class="app" asp-controller="Inicio" asp-action="Panel">Gestión de usuarios</a>
-            <a class="salir" asp-controller="Inicio" asp-action="Salir" data-confirmar="¿Cerrar sesión? Tendrás que volver a ingresar tu usuario y clave para continuar.">Cerrar sesión</a>
+            <a class="salir" asp-controller="Inicio" asp-action="Salir" data-cerrar-sesion data-destino="/?sesion=cerrada" data-confirmar="¿Cerrar sesión? Tendrás que volver a ingresar tu usuario y clave para continuar.">Cerrar sesión</a>
         }
         else
         {

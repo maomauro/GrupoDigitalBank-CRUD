@@ -145,7 +145,7 @@
     <p>Lo que esta solución <strong>no</strong> hace, dicho con honestidad:</p>
     <ul>
         <li><strong>Un solo usuario y sin roles.</strong> La autenticación es Basic Auth en el proxy. Lo siguiente sería un inicio de sesión con cuentas por persona y roles.</li>
-        <li><strong>«Cerrar sesión» es un truco del navegador.</strong> Basic Auth no tiene sesión: el enlace obliga al navegador a olvidar las credenciales (basta con cancelar el cuadro que aparece). Con cuentas propias sería un cierre de sesión real.</li>
+        <li><strong>«Cerrar sesión» es un truco del navegador.</strong> Basic Auth no tiene sesión: al confirmar, la página hace en segundo plano una petición con datos inválidos para que el navegador olvide las credenciales y te lleva al inicio. Si el navegador no lo permite (por ejemplo, con JavaScript desactivado), puede mostrar su cuadro de usuario y clave: basta cancelarlo. Con cuentas propias sería un cierre de sesión real.</li>
         <li><strong>Sin alta disponibilidad:</strong> un solo servidor; la recuperación se apoya en las copias de seguridad.</li>
         <li><strong>Contrato SOAP duplicado</strong> a mano; una prueba lo vigila, pero generarlo desde un único origen sería más robusto.</li>
     </ul>
