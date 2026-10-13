@@ -142,7 +142,7 @@ public sealed class UsuariosControllerTests : IDisposable
     {
         var resultado = await _controlador.Registrar(ModeloValido());
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Mensaje"].ShouldBe("Usuario registrado correctamente.");
         await _cliente.Received(1).AgregarAsync(Arg.Is<UsuarioDto>(u => u.Nombre == "Ana Perez" && u.Sexo == "F"));
     }
@@ -203,7 +203,7 @@ public sealed class UsuariosControllerTests : IDisposable
 
         var resultado = await _controlador.Editar(99);
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Error"].ShouldBe("No existe el usuario 99.");
     }
 
@@ -212,7 +212,7 @@ public sealed class UsuariosControllerTests : IDisposable
     {
         var resultado = await _controlador.Editar(ModeloValido(5));
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Mensaje"].ShouldBe("Usuario modificado correctamente.");
         await _cliente.Received(1).ModificarAsync(Arg.Is<UsuarioDto>(u => u.Id == 5));
     }
@@ -247,7 +247,7 @@ public sealed class UsuariosControllerTests : IDisposable
     {
         var resultado = await _controlador.Eliminar(7);
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Mensaje"].ShouldBe("Usuario eliminado correctamente.");
         await _cliente.Received(1).EliminarAsync(7);
     }
@@ -258,7 +258,8 @@ public sealed class UsuariosControllerTests : IDisposable
         var resultado = await _controlador.Eliminar(7, 4, 25);
 
         var redireccion = resultado.ShouldBeOfType<RedirectToActionResult>();
-        redireccion.ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        redireccion.ActionName.ShouldBe(nameof(InicioController.Panel));
+        redireccion.ControllerName.ShouldBe("Inicio");
         redireccion.RouteValues.ShouldNotBeNull();
         redireccion.RouteValues["pagina"].ShouldBe(4);
         redireccion.RouteValues["tamano"].ShouldBe(25);
@@ -284,7 +285,7 @@ public sealed class UsuariosControllerTests : IDisposable
 
         var resultado = await _controlador.Eliminar(7);
 
-        resultado.ShouldBeOfType<RedirectToActionResult>().ActionName.ShouldBe(nameof(UsuariosController.Consultar));
+        AlInicioConSesion(resultado);
         _controlador.TempData["Error"].ShouldBe("No existe el usuario 7.");
         _controlador.TempData.ContainsKey("Mensaje").ShouldBeFalse();
     }
@@ -297,5 +298,13 @@ public sealed class UsuariosControllerTests : IDisposable
         var resultado = _controlador.Error();
 
         resultado.ShouldBeOfType<ViewResult>().Model.ShouldBe("traza-123");
+    }
+
+    /// <summary>Registrar, modificar y eliminar vuelven al inicio con sesion (grilla + boton de nuevo usuario), no a la pagina suelta de consulta.</summary>
+    private static void AlInicioConSesion(IActionResult resultado)
+    {
+        var redireccion = resultado.ShouldBeOfType<RedirectToActionResult>();
+        redireccion.ActionName.ShouldBe(nameof(InicioController.Panel));
+        redireccion.ControllerName.ShouldBe("Inicio");
     }
 }

@@ -1,0 +1,23 @@
+@{ var autenticado = ViewData["Autenticado"] is true; }
+
+<section class="hero">
+    <p class="sobretitulo">Prueba técnica · Desarrollador Senior · Grupo Digital Bank</p>
+    <h1>Gestión de usuarios: cómo se desarrolló esta solución</h1>
+    <p>
+        Sistema con <strong>arquitectura por capas en .NET 10</strong>: una web para registrar y consultar usuarios, un servicio
+        WCF con las reglas de negocio y una base de datos PostgreSQL. Esta página explica qué se hizo, con qué herramientas y por qué.
+        Elaborado por <strong>Edgar Mauricio Cifuentes Acosta</strong>.
+    </p>
+    <p class="botones">
+        @if (!autenticado)
+        {
+            <a class="boton" asp-controller="Inicio" asp-action="Panel">Ir a la aplicación</a>
+            <a class="boton-sec" asp-controller="Usuarios" asp-action="Registrar">Registrar un usuario</a>
+        }
+        <a class="boton-sec" href="https://github.com/maomauro/GrupoDigitalBank-CRUD" target="_blank" rel="noopener">Ver el código en GitHub</a>
+    </p>
+    @if (!autenticado)
+    {
+        <p class="nota">La aplicación pide usuario y clave (Basic Auth); esta página es pública. Para entrar, usa las credenciales enviadas con la entrega.</p>
+    }
+</section>

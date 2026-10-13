@@ -18,7 +18,7 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
         {
             await cliente.AgregarAsync(modelo.ADto());
             TempData["Mensaje"] = "Usuario registrado correctamente.";
-            return RedirectToAction(nameof(Consultar));
+            return RedirectToAction(nameof(InicioController.Panel), "Inicio");
         }
         catch (ServicioException ex)
         {
@@ -55,7 +55,7 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
         catch (ServicioException ex)
         {
             TempData["Error"] = ex.Message;
-            return RedirectToAction(nameof(Consultar));
+            return RedirectToAction(nameof(InicioController.Panel), "Inicio");
         }
     }
 
@@ -67,7 +67,7 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
         {
             await cliente.ModificarAsync(modelo.ADto());
             TempData["Mensaje"] = "Usuario modificado correctamente.";
-            return RedirectToAction(nameof(Consultar));
+            return RedirectToAction(nameof(InicioController.Panel), "Inicio");
         }
         catch (ServicioException ex)
         {
@@ -89,7 +89,7 @@ public class UsuariosController(IUsuarioClient cliente) : Controller
             TempData["Error"] = ex.Message;
         }
         // Vuelve a la pagina desde la que se elimino; si ya no existe, el servicio devuelve la ultima
-        return RedirectToAction(nameof(Consultar), new { pagina, tamano });
+        return RedirectToAction(nameof(InicioController.Panel), "Inicio", new { pagina, tamano });
     }
 
     [ResponseCache(Duration = 0, NoStore = true)]

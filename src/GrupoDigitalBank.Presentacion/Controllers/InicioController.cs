@@ -1,3 +1,5 @@
+using GrupoDigitalBank.Presentacion.Models;
+using GrupoDigitalBank.Presentacion.Servicios;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrupoDigitalBank.Presentacion.Controllers;
@@ -12,6 +14,29 @@ public sealed class InicioController : Controller
     internal const string RealmBasicAuth = "restricted";
 
     public IActionResult Index() => View();
+
+    /// <summary>
+    /// Inicio con sesion: la grilla de usuarios con el boton de nuevo usuario y, debajo, la explicacion de la solucion.
+    /// Vive en /inicio, que el proxy SI protege con usuario y clave (solo "/" y "/salir" son publicas). El cliente SOAP llega
+    /// por [FromServices] para que las acciones publicas no dependan del servicio de negocios.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Panel([FromServices] IUsuarioClient cliente, int pagina = 1, int tamano = PaginaViewModel.TamanoPorOmision)
+    {
+        // Lo que llega por la URL no es de fiar: se acota a lo que el servicio acepta (igual que Usuarios/Consultar)
+        pagina = PaginaViewModel.NormalizarPagina(pagina);
+        tamano = PaginaViewModel.NormalizarTamano(tamano);
+        try
+        {
+            return View(PaginaViewModel.Desde(await cliente.ConsultarPaginaAsync(pagina, tamano)));
+        }
+        catch (ServicioException ex)
+        {
+            if (ex.Detalles.Count == 0) ModelState.AddModelError(string.Empty, ex.Message);
+            foreach (var detalle in ex.Detalles) ModelState.AddModelError(string.Empty, detalle);
+            return View(new PaginaViewModel { Pagina = pagina, Tamano = tamano });
+        }
+    }
 
     /// <summary>
     /// Basic Auth no tiene sesion que cerrar: el navegador reenvia las credenciales guardadas hasta que el servidor las rechaza.

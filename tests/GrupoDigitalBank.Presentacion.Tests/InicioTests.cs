@@ -73,7 +73,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
 
         var html = await (await http.GetAsync("/")).Content.ReadAsStringAsync();
 
-        html.ShouldContain("href=\"/Usuarios/Consultar\"");
+        html.ShouldContain("href=\"/inicio\"");
         html.ShouldContain("href=\"/Usuarios/Registrar\"");
     }
 
@@ -141,24 +141,139 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
-    public async Task ElMenuTraeInicioYCerrarSesionEnTodasLasPaginas()
+    public async Task SinSesionElMenuMuestraSoloIniciarSesion()
+    {
+        using var http = fabrica.CreateClient();
+
+        foreach (var ruta in new[] { "/", "/salir" })
+        {
+            var menu = Cabecera(await (await http.GetAsync(ruta)).Content.ReadAsStringAsync());
+
+            menu.ShouldContain("Grupo Digital Bank", customMessage: ruta);
+            menu.ShouldContain("Gestión de usuarios", customMessage: ruta);
+            menu.ShouldContain("Iniciar sesión", customMessage: ruta);
+            menu.ShouldNotContain("Cerrar sesión", customMessage: ruta);
+            menu.ShouldNotContain(">Inicio</a>", customMessage: ruta);
+        }
+    }
+
+    [Fact]
+    public async Task ConSesionElMenuMuestraInicioYCerrarSesion()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        foreach (var ruta in new[] { "/inicio", "/Usuarios/Consultar", "/Usuarios/Registrar" })
+        {
+            var menu = Cabecera(await (await http.GetAsync(ruta)).Content.ReadAsStringAsync());
+
+            menu.ShouldContain("Grupo Digital Bank", customMessage: ruta);
+            menu.ShouldContain("Gestión de usuarios", customMessage: ruta);
+            menu.ShouldContain("href=\"/inicio\"", customMessage: ruta);
+            menu.ShouldContain("href=\"/salir\"", customMessage: ruta);
+            menu.ShouldContain("Cerrar sesión", customMessage: ruta);
+            menu.ShouldNotContain("Iniciar sesión", customMessage: ruta);
+        }
+    }
+
+    /// <summary>Solo el menu superior: el cuerpo de algunas paginas menciona "Cerrar sesión" al explicar sus limites.</summary>
+    private static string Cabecera(string html)
+    {
+        var inicio = html.IndexOf("<header>", StringComparison.Ordinal);
+        var fin = html.IndexOf("</header>", StringComparison.Ordinal);
+        (inicio >= 0 && fin > inicio).ShouldBeTrue("la pagina debe tener cabecera");
+        return html[inicio..fin];
+    }
+
+    private HttpClient ClienteConGrilla(out IUsuarioClient cliente)
+    {
+        cliente = Substitute.For<IUsuarioClient>();
+        cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(new PaginaUsuarios
+        {
+            Usuarios = [new UsuarioDto { Id = 7, Nombre = "Ana Torres", FechaNacimiento = new DateTime(1990, 5, 20), Sexo = "F" }],
+            Total = 1,
+            Pagina = 1,
+            Tamano = 10
+        });
+        var sustituto = cliente;
+        return fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
+        {
+            s.RemoveAll<IUsuarioClient>();
+            s.AddSingleton(sustituto);
+        })).CreateClient();
+    }
+
+    [Fact]
+    public async Task ElInicioConSesionMuestraElBotonDeNuevoUsuarioSobreLaGrillaYConservaLaExplicacion()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var html = await (await http.GetAsync("/inicio")).Content.ReadAsStringAsync();
+
+        html.ShouldContain("Usuarios registrados");
+        html.ShouldContain("Ana Torres");
+        var boton = html.IndexOf("Nuevo usuario", StringComparison.Ordinal);
+        boton.ShouldBeGreaterThan(-1);
+        html.ShouldContain("href=\"/Usuarios/Registrar\"");
+        boton.ShouldBeLessThan(html.IndexOf("<table", StringComparison.Ordinal), "el boton va SOBRE la grilla");
+        html.ShouldContain("cómo se desarrolló esta solución");
+        html.ShouldContain("Arquitectura por capas");
+        html.ShouldNotContain("Ir a la aplicación");
+        html.ShouldNotContain("usa las credenciales enviadas");
+    }
+
+    [Fact]
+    public async Task LaPaginacionDelInicioConSesionSeQuedaEnElInicio()
     {
         var cliente = Substitute.For<IUsuarioClient>();
-        cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>())
-            .Returns(new PaginaUsuarios { Usuarios = [], Total = 0, Pagina = 1, Tamano = 10 });
+        cliente.ConsultarPaginaAsync(2, 10).Returns(new PaginaUsuarios
+        {
+            Usuarios = [new UsuarioDto { Id = 11, Nombre = "Laura Gómez", FechaNacimiento = new DateTime(1998, 3, 14), Sexo = "F" }],
+            Total = 25,
+            Pagina = 2,
+            Tamano = 10
+        });
         using var http = fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
         {
             s.RemoveAll<IUsuarioClient>();
             s.AddSingleton(cliente);
         })).CreateClient();
 
-        foreach (var ruta in new[] { "/", "/Usuarios/Consultar", "/Usuarios/Registrar" })
-        {
-            var html = await (await http.GetAsync(ruta)).Content.ReadAsStringAsync();
+        var html = await http.GetStringAsync("/inicio?pagina=2");
 
-            html.ShouldContain("href=\"/salir\"", customMessage: ruta);
-            html.ShouldContain("Cerrar sesión", customMessage: ruta);
-            html.ShouldContain("href=\"/\"", customMessage: ruta);
-        }
+        html.ShouldContain("href=\"/inicio?pagina=1&amp;tamano=10\"");
+        html.ShouldContain("href=\"/inicio?pagina=3&amp;tamano=10\"");
+        html.ShouldNotContain("/Usuarios/Consultar?pagina=");
+    }
+
+    [Theory]
+    [InlineData("abc", "xyz")]
+    [InlineData("-5", "999999")]
+    public async Task ElInicioConSesionNoFallaConParametrosDePaginaInvalidos(string pagina, string tamano)
+    {
+        using var http = ClienteConGrilla(out var cliente);
+
+        var respuesta = await http.GetAsync($"/inicio?pagina={pagina}&tamano={tamano}");
+
+        respuesta.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await cliente.Received().ConsultarPaginaAsync(1, 10);
+    }
+
+    [Fact]
+    public async Task ElInicioConSesionMuestraElErrorYNoSeCaeSiNegociosFalla()
+    {
+        var cliente = Substitute.For<IUsuarioClient>();
+        cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns<PaginaUsuarios>(_ => throw new ServicioException("Sin conexion."));
+        using var http = fabrica.WithWebHostBuilder(b => b.ConfigureServices(s =>
+        {
+            s.RemoveAll<IUsuarioClient>();
+            s.AddSingleton(cliente);
+        })).CreateClient();
+
+        var respuesta = await http.GetAsync("/inicio");
+        var html = await respuesta.Content.ReadAsStringAsync();
+
+        respuesta.StatusCode.ShouldBe(HttpStatusCode.OK);
+        html.ShouldContain("Sin conexion.");
+        html.ShouldContain("Nuevo usuario");
     }
 }

@@ -78,3 +78,11 @@ ul.decisiones li { margin-bottom: .45rem; }
 .enlaces-repo a { color: #0b6aa2; font-weight: 600; text-decoration: none; }
 .enlaces-repo a:hover { text-decoration: underline; }
 .enlaces-repo span { display: block; color: #52606d; font-size: .85rem; margin-top: .15rem; }
+
+/* Menu superior segun el estado (anonimo / con sesion) y barra de acciones del inicio con sesion */
+header .app { color: #cfe8f7; padding-left: 1rem; border-left: 1px solid #3d6f8f; }
+header .iniciar { margin-left: auto; padding: .35rem .95rem; border: 1px solid #cfe8f7; border-radius: 4px; color: #fff; text-decoration: none; }
+header .iniciar:hover { background: #0b6aa2; border-color: #0b6aa2; }
+.barra-acciones { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem 1rem; margin-bottom: .8rem; }
+.barra-acciones h1 { margin: 0; font-size: 1.5rem; }
+.separador-seccion { border: 0; border-top: 2px solid #d9e2ec; margin: 2.2rem 0 1.4rem; }
