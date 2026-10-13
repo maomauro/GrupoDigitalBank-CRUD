@@ -96,3 +96,16 @@ document.querySelectorAll("[data-autocierre]").forEach(function (aviso) {
     entrada.addEventListener("change", actualizar);
     actualizar();
 })();
+
+// Campos con class="solo-mayusculas": lo escrito (o pegado) se convierte a mayusculas conservando la posicion del cursor.
+// El formulario tambien se normaliza en el servidor; esto es solo la ayuda visual.
+document.addEventListener("input", function (evento) {
+    var campo = evento.target;
+    if (!(campo instanceof HTMLInputElement) || !campo.classList.contains("solo-mayusculas")) return;
+    var inicio = campo.selectionStart, fin = campo.selectionEnd;
+    var mayusculas = campo.value.toUpperCase();
+    if (mayusculas !== campo.value) {
+        campo.value = mayusculas;
+        if (inicio !== null) campo.setSelectionRange(inicio, fin);
+    }
+});

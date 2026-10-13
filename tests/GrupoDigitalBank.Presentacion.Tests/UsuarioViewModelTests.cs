@@ -96,7 +96,7 @@ public class UsuarioViewModelTests
     // ---------- Conversion ----------
 
     [Fact]
-    public void ADtoRecortaElNombreYCopiaLosCampos()
+    public void ADtoRecortaYPasaAMayusculasElNombreYCopiaLosCampos()
     {
         var modelo = Valido();
         modelo.Id = 4;
@@ -105,7 +105,7 @@ public class UsuarioViewModelTests
         var dto = modelo.ADto();
 
         dto.Id.ShouldBe(4);
-        dto.Nombre.ShouldBe("Ana Perez");
+        dto.Nombre.ShouldBe("ANA PEREZ");
         dto.FechaNacimiento.ShouldBe(new DateTime(1990, 5, 20));
         dto.Sexo.ShouldBe("F");
     }

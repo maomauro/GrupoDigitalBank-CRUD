@@ -366,6 +366,22 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
+    public async Task ElCampoNombreSoloAdmiteMayusculas()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var html = await http.GetStringAsync("/Usuarios/Registrar");
+        var script = await http.GetStringAsync("/js/site.js");
+        var css = await http.GetStringAsync("/css/site.css");
+
+        html.ShouldContain("class=\"solo-mayusculas\"");
+        script.ShouldContain("toUpperCase");
+        css.ShouldContain("text-transform: uppercase");
+        new GrupoDigitalBank.Presentacion.Models.UsuarioViewModel { Nombre = "  ana maría núñez ", FechaNacimiento = new DateTime(1990, 1, 1), Sexo = "F" }
+            .ADto().Nombre.ShouldBe("ANA MARÍA NÚÑEZ");
+    }
+
+    [Fact]
     public async Task ElTituloDelMenuAbreLaExplicacionPublicaSinSesionYLaProtegidaConSesion()
     {
         using var http = ClienteConGrilla(out _);

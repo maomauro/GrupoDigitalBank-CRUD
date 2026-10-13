@@ -144,7 +144,7 @@ public sealed class UsuariosControllerTests : IDisposable
 
         AlInicioConSesion(resultado);
         _controlador.TempData["Mensaje"].ShouldBe("Usuario registrado correctamente.");
-        await _cliente.Received(1).AgregarAsync(Arg.Is<UsuarioDto>(u => u.Nombre == "Ana Perez" && u.Sexo == "F"));
+        await _cliente.Received(1).AgregarAsync(Arg.Is<UsuarioDto>(u => u.Nombre == "ANA PEREZ" && u.Sexo == "F"));
     }
 
     [Fact]

@@ -32,7 +32,7 @@ public class UsuarioViewModel
     public UsuarioDto ADto() => new()
     {
         Id = Id,
-        Nombre = Nombre.Trim(),
+        Nombre = Nombre.Trim().ToUpperInvariant(),
         FechaNacimiento = FechaNacimiento ?? default,
         Sexo = Sexo ?? string.Empty
     };
