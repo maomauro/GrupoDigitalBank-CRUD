@@ -45,3 +45,13 @@ document.addEventListener("click", function (evento) {
 if (window.location.pathname === "/" && window.location.search === "?sesion=cerrada" && window.history && window.history.replaceState) {
     window.history.replaceState(null, "", "/");
 }
+
+// Un aviso con data-autocierre="milisegundos" se desvanece solo pasado ese tiempo (por ejemplo "Sesion cerrada", 5 s).
+document.querySelectorAll("[data-autocierre]").forEach(function (aviso) {
+    var milisegundos = parseInt(aviso.getAttribute("data-autocierre"), 10);
+    if (!(milisegundos > 0)) return;
+    window.setTimeout(function () {
+        aviso.classList.add("desvaneciendo");
+        window.setTimeout(function () { aviso.remove(); }, 400);
+    }, milisegundos);
+});

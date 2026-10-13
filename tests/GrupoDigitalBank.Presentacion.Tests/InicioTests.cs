@@ -141,6 +141,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         var otro = await http.GetStringAsync("/?sesion=<script>alert(1)</script>");
 
         con.ShouldContain("Sesión cerrada. Para volver a entrar");
+        con.ShouldContain("data-autocierre=\"5000\"");
         sin.ShouldNotContain("Sesión cerrada. Para volver a entrar");
         otro.ShouldNotContain("Sesión cerrada. Para volver a entrar");
         otro.ShouldNotContain("<script>alert(1)</script>");
@@ -215,6 +216,19 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
 
         script.ShouldContain("?sesion=cerrada");
         script.ShouldContain("history.replaceState");
+    }
+
+    [Fact]
+    public async Task ElAvisoDeSesionCerradaSeDesvaneceSoloALos5Segundos()
+    {
+        using var http = fabrica.CreateClient();
+
+        var script = await http.GetStringAsync("/js/site.js");
+        var css = await http.GetStringAsync("/css/site.css");
+
+        script.ShouldContain("[data-autocierre]");
+        script.ShouldContain("desvaneciendo");
+        css.ShouldContain(".alerta.desvaneciendo");
     }
 
     [Fact]

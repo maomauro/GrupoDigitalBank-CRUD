@@ -90,3 +90,5 @@ header .marca { display: flex; align-items: center; gap: 1rem; color: #fff; text
 header .marca:hover strong, header .marca:hover .app { text-decoration: underline; }
 header a.app { color: #cfe8f7; text-decoration: none; padding-left: 1rem; border-left: 1px solid #3d6f8f; }
 header a.app:hover { color: #fff; text-decoration: underline; }
+.alerta { transition: opacity .4s ease; }
+.alerta.desvaneciendo { opacity: 0; }
