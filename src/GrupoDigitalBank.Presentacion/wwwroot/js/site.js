@@ -39,3 +39,9 @@ document.addEventListener("click", function (evento) {
         peticion.send();
     }
 });
+
+// Tras cerrar sesion, "/?sesion=cerrada" solo sirve para que el servidor muestre el aviso: una vez mostrado se deja la
+// direccion limpia ("/") sin recargar la pagina ni perder el aviso.
+if (window.location.pathname === "/" && window.location.search === "?sesion=cerrada" && window.history && window.history.replaceState) {
+    window.history.replaceState(null, "", "/");
+}

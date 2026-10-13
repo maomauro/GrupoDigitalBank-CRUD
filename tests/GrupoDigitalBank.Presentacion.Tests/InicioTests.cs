@@ -207,6 +207,17 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
+    public async Task TrasElAvisoDeSesionCerradaLaDireccionQuedaLimpia()
+    {
+        using var http = fabrica.CreateClient();
+
+        var script = await http.GetStringAsync("/js/site.js");
+
+        script.ShouldContain("?sesion=cerrada");
+        script.ShouldContain("history.replaceState");
+    }
+
+    [Fact]
     public async Task ConSesionElMenuMuestraInicioYCerrarSesion()
     {
         using var http = ClienteConGrilla(out _);
