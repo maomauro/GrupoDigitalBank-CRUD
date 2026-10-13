@@ -11,3 +11,15 @@ document.addEventListener("submit", function (evento) {
         evento.preventDefault();
     }
 });
+
+// Lo mismo para enlaces (por ejemplo "Cerrar sesion"): data-confirmar="mensaje" pide confirmacion antes de seguir el
+// enlace. El mensaje se lee como TEXTO; nada se evalua como codigo.
+document.addEventListener("click", function (evento) {
+    var enlace = evento.target instanceof Element ? evento.target.closest("a[data-confirmar]") : null;
+    if (enlace === null) return;
+
+    var mensaje = enlace.getAttribute("data-confirmar");
+    if (mensaje !== null && !window.confirm(mensaje)) {
+        evento.preventDefault();
+    }
+});

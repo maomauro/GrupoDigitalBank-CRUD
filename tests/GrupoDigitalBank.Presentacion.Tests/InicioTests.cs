@@ -176,6 +176,21 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
+    public async Task CerrarSesionPideConfirmacionAntesDeSalir()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var menu = Cabecera(await http.GetStringAsync("/inicio"));
+        var script = await http.GetStringAsync("/js/site.js");
+
+        menu.ShouldContain("class=\"salir\" data-confirmar=\"¿Cerrar sesión?");
+        menu.ShouldContain("href=\"/salir\"");
+        script.ShouldContain("a[data-confirmar]");
+        script.ShouldContain("window.confirm");
+        script.ShouldContain("preventDefault");
+    }
+
+    [Fact]
     public async Task ConSesionElMenuMuestraInicioYCerrarSesion()
     {
         using var http = ClienteConGrilla(out _);
