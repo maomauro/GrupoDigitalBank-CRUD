@@ -300,7 +300,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         cliente = Substitute.For<IUsuarioClient>();
         cliente.ConsultarPaginaAsync(Arg.Any<int>(), Arg.Any<int>()).Returns(new PaginaUsuarios
         {
-            Usuarios = [new UsuarioDto { Id = 7, Nombre = "Ana Torres", FechaNacimiento = new DateTime(1990, 5, 20), Sexo = "F" }],
+            Usuarios = [new UsuarioDto { Id = 7, Nombre = "Ana Torres", FechaNacimiento = new DateTime(1990, 5, 20), Sexo = "F", Edad = 36, FechaRegistro = new DateTime(2026, 10, 9, 21, 30, 0) }],
             Total = 1,
             Pagina = 1,
             Tamano = 10
@@ -327,6 +327,26 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         html.ShouldContain("href=\"/Usuarios/Registrar\"");
         boton.ShouldBeLessThan(html.IndexOf("<table", StringComparison.Ordinal), "el boton va SOBRE la grilla");
         html.ShouldNotContain("cómo se desarrolló esta solución");
+    }
+
+    [Fact]
+    public async Task LaGrillaMuestraEdadFechaDeRegistroYIconosEnLugarDeTextos()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var html = await (await http.GetAsync("/inicio")).Content.ReadAsStringAsync();
+
+        html.ShouldContain("<th>Edad</th>");
+        html.ShouldContain("<th>Fecha de registro</th>");
+        html.ShouldContain("<td>36 años</td>");
+        html.ShouldContain("<td>2026-10-09 21:30</td>");
+        html.ShouldContain("title=\"Modificar\"");
+        html.ShouldContain("title=\"Eliminar\"");
+        html.ShouldContain("title=\"Nuevo usuario\"");
+        html.ShouldContain("<svg class=\"icono\"");
+        html.ShouldNotContain(">Modificar</a>");
+        html.ShouldNotContain(">Eliminar</button>");
+        html.ShouldNotContain("style=");
     }
 
     [Fact]

@@ -13,7 +13,7 @@ else
 {
     <table>
         <thead>
-            <tr><th>Id</th><th>Nombre</th><th>Fecha de nacimiento</th><th>Sexo</th><th>Acciones</th></tr>
+            <tr><th>Id</th><th>Nombre</th><th>Fecha de nacimiento</th><th>Edad</th><th>Sexo</th><th>Fecha de registro</th><th>Acciones</th></tr>
         </thead>
         <tbody>
         @foreach (var u in Model.Usuarios)
@@ -22,13 +22,15 @@ else
                 <td>@u.Id</td>
                 <td>@u.Nombre</td>
                 <td>@u.FechaNacimiento?.ToString("yyyy-MM-dd")</td>
+                <td>@u.Edad años</td>
                 <td>@u.SexoTexto</td>
+                <td>@u.FechaRegistro?.ToString("yyyy-MM-dd HH:mm")</td>
                 <td class="acciones">
-                    <a asp-controller="Usuarios" asp-action="Editar" asp-route-id="@u.Id">Modificar</a>
+                    <a class="icono-boton" asp-controller="Usuarios" asp-action="Editar" asp-route-id="@u.Id" title="Modificar" aria-label="Modificar a @u.Nombre"><partial name="_Icono" model="@("editar")" /></a>
                     @* Eliminar vuelve a esta misma pagina y tamano *@
                     <form asp-controller="Usuarios" asp-action="Eliminar" asp-route-id="@u.Id" asp-route-pagina="@Model.Pagina" asp-route-tamano="@Model.Tamano" method="post"
                           data-confirmar="¿Eliminar a @u.Nombre?">
-                        <button type="submit" class="peligro">Eliminar</button>
+                        <button type="submit" class="peligro icono-boton" title="Eliminar" aria-label="Eliminar a @u.Nombre"><partial name="_Icono" model="@("eliminar")" /></button>
                     </form>
                 </td>
             </tr>

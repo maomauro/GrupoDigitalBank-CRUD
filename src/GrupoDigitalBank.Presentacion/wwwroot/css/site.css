@@ -92,3 +92,10 @@ header a.app { color: #cfe8f7; text-decoration: none; padding-left: 1rem; border
 header a.app:hover { color: #fff; text-decoration: underline; }
 .alerta { transition: opacity .4s ease; }
 .alerta.desvaneciendo { opacity: 0; }
+
+/* Iconos de las acciones (SVG en linea, sin estilos en las vistas por la CSP) */
+.icono { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+.icono-boton { display: inline-flex; align-items: center; justify-content: center; }
+a.icono-boton:not(.boton) { width: 2rem; height: 2rem; border-radius: 4px; color: #0b6aa2; border: 1px solid #0b6aa2; }
+a.icono-boton:not(.boton):hover { background: #0b6aa2; color: #fff; }
+button.peligro.icono-boton { width: 2rem; height: 2rem; padding: 0; }
