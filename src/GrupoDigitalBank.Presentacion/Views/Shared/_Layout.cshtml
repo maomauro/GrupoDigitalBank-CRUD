@@ -16,8 +16,11 @@
             && (string.Equals(accion, "Index", StringComparison.OrdinalIgnoreCase) || string.Equals(accion, "Salir", StringComparison.OrdinalIgnoreCase)));
     }
     <header>
-        <strong>Grupo Digital Bank</strong>
-        <span class="app">Gestión de usuarios</span>
+        @* El titulo abre la explicacion completa de la solucion: publica ("/") sin sesion y protegida ("/acerca") con sesion *@
+        <a class="marca" asp-controller="Inicio" asp-action="@(conSesion ? "Acerca" : "Index")">
+            <strong>Grupo Digital Bank</strong>
+            <span class="app">Gestión de usuarios</span>
+        </a>
         @if (conSesion)
         {
             <nav>

@@ -203,7 +203,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
-    public async Task ElInicioConSesionMuestraElBotonDeNuevoUsuarioSobreLaGrillaYConservaLaExplicacion()
+    public async Task ElInicioConSesionMuestraElBotonDeNuevoUsuarioSobreLaGrillaYNoLaExplicacion()
     {
         using var http = ClienteConGrilla(out _);
 
@@ -215,10 +215,36 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         boton.ShouldBeGreaterThan(-1);
         html.ShouldContain("href=\"/Usuarios/Registrar\"");
         boton.ShouldBeLessThan(html.IndexOf("<table", StringComparison.Ordinal), "el boton va SOBRE la grilla");
+        html.ShouldNotContain("cómo se desarrolló esta solución");
+    }
+
+    [Fact]
+    public async Task ElTituloDelMenuAbreLaExplicacionPublicaSinSesionYLaProtegidaConSesion()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var sinSesion = Cabecera(await (await http.GetAsync("/")).Content.ReadAsStringAsync());
+        var conSesion = Cabecera(await (await http.GetAsync("/inicio")).Content.ReadAsStringAsync());
+
+        sinSesion.ShouldContain("class=\"marca\" href=\"/\"");
+        conSesion.ShouldContain("class=\"marca\" href=\"/acerca\"");
+    }
+
+    [Fact]
+    public async Task AcercaMuestraLaExplicacionCompletaConElMenuDeSesion()
+    {
+        using var http = fabrica.CreateClient();
+
+        var html = await (await http.GetAsync("/acerca")).Content.ReadAsStringAsync();
+        var menu = Cabecera(html);
+
         html.ShouldContain("cómo se desarrolló esta solución");
         html.ShouldContain("Arquitectura por capas");
+        html.ShouldContain("Infraestructura de producción");
         html.ShouldNotContain("Ir a la aplicación");
         html.ShouldNotContain("usa las credenciales enviadas");
+        menu.ShouldContain("Cerrar sesión");
+        menu.ShouldNotContain("Iniciar sesión");
     }
 
     [Fact]

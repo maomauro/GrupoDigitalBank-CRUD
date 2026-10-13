@@ -86,3 +86,5 @@ header .iniciar:hover { background: #0b6aa2; border-color: #0b6aa2; }
 .barra-acciones { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem 1rem; margin-bottom: .8rem; }
 .barra-acciones h1 { margin: 0; font-size: 1.5rem; }
 .separador-seccion { border: 0; border-top: 2px solid #d9e2ec; margin: 2.2rem 0 1.4rem; }
+header .marca { display: flex; align-items: center; gap: 1rem; color: #fff; text-decoration: none; }
+header .marca:hover strong, header .marca:hover .app { text-decoration: underline; }

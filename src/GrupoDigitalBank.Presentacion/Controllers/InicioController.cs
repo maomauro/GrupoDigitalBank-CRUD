@@ -16,6 +16,12 @@ public sealed class InicioController : Controller
     public IActionResult Index() => View();
 
     /// <summary>
+    /// La misma explicacion de la solucion que "/", pero CON sesion: vive en /acerca, que el proxy protege, y asi el menu
+    /// muestra "Inicio" y "Cerrar sesion" en lugar de "Iniciar sesion". Es a donde lleva el titulo del menu si ya hay sesion.
+    /// </summary>
+    public IActionResult Acerca() => View();
+
+    /// <summary>
     /// Inicio con sesion: la grilla de usuarios con el boton de nuevo usuario y, debajo, la explicacion de la solucion.
     /// Vive en /inicio, que el proxy SI protege con usuario y clave (solo "/" y "/salir" son publicas). El cliente SOAP llega
     /// por [FromServices] para que las acciones publicas no dependan del servicio de negocios.

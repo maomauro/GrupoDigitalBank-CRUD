@@ -57,7 +57,7 @@ Prueba 'GET /Usuarios/Consultar con credenciales correctas' @('200') ($auth + "$
 Prueba 'GET /Usuarios/Registrar con credenciales' @('200') ($auth + "$Base/Usuarios/Registrar")
 
 Write-Host "`n== Todo lo demas exige credenciales ==" -ForegroundColor Cyan
-foreach ($ruta in '/Usuarios/Consultar', '/Usuarios/Registrar', '/Usuarios/Editar/1', '/Inicio', '/Inicio/Index', '/Inicio/Salir', '/Usuarios') { Prueba "GET $ruta" @('401') @("$Base$ruta") }
+foreach ($ruta in '/Usuarios/Consultar', '/Usuarios/Registrar', '/Usuarios/Editar/1', '/Inicio', '/Inicio/Index', '/Inicio/Salir', '/inicio', '/acerca', '/Inicio/Panel', '/Inicio/Acerca', '/Usuarios') { Prueba "GET $ruta" @('401') @("$Base$ruta") }
 foreach ($m in 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS') { Prueba "$m /Usuarios/Eliminar/1" @('401') @('-X', $m, "$Base/Usuarios/Eliminar/1") }
 
 Write-Host "`n== Rutas publicas del inicio (ADR 0016): solo ellas, y sin datos ==" -ForegroundColor Cyan
@@ -80,6 +80,9 @@ $bypass = (& curl.exe -s $curlInseguro --max-time 20 --path-as-is "$Base/css/../
 Check 'Ninguna evasion devuelve la grilla' (($bypass -notmatch '/Usuarios/Editar/') -and ($bypass -notmatch 'Gesti.n de usuarios'))
 Prueba 'GET //Usuarios/Consultar (doble barra)' @('401') @("$Base//Usuarios/Consultar")
 Prueba 'POST /salir' @('401', '404', '405') @('-X', 'POST', "$Base/salir")
+
+Prueba 'GET /inicio con credenciales (inicio con sesion y grilla)' @('200') ($auth + "$Base/inicio")
+Prueba 'GET /acerca con credenciales' @('200') ($auth + "$Base/acerca")
 
 Write-Host "`n== /health abierto, pero SOLO /health ==" -ForegroundColor Cyan
 Prueba 'GET /health sin credenciales' @('200') @("$Base/health")
