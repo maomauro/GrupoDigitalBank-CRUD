@@ -74,7 +74,8 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
         var html = await (await http.GetAsync("/")).Content.ReadAsStringAsync();
 
         html.ShouldContain("href=\"/inicio\"");
-        html.ShouldContain("href=\"/Usuarios/Registrar\"");
+        html.ShouldNotContain("Registrar un usuario");
+        html.ShouldNotContain("href=\"/Usuarios/Registrar\"");
     }
 
     [Fact]
