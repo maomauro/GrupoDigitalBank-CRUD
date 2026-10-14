@@ -185,7 +185,7 @@ Si una migración falla, `negocios` queda en `Created` y no arranca. `docker com
 |---|---|---|
 | Red | Solo `proxy` publica puertos; `web`, `negocios` y `db` quedan en la red interna | `docker-compose.yml` |
 | Transporte | HTTPS hasta el nginx compartido (Cloudflare y certificado de origen); HTTP redirige a HTTPS; HSTS configurable; las cookies llevan `Secure` cuando la petición llegó por HTTPS | Cloudflare, nginx y Caddy ([ADR 0009](adr/0009-cabeceras-http-csp-y-hsts.md), [ADR 0011](adr/0011-despliegue-detras-del-nginx-compartido.md)) |
-| Acceso | Basic Auth con hash bcrypt; `/health` abierto, nada más ([ADR 0004](adr/0004-autenticacion-minima-basic-auth.md)) | Caddy |
+| Acceso | Basic Auth con hash bcrypt; `/health` abierto, nada más ([ADR 0004](adr/0004-autenticacion-minima-basic-auth.md)); el 401 devuelve una página «Acceso restringido» con enlaces a iniciar sesión y al inicio, para que «Cancelar» en el cuadro del navegador no deje un error vacío | Caddy |
 | Navegador | CSP sin nada en línea ni de otro origen, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, COOP/CORP; también en los errores 401 y 502 | Caddy |
 | Aplicación | Antiforgery con claves persistentes, sin JavaScript en línea, errores sin detalles internos | `web`, `negocios` |
 | Datos | Rol de mínimo privilegio, parámetros tipados, `CHECK` en la tabla | `db/002`, Npgsql |

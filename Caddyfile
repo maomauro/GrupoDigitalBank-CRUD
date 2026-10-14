@@ -40,6 +40,36 @@ http://{$DOMINIO} {
 	# que ve un visitante sin credenciales) salia sin ninguna. WWW-Authenticate se conserva.
 	handle_errors {
 		import cabeceras_seguridad
+
+		# El 401 sin credenciales trae un cuerpo (WWW-Authenticate se conserva, asi que el navegador sigue mostrando su
+		# cuadro de usuario y clave). Sin cuerpo, al pulsar "Cancelar" Chrome pinta "HTTP ERROR 401"; con esta pagina
+		# el visitante ve una explicacion y un camino de vuelta. Solo usa /css/site.css, que es publico y propio (CSP).
+		@sin_credenciales expression {err.status_code} == 401
+		handle @sin_credenciales {
+			header Content-Type "text/html; charset=utf-8"
+			respond <<HTML
+				<!doctype html>
+				<html lang="es">
+				<head>
+				<meta charset="utf-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1">
+				<title>Acceso restringido</title>
+				<link rel="stylesheet" href="/css/site.css">
+				</head>
+				<body>
+				<header><a class="marca" href="/"><strong>Grupo Digital Bank</strong></a></header>
+				<main>
+				<h1>Acceso restringido</h1>
+				<p>Para usar la aplicación necesitas ingresar tu usuario y tu clave.</p>
+				<p class="botones">
+				<a class="boton" href="/inicio">Iniciar sesión</a>
+				<a class="boton-sec" href="/">Volver al inicio</a>
+				</p>
+				</main>
+				</body>
+				</html>
+				HTML 401
+		}
 	}
 
 	# Salud del proceso web: sin autenticacion, para monitores externos y la prueba de humo del despliegue.
