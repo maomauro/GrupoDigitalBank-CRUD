@@ -9,6 +9,7 @@
     <a href="#proceso">Cómo se trabajó</a>
     <a href="#limites">Límites</a>
     <a href="#codigo">Código y documentos</a>
+    <a href="#glosario">Glosario</a>
 </nav>
 
 <section id="enunciado">
@@ -95,7 +96,7 @@
 <section id="calidad">
     <h2>5. Calidad: cómo se sabe que funciona</h2>
     <ul>
-        <li><strong>357 pruebas automáticas</strong>: unitarias, de vistas con el pipeline MVC real, de integración contra un PostgreSQL real (en un contenedor) y de contrato SOAP contra el servicio real.</li>
+        <li><strong>358 pruebas automáticas</strong>: unitarias, de vistas con el pipeline MVC real, de integración contra un PostgreSQL real (en un contenedor) y de contrato SOAP contra el servicio real.</li>
         <li><strong>Cobertura</strong> de la capa de negocios del 100 % y de la presentación cercana al 96 %; el CI exige un mínimo del 80 % en negocios.</li>
         <li><strong>Pruebas de mutación manuales</strong>: se rompe el código a propósito (decenas de veces) para comprobar que alguna prueba lo detecta. Todas las mutaciones aplicadas fueron detectadas.</li>
         <li><strong>Integración continua</strong> en cada cambio: compilación sin advertencias (<code>TreatWarningsAsErrors</code>), formato, pruebas, validación de los <em>compose</em>, construcción de imágenes, análisis de vulnerabilidades y SonarCloud.</li>
@@ -169,6 +170,43 @@
         <li><a href="https://github.com/maomauro/GrupoDigitalBank-CRUD/pulls?q=is%3Apr+is%3Amerged" target="_blank" rel="noopener">Pull Requests</a><span>Cada cambio entró por un PR, con su CI y su descripción.</span></li>
     </ul>
     <p class="nota">Si el repositorio pide iniciar sesión en GitHub, solicita acceso a Edgar Mauricio Cifuentes Acosta: <a href="mailto:maocifuentesa@gmail.com">maocifuentesa@gmail.com</a> · <a href="tel:+573103676486">310 367 6486</a>.</p>
+</section>
+
+<section id="glosario">
+    <h2>11. Glosario de siglas</h2>
+    <p>Los términos técnicos y las siglas que aparecen en esta página:</p>
+    <table class="simple">
+        <thead><tr><th>Sigla</th><th>Significado</th></tr></thead>
+        <tbody>
+            <tr><td><strong>ADR</strong></td><td><em>Architecture Decision Record</em>: registro escrito de una decisión de arquitectura, con su porqué, alternativas y costos.</td></tr>
+            <tr><td><strong>CI</strong></td><td><em>Continuous Integration</em> (integración continua): compilar y probar automáticamente cada cambio.</td></tr>
+            <tr><td><strong>CD</strong></td><td><em>Continuous Delivery</em> (entrega continua): publicar y desplegar automáticamente lo que pasó el CI.</td></tr>
+            <tr><td><strong>PR</strong></td><td><em>Pull Request</em>: solicitud para fusionar un cambio en GitHub, con su revisión y su CI.</td></tr>
+            <tr><td><strong>CRUD</strong></td><td><em>Create, Read, Update, Delete</em>: crear, consultar, modificar y eliminar.</td></tr>
+            <tr><td><strong>SOAP</strong></td><td>Protocolo de mensajes XML con el que hablan la capa web y la de negocios.</td></tr>
+            <tr><td><strong>WCF / CoreWCF</strong></td><td><em>Windows Communication Foundation</em>, la tecnología de servicios que pide el enunciado; CoreWCF es su versión para .NET moderno.</td></tr>
+            <tr><td><strong>MVC</strong></td><td><em>Model-View-Controller</em>: patrón de la web (modelo, vista y controlador).</td></tr>
+            <tr><td><strong>ORM</strong></td><td><em>Object-Relational Mapper</em>: librería que traduce objetos a SQL. Aquí <strong>no</strong> se usa.</td></tr>
+            <tr><td><strong>SQL / PL/pgSQL</strong></td><td>Lenguaje de consultas; PL/pgSQL es el lenguaje de las funciones almacenadas de PostgreSQL.</td></tr>
+            <tr><td><strong>CHECK</strong></td><td>Restricción de la base de datos que rechaza datos inválidos (por ejemplo, un sexo distinto de M o F).</td></tr>
+            <tr><td><strong>LTS</strong></td><td><em>Long Term Support</em>: versión con soporte extendido (.NET 10, hasta noviembre de 2028).</td></tr>
+            <tr><td><strong>CSP</strong></td><td><em>Content Security Policy</em>: cabecera que le dice al navegador qué código puede ejecutar; bloquea scripts y estilos en línea.</td></tr>
+            <tr><td><strong>HSTS</strong></td><td><em>HTTP Strict Transport Security</em>: obliga al navegador a usar siempre HTTPS.</td></tr>
+            <tr><td><strong>TLS / HTTPS</strong></td><td>Cifrado de la conexión web (el candado del navegador).</td></tr>
+            <tr><td><strong>mTLS</strong></td><td>TLS mutuo: servidor y cliente se identifican con certificado; aquí solo Cloudflare puede hablar con el servidor.</td></tr>
+            <tr><td><strong>Basic Auth</strong></td><td>Usuario y clave simples que pide el navegador, validados en el proxy.</td></tr>
+            <tr><td><strong>bcrypt</strong></td><td>Algoritmo para guardar claves como un hash y no en claro.</td></tr>
+            <tr><td><strong>SSH</strong></td><td>Conexión remota segura al servidor; con ella el CI despliega.</td></tr>
+            <tr><td><strong>VPS</strong></td><td><em>Virtual Private Server</em>: servidor virtual alquilado (Contabo).</td></tr>
+            <tr><td><strong>GHCR</strong></td><td><em>GitHub Container Registry</em>: almacén de imágenes Docker de GitHub.</td></tr>
+            <tr><td><strong>B2</strong></td><td>Backblaze B2: almacenamiento externo donde van las copias de seguridad cifradas.</td></tr>
+            <tr><td><strong>UTC</strong></td><td>Hora universal. El servidor y la base trabajan en UTC, y «hoy» se calcula en hora de Bogotá.</td></tr>
+            <tr><td><strong>C4</strong></td><td>Modelo de diagramas de arquitectura (contexto, contenedores y componentes).</td></tr>
+            <tr><td><strong>SVG</strong></td><td>Formato de gráficos vectoriales; así están hechos los diagramas de esta página.</td></tr>
+            <tr><td><strong>H1 … H8 / B1 … B8</strong></td><td>Hallazgos del diagnóstico inicial: la <strong>H</strong> marca los de seguridad y calidad, y la <strong>B</strong> los de mejora.</td></tr>
+            <tr><td><strong>IA</strong></td><td>Inteligencia artificial.</td></tr>
+        </tbody>
+    </table>
 </section>
 
 <footer class="pie-inicio">
