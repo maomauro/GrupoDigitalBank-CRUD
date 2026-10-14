@@ -67,7 +67,7 @@ async function probarRuta(browser, ruta) {
     const h = document.querySelector('header');
     return h ? { fondo: getComputedStyle(h).backgroundColor } : null;
   });
-  const scriptCargado = await page.evaluate(() => [...document.scripts].some(s => s.src.endsWith('/js/site.js')));
+  const scriptCargado = await page.evaluate(() => [...document.scripts].some(s => s.src.includes('/js/site.js')));
   await page.close();
 
   return [

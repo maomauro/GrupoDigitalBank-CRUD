@@ -229,7 +229,7 @@ flowchart LR
 
 ## 9. Calidad y verificación
 
-- **358 pruebas** (110 unitarias de Negocios, 55 de integración con PostgreSQL real en Testcontainers, 178 de Presentación con `WebApplicationFactory` y 15 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
+- **359 pruebas** (110 unitarias de Negocios, 55 de integración con PostgreSQL real en Testcontainers, 179 de Presentación con `WebApplicationFactory` y 15 de contrato SOAP que levantan el servicio real de Negocios y lo llaman con el cliente real), cobertura de Negocios 100 % de líneas y ramas con mínimo exigido del 80 % ([ADR 0010](adr/0010-estrategia-de-verificacion.md)).
 - Mutaciones manuales, todas detectadas: 34 al código de producción, 7 al contrato SOAP (más 3 que ni compilan) y 25 a la paginación.
 - Herramientas en `scripts/`: `verificar.ps1` (el contrato del CI), `cobertura.ps1`, `probar-migrador.ps1`, `probar-acceso.ps1` y, en navegador real, `probar-navegador.ps1`.
 - Integración continua con GitHub Actions (`.github/workflows/ci.yml`, cuatro trabajos independientes en cada PR y push a `develop` y `main`): `ci` (format, build, 328 pruebas en Linux, cobertura y paquetes vulnerables), `migrador` (shellcheck y los 9 escenarios del migrador), `docker` (Compose de desarrollo y de producción sin puertos, hadolint, construcción de imágenes y Trivy) y `despliegue` (el mecanismo de despliegue de punta a punta contra un servidor simulado). Además SonarCloud (análisis por PR) y Dependabot, que ahora también cubre las acciones.
