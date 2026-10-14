@@ -230,7 +230,7 @@ public sealed partial class UsuariosVistasTests : IClassFixture<WebApplicationFa
         var html = await http.GetStringAsync("/inicio");
         var respuesta = await http.GetAsync("/js/site.js");
 
-        html.ShouldContain("src=\"/js/site.js\"");
+        html.ShouldContain("src=\"/js/site.js?v=");
         respuesta.IsSuccessStatusCode.ShouldBeTrue();
         (await respuesta.Content.ReadAsStringAsync()).ShouldContain("data-confirmar");
     }

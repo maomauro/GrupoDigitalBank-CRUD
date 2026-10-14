@@ -408,6 +408,17 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
+    public async Task LosEstaticosLlevanUnaVersionParaQueLaCacheDelBordeSeRenueveEnCadaDespliegue()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var html = await http.GetStringAsync("/");
+
+        html.ShouldContain("href=\"/css/site.css?v=");
+        html.ShouldContain("src=\"/js/site.js?v=");
+    }
+
+    [Fact]
     public async Task ElTituloDelMenuAbreLaExplicacionPublicaSinSesionYLaProtegidaConSesion()
     {
         using var http = ClienteConGrilla(out _);
