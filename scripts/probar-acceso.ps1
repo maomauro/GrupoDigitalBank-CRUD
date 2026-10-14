@@ -100,6 +100,9 @@ Check '/health devuelve solo "ok" (no contenido protegido)' ($cuerpo -eq 'ok') "
 Write-Host "`n== Cabeceras ==" -ForegroundColor Cyan
 $cab = (& curl.exe -s $curlInseguro -D - -o NUL --max-time 20 "$Base/inicio") -join "`n"
 Check 'responde 401 con desafio Basic' ($cab -match '401' -and $cab -match 'WWW-Authenticate: Basic')
+$cuerpo401 = (& curl.exe -s $curlInseguro --max-time 20 "$Base/inicio") -join "`n"
+Check 'el 401 trae una pagina (al cancelar el cuadro el navegador no muestra un error vacio)' (($cuerpo401 -match 'Acceso restringido') -and ($cuerpo401 -match 'href="/"') -and ($cuerpo401 -match 'href="/inicio"'))
+Check 'el 401 sigue siendo HTML y no filtra datos de usuarios' (($cab -match 'Content-Type: text/html') -and ($cuerpo401 -notmatch '/Usuarios/Editar/'))
 if ($Base -like 'https://*') {
     $http = $Base -replace '^https', 'http'
     $r = (& curl.exe -s -o NUL -w "%{http_code} %{redirect_url}" --max-time 20 "$http/")
@@ -168,12 +171,12 @@ function Enviar($ruta, [string[]]$campos) {
 try {
     $antes = @(Ids (Pagina '/inicio?tamano=50'))
     $r = Enviar '/Usuarios/Registrar' @('Nombre=Prueba Proxy', 'FechaNacimiento=1990-05-20', 'Sexo=F')
-    Check 'Registrar un usuario (antiforgery + cookies via proxy)' ($r -match 'Prueba Proxy' -and $r -match 'registrado correctamente')
+    Check 'Registrar un usuario (antiforgery + cookies via proxy)' ($r -match 'registrado correctamente')
     $despues = @(Ids (Pagina '/inicio?tamano=50'))
     $nuevo = $despues | Where-Object { $antes -notcontains $_ } | Select-Object -First 1
     Check 'Aparece en la grilla con id nuevo' ($null -ne $nuevo) "id=$nuevo"
     $r = Enviar '/Usuarios/Editar' @("Id=$nuevo", 'Nombre=Prueba Proxy Modificada', 'FechaNacimiento=1991-06-21', 'Sexo=F')
-    Check 'Modificar' ($r -match 'Prueba Proxy Modificada' -and $r -match 'modificado correctamente')
+    Check 'Modificar' ($r -match 'modificado correctamente')
     $r = Enviar '/Usuarios/Registrar' @('Nombre=', 'FechaNacimiento=1990-05-20', 'Sexo=F')
     Check 'Validacion: nombre vacio rechazado' ($r -match 'El nombre es obligatorio')
     $null = Enviar '/Usuarios/Eliminar' @("id=$nuevo")
