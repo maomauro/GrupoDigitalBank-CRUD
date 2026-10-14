@@ -394,6 +394,19 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
     }
 
     [Fact]
+    public async Task LaExplicacionIncluyeUnGlosarioDeSiglasEnlazadoDesdeElIndice()
+    {
+        using var http = ClienteConGrilla(out _);
+
+        var html = await http.GetStringAsync("/");
+
+        html.ShouldContain("href=\"#glosario\"");
+        html.ShouldContain("id=\"glosario\"");
+        html.ShouldContain("<em>Architecture Decision Record</em>");
+        html.ShouldContain("<strong>mTLS</strong>");
+    }
+
+    [Fact]
     public async Task ElTituloDelMenuAbreLaExplicacionPublicaSinSesionYLaProtegidaConSesion()
     {
         using var http = ClienteConGrilla(out _);
