@@ -390,6 +390,7 @@ public sealed partial class InicioTests(WebApplicationFactory<Program> fabrica) 
 
         css.ShouldContain(".indice { position: sticky; top: 0;");
         css.ShouldContain("flex-wrap: nowrap");
+        css.ShouldContain("container-type: inline-size");
         css.ShouldContain("scroll-margin-top");
     }
 
