@@ -7,7 +7,7 @@ RUN dotnet restore
 COPY src/GrupoDigitalBank.Negocios/ ./
 RUN dotnet publish -c Release -o /app --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:11.0
 WORKDIR /app
 COPY --from=build /app .
 # APP_UID lo define la imagen base de Microsoft (numerico, 1654): hadolint no puede verlo
